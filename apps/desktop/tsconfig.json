@@ -16,6 +16,7 @@
   ],
   "references": [
     { "path": "../../packages/core" },
-    { "path": "../../packages/editor" }
+    { "path": "../../packages/editor" },
+    { "path": "../../packages/ui" }
   ]
 }

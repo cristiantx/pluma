@@ -1,6 +1,6 @@
-import type { StatusMetric } from "../../shellView";
-import type { ThemePreference } from "../../theme";
-import { ThemePreferenceGroup } from "./ThemePreferenceGroup";
+import type { ThemePreference } from "../theme.js";
+import { ThemePreferenceGroup } from "./ThemePreferenceGroup.js";
+import type { StatusMetric } from "./types.js";
 
 type StatusBarProps = {
   metrics: StatusMetric[];

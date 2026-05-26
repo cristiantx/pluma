@@ -1,4 +1,4 @@
-import type { ThemePreference } from "../../theme";
+import type { ThemePreference } from "../theme.js";
 
 type ThemePreferenceGroupProps = {
   onChange: (preference: ThemePreference) => void;

@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
@@ -14,6 +15,11 @@
     "newLine": "lf",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@pluma/core": ["packages/core/src/index.ts"],
+      "@pluma/editor": ["packages/editor/src/index.ts"],
+      "@pluma/ui": ["packages/ui/src/index.ts"]
+    }
   }
 }

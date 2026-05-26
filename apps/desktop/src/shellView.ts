@@ -1,17 +1,6 @@
+import type { ExplorerNode, StatusMetric } from "@pluma/ui";
+
 import type { ShellState } from "./shellState";
-
-export type ExplorerNode = {
-  depth: number;
-  isActive?: boolean;
-  isExpanded?: boolean;
-  kind: "folder" | "file";
-  label: string;
-};
-
-export type StatusMetric = {
-  label: string;
-  value: string;
-};
 
 export function extractLeafName(path: string | null): string | null {
   if (!path) {

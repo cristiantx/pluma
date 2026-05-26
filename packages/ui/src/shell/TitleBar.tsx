@@ -2,17 +2,20 @@ import {
   ChevronDown,
   Columns2,
   Folder,
+  Moon,
   PanelRight,
-  Square
+  Square,
+  Sun
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+
+import type { ResolvedTheme } from "../theme.js";
 
 type TitleBarProps = {
   isBridgeAvailable: boolean;
   onOpenFolder: () => void;
   onToggleMode: () => void;
   onToggleTheme: () => void;
-  themeToggleIcon: LucideIcon;
+  resolvedTheme: ResolvedTheme;
   workspacePath: string;
 };
 
@@ -21,9 +24,11 @@ export function TitleBar({
   onOpenFolder,
   onToggleMode,
   onToggleTheme,
-  themeToggleIcon: ThemeToggleIcon,
+  resolvedTheme,
   workspacePath
 }: TitleBarProps) {
+  const ThemeToggleIcon = resolvedTheme === "dark" ? Sun : Moon;
+
   return (
     <header className="titlebar">
       <button

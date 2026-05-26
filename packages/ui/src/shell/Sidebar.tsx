@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import type { CSSProperties } from "react";
 
-import type { ExplorerNode } from "../../shellView";
+import type { ExplorerNode } from "./types.js";
 
 type SidebarProps = {
   nodes: ExplorerNode[];

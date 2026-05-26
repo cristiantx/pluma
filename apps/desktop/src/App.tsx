@@ -1,10 +1,12 @@
-import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { EditorWorkspace } from "./components/shell/EditorWorkspace";
-import { Sidebar } from "./components/shell/Sidebar";
-import { StatusBar } from "./components/shell/StatusBar";
-import { TitleBar } from "./components/shell/TitleBar";
+import {
+  PlumaShell,
+  readStoredThemePreference,
+  resolveThemePreference,
+  THEME_STORAGE_KEY,
+  type ThemePreference
+} from "@pluma/ui";
 import {
   initialShellState,
   reduceShellEvent,
@@ -16,13 +18,6 @@ import {
   getStatusMetrics,
   getWorkspaceLabel
 } from "./shellView";
-import {
-  THEME_STORAGE_KEY,
-  readStoredThemePreference,
-  resolveThemePreference,
-  type ThemePreference
-} from "./theme";
-
 function getInitialThemePreference(): ThemePreference {
   if (typeof window === "undefined") {
     return "system";
@@ -110,40 +105,24 @@ export function App() {
   const activeFileLabel =
     extractLeafName(shellState.activeFile) ?? "Welcome.md";
   const workspacePath = shellState.activeFolder ?? "~/Documents/Pluma Docs";
-  const ThemeToggleIcon = resolvedTheme === "dark" ? Sun : Moon;
 
   return (
-    <main className="shell" data-theme={resolvedTheme}>
-      <TitleBar
-        isBridgeAvailable={isBridgeAvailable}
-        onOpenFolder={() => runCommand("open-folder")}
-        onToggleMode={() => runCommand("toggle-mode")}
-        onToggleTheme={() =>
-          setThemePreference(resolvedTheme === "dark" ? "light" : "dark")
-        }
-        themeToggleIcon={ThemeToggleIcon}
-        workspacePath={workspacePath}
-      />
-
-      <div className="workspace-shell">
-        <Sidebar
-          nodes={explorerNodes}
-          onOpenFile={() => runCommand("open-file")}
-          onOpenFolder={() => runCommand("open-folder")}
-          workspaceLabel={workspaceLabel}
-        />
-
-        <EditorWorkspace
-          activeFileLabel={activeFileLabel}
-          onOpenFile={() => runCommand("open-file")}
-        />
-      </div>
-
-      <StatusBar
-        metrics={statusMetrics}
-        onThemePreferenceChange={setThemePreference}
-        themePreference={themePreference}
-      />
-    </main>
+    <PlumaShell
+      activeFileLabel={activeFileLabel}
+      explorerNodes={explorerNodes}
+      isBridgeAvailable={isBridgeAvailable}
+      onOpenFile={() => runCommand("open-file")}
+      onOpenFolder={() => runCommand("open-folder")}
+      onThemePreferenceChange={setThemePreference}
+      onToggleMode={() => runCommand("toggle-mode")}
+      onToggleTheme={() =>
+        setThemePreference(resolvedTheme === "dark" ? "light" : "dark")
+      }
+      resolvedTheme={resolvedTheme}
+      statusMetrics={statusMetrics}
+      themePreference={themePreference}
+      workspaceLabel={workspaceLabel}
+      workspacePath={workspacePath}
+    />
   );
 }
