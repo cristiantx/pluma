@@ -169,6 +169,7 @@ function createWindow(): void {
     title: "Pluma",
     icon: appIconPath,
     backgroundColor: "#f3ecdf",
+    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

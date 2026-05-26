@@ -131,6 +131,7 @@ button:focus-visible,
   padding: 0 var(--space-4);
   border-bottom: 1px solid var(--border-subtle);
   background: var(--titlebar-bg);
+  -webkit-app-region: drag;
 }
 
 .titlebar-left,
@@ -148,6 +149,13 @@ button:focus-visible,
 
 .titlebar-right {
   justify-content: flex-end;
+}
+
+.titlebar-center,
+.titlebar-right,
+.theme-switcher,
+button {
+  -webkit-app-region: no-drag;
 }
 
 .theme-switcher {
