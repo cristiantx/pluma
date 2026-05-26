@@ -1,0 +1,188 @@
+:root {
+  font-family:
+    "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  color: #1f130c;
+  background:
+    radial-gradient(circle at top, rgba(242, 214, 165, 0.55), transparent 36%),
+    linear-gradient(180deg, #f8f3ea 0%, #efe3d2 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button {
+  border: 1px solid rgba(76, 49, 29, 0.2);
+  background: rgba(255, 251, 245, 0.92);
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(76, 49, 29, 0.45);
+  background: #fffdf8;
+}
+
+.shell {
+  min-height: 100vh;
+  padding: 3rem;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(240px, 0.7fr);
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+.hero-copy,
+.panel,
+.mode-card {
+  border: 1px solid rgba(76, 49, 29, 0.12);
+  background: rgba(255, 250, 243, 0.78);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 24px 60px rgba(97, 64, 37, 0.1);
+}
+
+.hero-copy {
+  border-radius: 32px;
+  padding: 2rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  color: #8a5f39;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0.5rem;
+  font-size: clamp(3.25rem, 10vw, 5.5rem);
+  line-height: 0.95;
+}
+
+.lede {
+  max-width: 44rem;
+  margin-bottom: 0;
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.mode-card {
+  border-radius: 28px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.mode-label {
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8a5f39;
+}
+
+.mode-card strong {
+  font-size: 2rem;
+}
+
+.workspace-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+
+.panel {
+  border-radius: 28px;
+  padding: 1.5rem;
+}
+
+.panel header p {
+  color: rgba(31, 19, 12, 0.7);
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.facts {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+}
+
+.facts div {
+  padding-top: 1rem;
+  border-top: 1px solid rgba(76, 49, 29, 0.12);
+}
+
+.facts div:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #8a5f39;
+  margin-bottom: 0.35rem;
+}
+
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.activity-panel ul {
+  padding-left: 1.2rem;
+  margin-bottom: 0;
+}
+
+.activity-panel li + li {
+  margin-top: 0.6rem;
+}
+
+@media (max-width: 960px) {
+  .shell {
+    padding: 1rem;
+  }
+
+  .hero,
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  h1 {
+    font-size: clamp(2.5rem, 14vw, 4rem);
+  }
+}

@@ -4,12 +4,21 @@
   "version": "0.1.0",
   "description": "Local-first Markdown editor monorepo.",
   "packageManager": "pnpm@10.12.1",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "electron-winstaller"
+    ]
+  },
   "scripts": {
     "build": "pnpm -r build",
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "desktop:dev": "pnpm --filter @pluma/desktop dev",
+    "desktop:package": "pnpm --filter @pluma/desktop package",
+    "desktop:make": "pnpm --filter @pluma/desktop make",
     "test": "vitest run",
     "validate": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build"
   },

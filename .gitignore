@@ -3,4 +3,6 @@ dist
 coverage
 .DS_Store
 .pnpm-store
-
+.vite
+out
+*.tsbuildinfo

@@ -22,6 +22,7 @@ Pluma is an open-source, local-first Markdown editor. Markdown files stay as nor
 
 ```bash
 pnpm install
+pnpm desktop:dev
 pnpm lint
 pnpm test
 pnpm typecheck
@@ -29,6 +30,7 @@ pnpm build
 ```
 
 Use `pnpm validate` to run the full local CI sequence.
+Use `pnpm desktop:make` to produce desktop artifacts with Electron Forge.
 
 ## License
 

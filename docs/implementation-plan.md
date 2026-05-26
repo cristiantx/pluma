@@ -28,24 +28,24 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ## Phase 1: Desktop Shell
 
-- [ ] Scaffold the Electron app with Electron Forge and Vite.
-- [ ] Create Electron entry points:
-  - [ ] main process
-  - [ ] preload script
-  - [ ] renderer app
-- [ ] Configure secure Electron defaults:
-  - [ ] `contextIsolation: true`
-  - [ ] `nodeIntegration: false`
-  - [ ] preload-only IPC surface
-- [ ] Implement the initial app window.
-- [ ] Add app menu commands for:
-  - [ ] Open File
-  - [ ] Open Folder
-  - [ ] Save
-  - [ ] Save As
-  - [ ] Toggle Rich/Source Mode
-- [ ] Add development launch command.
-- [ ] Add production build command.
+- [x] Scaffold the Electron app with Electron Forge and Vite.
+- [x] Create Electron entry points:
+  - [x] main process
+  - [x] preload script
+  - [x] renderer app
+- [x] Configure secure Electron defaults:
+  - [x] `contextIsolation: true`
+  - [x] `nodeIntegration: false`
+  - [x] preload-only IPC surface
+- [x] Implement the initial app window.
+- [x] Add app menu commands for:
+  - [x] Open File
+  - [x] Open Folder
+  - [x] Save
+  - [x] Save As
+  - [x] Toggle Rich/Source Mode
+- [x] Add development launch command.
+- [x] Add production build command.
 
 ## Phase 2: Shared Core Interfaces
 
