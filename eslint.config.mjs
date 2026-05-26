@@ -4,7 +4,13 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["**/dist/**", "**/coverage/**", "docs/**"]
+    ignores: [
+      "**/dist/**",
+      "**/coverage/**",
+      "**/.vite/**",
+      "**/out/**",
+      "docs/**"
+    ]
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

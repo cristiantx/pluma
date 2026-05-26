@@ -15,6 +15,8 @@ Choose Electron for the MVP because it gives predictable cross-platform file ope
   - `packages/core`: document session model, Markdown pipeline, save/conflict logic, shared types
   - `packages/editor`: rich editor wrapper, source editor wrapper, editor commands
 - Use `pnpm` workspaces with hoisted `node_modules` config so Electron Forge packaging works cleanly.
+- Use Radix Primitives as the default renderer UI primitive layer for dialogs, menus, popovers, tooltips, and related non-editor controls.
+- Use a semantic theme-token system for app chrome with `system`, `light`, and `dark` modes from the start.
 - Keep all filesystem access behind a shared adapter boundary:
   - `FileSystemAdapter`
   - `DesktopFileSystemAdapter` now
@@ -25,6 +27,8 @@ Choose Electron for the MVP because it gives predictable cross-platform file ope
 - Rich mode is primary; source mode is always available and first-class.
 - Use Milkdown as the rich editor base because it is Markdown-oriented and already sits on ProseMirror + Remark, with CommonMark/GFM support.
 - Use CodeMirror 6 for source mode.
+- Theme app chrome separately from editor syntax colors.
+- Map CodeMirror and Milkdown visuals into Pluma-owned theme tokens rather than relying on stock themes as the product identity.
 - Support these as first-class rich-editable syntax in the MVP:
   - headings
   - paragraphs

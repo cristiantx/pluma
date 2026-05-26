@@ -5,6 +5,8 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 ## Guiding Decisions
 
 - [ ] Use Electron, React, TypeScript, Vite, and Electron Forge for the desktop MVP.
+- [ ] Use Radix Primitives for renderer UI primitives that are not provided by the OS shell.
+- [ ] Support semantic app theming with `system`, `light`, and `dark` modes.
 - [ ] Keep Markdown source text as the canonical document format.
 - [ ] Use Milkdown for rich Markdown editing when a document is safe for rich mode.
 - [ ] Use CodeMirror 6 for source mode.
@@ -29,6 +31,8 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 ## Phase 1: Desktop Shell
 
 - [x] Scaffold the Electron app with Electron Forge and Vite.
+- [x] Add Radix Primitives as the base renderer UI primitive layer.
+- [x] Establish app theme tokens and initial `system` / `light` / `dark` shell support.
 - [x] Create Electron entry points:
   - [x] main process
   - [x] preload script
@@ -81,6 +85,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 ## Phase 4: Source Editor
 
 - [ ] Add CodeMirror 6 wrapper in `packages/editor`.
+- [ ] Theme CodeMirror through Pluma theme tokens and supported syntax palettes.
 - [ ] Configure Markdown language support.
 - [ ] Add editor commands for common Markdown actions.
 - [ ] Add source editor state synchronization with `DocumentSession`.
@@ -90,6 +95,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 ## Phase 5: Rich Editor
 
 - [ ] Add Milkdown wrapper in `packages/editor`.
+- [ ] Theme Milkdown through Pluma theme tokens for light and dark modes.
 - [ ] Enable CommonMark support.
 - [ ] Enable GFM support.
 - [ ] Add basic rich editing controls for:
@@ -145,6 +151,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
   - [ ] central editor
   - [ ] compact toolbar
   - [ ] status area
+- [ ] Finalize light and dark theme polish across shell, sidebar, editor chrome, and status surfaces.
 - [ ] Add mode toggle between rich and source.
 - [ ] Add unsupported Markdown warning state.
 - [ ] Add empty state for no file open.
