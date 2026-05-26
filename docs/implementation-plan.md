@@ -51,6 +51,22 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [x] Add development launch command.
 - [x] Add production build command.
 
+## Phase 1.1: Visual Design Foundation
+
+- [ ] Define the visual direction for Pluma as a desktop-first writing and editing tool.
+- [ ] Define the typography system for app chrome, metadata, and document-adjacent UI.
+- [ ] Define semantic color tokens for surfaces, text, borders, accents, warnings, and status states.
+- [ ] Define spacing, density, radius, and elevation rules for desktop UI surfaces.
+- [ ] Define the base component language for toolbar, sidebar, panels, menus, status areas, and empty states.
+- [ ] Define interaction states for hover, focus, selected, active, disabled, and keyboard navigation.
+- [ ] Define how Radix primitives are styled inside the Pluma design system.
+- [ ] Produce reference designs for:
+  - [ ] empty state
+  - [ ] file-opened state
+  - [ ] folder/workspace state
+  - [ ] warning and status state
+- [ ] Document design-token usage rules for implementation.
+
 ## Phase 2: Shared Core Interfaces
 
 - [ ] Define shared file-location types for desktop paths and future browser handles.
@@ -85,6 +101,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 ## Phase 4: Source Editor
 
 - [ ] Add CodeMirror 6 wrapper in `packages/editor`.
+- [ ] Apply the Pluma design system to source-mode chrome and controls.
 - [ ] Theme CodeMirror through Pluma theme tokens and supported syntax palettes.
 - [ ] Configure Markdown language support.
 - [ ] Add editor commands for common Markdown actions.
@@ -95,6 +112,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 ## Phase 5: Rich Editor
 
 - [ ] Add Milkdown wrapper in `packages/editor`.
+- [ ] Apply the Pluma design system to rich-mode chrome and controls.
 - [ ] Theme Milkdown through Pluma theme tokens for light and dark modes.
 - [ ] Enable CommonMark support.
 - [ ] Enable GFM support.
@@ -122,6 +140,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Implement Open File flow.
 - [ ] Implement Open Folder flow.
 - [ ] Add Markdown file tree for opened folders.
+- [ ] Apply the Pluma design system to the file tree, workspace browsing layout, and file-selection states.
 - [ ] Support selecting files from the tree.
 - [ ] Handle relative links and image references against the active file path.
 - [ ] Implement macOS `open-file` event handling.
@@ -134,6 +153,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Implement autosave debounce.
 - [ ] Persist changes through `writeTextAtomic`.
 - [ ] Show save state in the UI.
+- [ ] Apply the Pluma design system to save, autosave, conflict, and external-change states.
 - [ ] Watch active files for external changes.
 - [ ] Watch opened folders for file tree changes.
 - [ ] Detect external modification before saving.
@@ -146,16 +166,10 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ## Phase 8: MVP UI Polish
 
-- [ ] Build the main editor layout:
-  - [ ] optional left file tree
-  - [ ] central editor
-  - [ ] compact toolbar
-  - [ ] status area
 - [ ] Finalize light and dark theme polish across shell, sidebar, editor chrome, and status surfaces.
-- [ ] Add mode toggle between rich and source.
-- [ ] Add unsupported Markdown warning state.
-- [ ] Add empty state for no file open.
-- [ ] Add recent file/folder affordance if it does not require extra persistence complexity.
+- [ ] Verify consistency of the implemented design system across all major UI surfaces.
+- [ ] Refine layout, spacing, and alignment details across the app.
+- [ ] Refine motion and interaction polish where it improves usability.
 - [ ] Verify keyboard navigation for core flows.
 - [ ] Verify text does not overflow controls across common window sizes.
 - [ ] Keep the UI quiet, dense, and document-focused.
