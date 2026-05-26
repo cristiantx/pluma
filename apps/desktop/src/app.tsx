@@ -10,7 +10,6 @@ import {
   getStatusMetrics,
   getWorkspaceLabel
 } from "./shell-view";
-import { ThemePicker } from "./theme-picker";
 import {
   THEME_STORAGE_KEY,
   readStoredThemePreference,
@@ -23,8 +22,20 @@ export function App() {
   const [themePreference, setThemePreference] =
     useState<ThemePreference>("system");
   const [systemPrefersDark, setSystemPrefersDark] = useState(false);
+  const [bridgeAvailable, setBridgeAvailable] = useState(false);
 
   useEffect(() => {
+    if (!window.pluma) {
+      setState((current) => ({
+        ...current,
+        status:
+          "Renderer loaded without preload bridge. Shell commands are unavailable."
+      }));
+      return;
+    }
+
+    setBridgeAvailable(true);
+
     return window.pluma.onEvent((event) => {
       setState((current) => reduceShellEvent(current, event));
     });
@@ -64,6 +75,14 @@ export function App() {
   }, [resolvedTheme, themePreference]);
 
   const runCommand = (command: CommandName) => {
+    if (!window.pluma) {
+      setState((current) => ({
+        ...current,
+        status: `Cannot run "${command}" because the preload bridge is unavailable.`
+      }));
+      return;
+    }
+
     void window.pluma.runCommand(command);
   };
 
@@ -72,6 +91,7 @@ export function App() {
   const statusMetrics = getStatusMetrics(state);
   const activeFileLabel =
     extractLeafName(state.activeFile) ?? "No file selected";
+  const themeOptions: ThemePreference[] = ["system", "light", "dark"];
 
   return (
     <main className="shell" data-theme={resolvedTheme}>
@@ -109,11 +129,26 @@ export function App() {
           </button>
         </div>
         <div className="titlebar-right">
-          <ThemePicker
-            onChange={setThemePreference}
-            preference={themePreference}
-            resolvedTheme={resolvedTheme}
-          />
+          {!bridgeAvailable ? (
+            <span className="bridge-warning">IPC offline</span>
+          ) : null}
+          <div className="theme-switcher" role="group" aria-label="Theme mode">
+            {themeOptions.map((option) => (
+              <button
+                aria-pressed={themePreference === option}
+                className={
+                  themePreference === option
+                    ? "theme-switcher-button is-selected"
+                    : "theme-switcher-button"
+                }
+                key={option}
+                onClick={() => setThemePreference(option)}
+                type="button"
+              >
+                {option}
+              </button>
+            ))}
+          </div>
           <button
             className="icon-button"
             onClick={() => runCommand("toggle-mode")}

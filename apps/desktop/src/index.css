@@ -150,6 +150,27 @@ button:focus-visible,
   justify-content: flex-end;
 }
 
+.theme-switcher {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--panel-bg);
+}
+
+.theme-switcher-button {
+  min-width: 62px;
+  padding: 6px 10px;
+  background: transparent;
+  text-transform: capitalize;
+}
+
+.theme-switcher-button.is-selected {
+  background: var(--panel-elevated);
+  border-color: var(--border-strong);
+}
+
 .brand-mark {
   width: 26px;
   height: 26px;
@@ -175,7 +196,8 @@ button:focus-visible,
 .section-meta,
 .status-label,
 .mode-label,
-.eyebrow {
+.eyebrow,
+.bridge-warning {
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
@@ -190,6 +212,11 @@ button:focus-visible,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.bridge-warning {
+  font-size: 0.68rem;
+  color: var(--warning);
 }
 
 .titlebar-action,

@@ -4,6 +4,7 @@ import {
   Menu,
   dialog,
   ipcMain,
+  nativeImage,
   type MenuItemConstructorOptions
 } from "electron";
 import path from "node:path";
@@ -22,6 +23,18 @@ if (started) {
 }
 
 const appIconPath = path.resolve(__dirname, "../../assets/icon.png");
+
+function setApplicationIcon(): void {
+  const icon = nativeImage.createFromPath(appIconPath);
+
+  if (icon.isEmpty()) {
+    return;
+  }
+
+  if (process.platform === "darwin" && app.dock) {
+    app.dock.setIcon(icon);
+  }
+}
 
 function emitToRenderer(event: RendererEvent): void {
   mainWindow?.webContents.send("pluma:event", event);
@@ -190,6 +203,7 @@ ipcMain.handle("pluma:command", async (_event, command: CommandName) => {
 });
 
 app.whenReady().then(() => {
+  setApplicationIcon();
   Menu.setApplicationMenu(buildMenu());
   createWindow();
 
