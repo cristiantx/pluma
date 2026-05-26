@@ -18,6 +18,7 @@ Choose Electron for the MVP because it gives predictable cross-platform file ope
 - Use Radix Primitives as the default renderer UI primitive layer for dialogs, menus, popovers, tooltips, and related non-editor controls.
 - Use a semantic theme-token system for app chrome with `system`, `light`, and `dark` modes from the start.
 - Add a dedicated visual design foundation phase after shell scaffolding so the product visual system is defined before editor and workspace surfaces are fully built.
+- Use a custom title bar and frameless window shell with a VS Code-inspired information architecture: title bar, workspace sidebar, central editor, and bottom status bar.
 - Keep all filesystem access behind a shared adapter boundary:
   - `FileSystemAdapter`
   - `DesktopFileSystemAdapter` now
@@ -30,7 +31,7 @@ Choose Electron for the MVP because it gives predictable cross-platform file ope
 - Use CodeMirror 6 for source mode.
 - Theme app chrome separately from editor syntax colors.
 - Map CodeMirror and Milkdown visuals into Pluma-owned theme tokens rather than relying on stock themes as the product identity.
-- Use the design foundation phase to define typography, density, shell chrome, sidebar patterns, status patterns, and Radix styling rules before applying them in later editor and workspace phases.
+- Use the design foundation phase to define typography, density, custom title-bar patterns, sidebar patterns, top-right utility actions, status-bar patterns, and Radix styling rules before applying them in later editor and workspace phases.
 - Support these as first-class rich-editable syntax in the MVP:
   - headings
   - paragraphs
@@ -82,6 +83,8 @@ Choose Electron for the MVP because it gives predictable cross-platform file ope
 - Workspace behavior:
   - support opening a single file
   - support opening a folder of Markdown files with a sidebar tree
+  - show the active workspace in the custom title bar
+  - surface document and workspace metrics in a bottom status bar
   - watch the active file and open folder for external changes
 
 ### 5. Packaging And Release Approach

@@ -7,6 +7,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Use Electron, React, TypeScript, Vite, and Electron Forge for the desktop MVP.
 - [ ] Use Radix Primitives for renderer UI primitives that are not provided by the OS shell.
 - [ ] Support semantic app theming with `system`, `light`, and `dark` modes.
+- [ ] Use a custom title bar and frameless desktop shell with a VS Code-inspired workspace layout.
 - [ ] Keep Markdown source text as the canonical document format.
 - [ ] Use Milkdown for rich Markdown editing when a document is safe for rich mode.
 - [ ] Use CodeMirror 6 for source mode.
@@ -33,6 +34,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [x] Scaffold the Electron app with Electron Forge and Vite.
 - [x] Add Radix Primitives as the base renderer UI primitive layer.
 - [x] Establish app theme tokens and initial `system` / `light` / `dark` shell support.
+- [ ] Convert the desktop window to a custom title bar / frameless shell.
 - [x] Create Electron entry points:
   - [x] main process
   - [x] preload script
@@ -41,6 +43,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
   - [x] `contextIsolation: true`
   - [x] `nodeIntegration: false`
   - [x] preload-only IPC surface
+- [ ] Implement title-bar drag regions and platform-aware window controls.
 - [x] Implement the initial app window.
 - [x] Add app menu commands for:
   - [x] Open File
@@ -53,11 +56,11 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ## Phase 1.1: Visual Design Foundation
 
-- [ ] Define the visual direction for Pluma as a desktop-first writing and editing tool.
+- [ ] Define the visual direction for Pluma as a desktop-first writing and editing tool with a VS Code-inspired shell structure.
 - [ ] Define the typography system for app chrome, metadata, and document-adjacent UI.
 - [ ] Define semantic color tokens for surfaces, text, borders, accents, warnings, and status states.
 - [ ] Define spacing, density, radius, and elevation rules for desktop UI surfaces.
-- [ ] Define the base component language for toolbar, sidebar, panels, menus, status areas, and empty states.
+- [ ] Define the base component language for custom title bar, toolbar, sidebar, panels, menus, status bar, and empty states.
 - [ ] Define interaction states for hover, focus, selected, active, disabled, and keyboard navigation.
 - [ ] Define how Radix primitives are styled inside the Pluma design system.
 - [ ] Produce reference designs for:
@@ -65,6 +68,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
   - [ ] file-opened state
   - [ ] folder/workspace state
   - [ ] warning and status state
+- [ ] Define the status-bar metric model for word count, line count, mode, and save state.
 - [ ] Document design-token usage rules for implementation.
 
 ## Phase 2: Shared Core Interfaces
@@ -140,7 +144,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Implement Open File flow.
 - [ ] Implement Open Folder flow.
 - [ ] Add Markdown file tree for opened folders.
-- [ ] Apply the Pluma design system to the file tree, workspace browsing layout, and file-selection states.
+- [ ] Apply the Pluma design system to the file tree, workspace browsing layout, title bar workspace label, and file-selection states.
 - [ ] Support selecting files from the tree.
 - [ ] Handle relative links and image references against the active file path.
 - [ ] Implement macOS `open-file` event handling.
@@ -153,7 +157,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Implement autosave debounce.
 - [ ] Persist changes through `writeTextAtomic`.
 - [ ] Show save state in the UI.
-- [ ] Apply the Pluma design system to save, autosave, conflict, and external-change states.
+- [ ] Apply the Pluma design system to save, autosave, conflict, external-change, and status-bar metric states.
 - [ ] Watch active files for external changes.
 - [ ] Watch opened folders for file tree changes.
 - [ ] Detect external modification before saving.
@@ -168,6 +172,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 - [ ] Finalize light and dark theme polish across shell, sidebar, editor chrome, and status surfaces.
 - [ ] Verify consistency of the implemented design system across all major UI surfaces.
+- [ ] Refine the custom title bar, sidebar layout, top-right utility actions, and status bar for dense desktop use.
 - [ ] Refine layout, spacing, and alignment details across the app.
 - [ ] Refine motion and interaction polish where it improves usability.
 - [ ] Verify keyboard navigation for core flows.
