@@ -23,6 +23,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
   - [x] `apps/desktop`
   - [x] `packages/core`
   - [x] `packages/editor`
+  - [ ] `packages/ui`
 - [x] Configure TypeScript project references or workspace-level TypeScript settings.
 - [x] Add shared linting and formatting configuration.
 - [x] Add a root README with the product goal, local-first constraints, and development commands.
@@ -34,7 +35,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [x] Scaffold the Electron app with Electron Forge and Vite.
 - [x] Add Radix Primitives as the base renderer UI primitive layer.
 - [x] Establish app theme tokens and initial `system` / `light` / `dark` shell support.
-- [ ] Convert the desktop window to a custom title bar / frameless shell.
+- [x] Convert the desktop window to a custom title bar / frameless shell.
 - [x] Create Electron entry points:
   - [x] main process
   - [x] preload script
@@ -43,7 +44,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
   - [x] `contextIsolation: true`
   - [x] `nodeIntegration: false`
   - [x] preload-only IPC surface
-- [ ] Implement title-bar drag regions and platform-aware window controls.
+- [x] Implement title-bar drag regions and platform-aware window controls.
 - [x] Implement the initial app window.
 - [x] Add app menu commands for:
   - [x] Open File
@@ -73,6 +74,9 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ## Phase 2: Shared Core Interfaces
 
+- [ ] Create `packages/ui` for shared renderer app UI that can be reused by desktop and a future web app.
+- [ ] Define the `packages/ui` boundary so it contains shared React app UI and theme behavior, but no Electron-only imports.
+- [ ] Extract the desktop renderer shell layout, sidebar, title bar content, status bar, and shared empty-state surfaces into `packages/ui`.
 - [ ] Define shared file-location types for desktop paths and future browser handles.
 - [ ] Define `FileSystemAdapter`.
 - [ ] Define `DocumentSession`.
@@ -144,6 +148,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Implement Open File flow.
 - [ ] Implement Open Folder flow.
 - [ ] Add Markdown file tree for opened folders.
+- [ ] Move workspace tree, title-area workspace presentation, and status-bar UI to shared `packages/ui` components where they do not depend on Electron APIs.
 - [ ] Apply the Pluma design system to the file tree, workspace browsing layout, title bar workspace label, and file-selection states.
 - [ ] Support selecting files from the tree.
 - [ ] Handle relative links and image references against the active file path.
@@ -204,6 +209,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Document expected File System Access API limitations.
 - [ ] Define fallback behavior for browsers without direct file editing support.
 - [ ] Keep core packages free of Electron-only imports.
+- [ ] Keep `packages/ui` free of Electron-only imports so the app UI can be reused in a browser shell.
 - [ ] Add architecture notes for sharing editor and core code between desktop and browser.
 
 ## MVP Acceptance Criteria
