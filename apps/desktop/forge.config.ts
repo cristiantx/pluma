@@ -6,10 +6,12 @@ import { MakerZIP } from "@electron-forge/maker-zip";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
 import { VitePlugin } from "@electron-forge/plugin-vite";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
+import path from "node:path";
 
 const config: ForgeConfig = {
   packagerConfig: {
-    asar: true
+    asar: true,
+    icon: path.resolve(__dirname, "assets/icon")
   },
   rebuildConfig: {},
   makers: [

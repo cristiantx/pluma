@@ -21,6 +21,8 @@ if (started) {
   app.quit();
 }
 
+const appIconPath = path.resolve(__dirname, "../../assets/icon.png");
+
 function emitToRenderer(event: RendererEvent): void {
   mainWindow?.webContents.send("pluma:event", event);
 }
@@ -152,6 +154,7 @@ function createWindow(): void {
     minWidth: 960,
     minHeight: 640,
     title: "Pluma",
+    icon: appIconPath,
     backgroundColor: "#f3ecdf",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),

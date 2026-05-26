@@ -56,20 +56,20 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ## Phase 1.1: Visual Design Foundation
 
-- [ ] Define the visual direction for Pluma as a desktop-first writing and editing tool with a VS Code-inspired shell structure.
-- [ ] Define the typography system for app chrome, metadata, and document-adjacent UI.
-- [ ] Define semantic color tokens for surfaces, text, borders, accents, warnings, and status states.
-- [ ] Define spacing, density, radius, and elevation rules for desktop UI surfaces.
-- [ ] Define the base component language for custom title bar, toolbar, sidebar, panels, menus, status bar, and empty states.
-- [ ] Define interaction states for hover, focus, selected, active, disabled, and keyboard navigation.
-- [ ] Define how Radix primitives are styled inside the Pluma design system.
-- [ ] Produce reference designs for:
-  - [ ] empty state
-  - [ ] file-opened state
-  - [ ] folder/workspace state
-  - [ ] warning and status state
-- [ ] Define the status-bar metric model for word count, line count, mode, and save state.
-- [ ] Document design-token usage rules for implementation.
+- [x] Define the visual direction for Pluma as a desktop-first writing and editing tool with a VS Code-inspired shell structure.
+- [x] Define the typography system for app chrome, metadata, and document-adjacent UI.
+- [x] Define semantic color tokens for surfaces, text, borders, accents, warnings, and status states.
+- [x] Define spacing, density, radius, and elevation rules for desktop UI surfaces.
+- [x] Define the base component language for custom title bar, toolbar, sidebar, panels, menus, status bar, and empty states.
+- [x] Define interaction states for hover, focus, selected, active, disabled, and keyboard navigation.
+- [x] Define how Radix primitives are styled inside the Pluma design system.
+- [x] Produce reference designs for:
+  - [x] empty state
+  - [x] file-opened state
+  - [x] folder/workspace state
+  - [x] warning and status state
+- [x] Define the status-bar metric model for word count, line count, mode, and save state.
+- [x] Document design-token usage rules for implementation.
 
 ## Phase 2: Shared Core Interfaces
 
