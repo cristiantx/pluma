@@ -6,6 +6,8 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 - [ ] Use Electron, React, TypeScript, Vite, and Electron Forge for the desktop MVP.
 - [ ] Use Radix Primitives for renderer UI primitives that are not provided by the OS shell.
+- [ ] Use `allotment` for VS Code-like split panes in the desktop and shared app shell.
+- [ ] Use `Headless Tree` for the workspace file tree and related tree interactions.
 - [ ] Support semantic app theming with `system`, `light`, and `dark` modes.
 - [ ] Use a custom title bar and frameless desktop shell with a VS Code-inspired workspace layout.
 - [ ] Keep Markdown source text as the canonical document format.
@@ -77,6 +79,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Create `packages/ui` for shared renderer app UI that can be reused by desktop and a future web app.
 - [ ] Define the `packages/ui` boundary so it contains shared React app UI and theme behavior, but no Electron-only imports.
 - [ ] Extract the desktop renderer shell layout, sidebar, title bar content, status bar, and shared empty-state surfaces into `packages/ui`.
+- [ ] Add `allotment`-based shared pane primitives to `packages/ui` for sidebar, editor, and future secondary-pane layouts.
 - [ ] Define shared file-location types for desktop paths and future browser handles.
 - [ ] Define `FileSystemAdapter`.
 - [ ] Define `DocumentSession`.
@@ -147,9 +150,10 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 - [ ] Implement Open File flow.
 - [ ] Implement Open Folder flow.
-- [ ] Add Markdown file tree for opened folders.
+- [ ] Add Markdown file tree for opened folders using `Headless Tree`.
 - [ ] Move workspace tree, title-area workspace presentation, and status-bar UI to shared `packages/ui` components where they do not depend on Electron APIs.
 - [ ] Apply the Pluma design system to the file tree, workspace browsing layout, title bar workspace label, and file-selection states.
+- [ ] Build the workspace shell on `allotment` so sidebar and editor panes resize like a desktop editor.
 - [ ] Support selecting files from the tree.
 - [ ] Handle relative links and image references against the active file path.
 - [ ] Implement macOS `open-file` event handling.

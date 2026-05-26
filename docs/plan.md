@@ -17,6 +17,8 @@ Choose Electron for the MVP because it gives predictable cross-platform file ope
   - `packages/ui`: shared React app UI, shell layout, theming surfaces, and reusable desktop/web presentation components
 - Use `pnpm` workspaces with hoisted `node_modules` config so Electron Forge packaging works cleanly.
 - Use Radix Primitives as the default renderer UI primitive layer for dialogs, menus, popovers, tooltips, and related non-editor controls.
+- Use `allotment` as the default split-pane system for the app shell so the workspace layout behaves like a desktop editor.
+- Use `Headless Tree` as the default file-tree foundation for accessible, keyboard-friendly workspace navigation.
 - Use a semantic theme-token system for app chrome with `system`, `light`, and `dark` modes from the start.
 - Add a dedicated visual design foundation phase after shell scaffolding so the product visual system is defined before editor and workspace surfaces are fully built.
 - Use a custom title bar and frameless window shell with a VS Code-inspired information architecture: title bar, workspace sidebar, central editor, and bottom status bar.
@@ -35,6 +37,7 @@ Choose Electron for the MVP because it gives predictable cross-platform file ope
 - Map CodeMirror and Milkdown visuals into Pluma-owned theme tokens rather than relying on stock themes as the product identity.
 - Use the design foundation phase to define typography, density, custom title-bar patterns, sidebar patterns, top-right utility actions, status-bar patterns, and Radix styling rules before applying them in later editor and workspace phases.
 - Extract the renderer shell, sidebar UI, status bar UI, empty states, and similar app-level presentation into `packages/ui` early so the future browser app can reuse the same app surfaces.
+- Keep pane layout and file-tree presentation in shared renderer code so the future browser shell can reuse the same workspace UI structure.
 - Support these as first-class rich-editable syntax in the MVP:
   - headings
   - paragraphs
@@ -86,11 +89,14 @@ Choose Electron for the MVP because it gives predictable cross-platform file ope
 - Workspace behavior:
   - support opening a single file
   - support opening a folder of Markdown files with a sidebar tree
+  - implement the sidebar/editor split with `allotment`
+  - build the workspace file tree with `Headless Tree`
   - show the active workspace in the custom title bar
   - surface document and workspace metrics in a bottom status bar
   - watch the active file and open folder for external changes
 - Shared app UI boundary:
   - `packages/ui` owns shared renderer components such as the shell layout, title-bar content, sidebar presentation, empty states, inspector surfaces, status bar, and theme selection UI
+  - `packages/ui` also owns shared pane and tree presentation built on `allotment` and `Headless Tree`
   - `apps/desktop` composes those components with Electron-specific behavior such as drag/no-drag regions, native window controls, file dialogs, app menu wiring, and preload/IPC integration
 
 ### 5. Packaging And Release Approach
