@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { initialShellState } from "../src/shell-state";
+import { initialShellState } from "../src/shellState";
 import {
   extractLeafName,
-  getSidebarEntries,
+  getExplorerNodes,
   getStatusMetrics,
   getWorkspaceLabel
-} from "../src/shell-view";
+} from "../src/shellView";
 
 describe("extractLeafName", () => {
   it("returns the last path segment for unix and windows paths", () => {
@@ -38,14 +38,17 @@ describe("getStatusMetrics", () => {
   });
 });
 
-describe("getSidebarEntries", () => {
+describe("getExplorerNodes", () => {
   it("builds workspace-first entries when a folder is active", () => {
     expect(
-      getSidebarEntries({
+      getExplorerNodes({
         ...initialShellState,
         activeFolder: "/tmp/pluma",
         activeFile: "/tmp/pluma/notes.md"
       })[0]
-    ).toBe("pluma");
+    ).toMatchObject({
+      kind: "folder",
+      label: "Guides"
+    });
   });
 });

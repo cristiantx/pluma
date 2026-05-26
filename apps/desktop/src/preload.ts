@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { CommandName, RendererEvent } from "./shell-state";
+import type { CommandName, RendererEvent } from "./shellState";
 
 const api = {
   runCommand(command: CommandName) {

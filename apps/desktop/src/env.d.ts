@@ -1,4 +1,4 @@
-import type { CommandName, RendererEvent } from "./shell-state";
+import type { CommandName, RendererEvent } from "./shellState";
 
 declare global {
   interface Window {
