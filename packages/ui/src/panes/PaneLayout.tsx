@@ -27,8 +27,14 @@ export function Pane({ children, minSize, preferredSize, visible }: PaneProps) {
 }
 
 export function PaneLayout({ main, primary, secondary }: PaneLayoutProps) {
+  const defaultSizes = secondary ? [178, 842, 260] : [178, 842];
+
   return (
-    <Allotment className="pane-layout" vertical={false}>
+    <Allotment
+      className="pane-layout"
+      defaultSizes={defaultSizes}
+      vertical={false}
+    >
       <Pane minSize={160} preferredSize={178}>
         {primary}
       </Pane>
