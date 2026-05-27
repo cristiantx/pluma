@@ -1,4 +1,10 @@
 import {
+  hotkeysCoreFeature,
+  selectionFeature,
+  syncDataLoaderFeature
+} from "@headless-tree/core";
+import { useTree } from "@headless-tree/react";
+import {
   ChevronDown,
   ChevronRight,
   FilePlus2,
@@ -9,6 +15,7 @@ import {
 import type { CSSProperties } from "react";
 
 import type { ExplorerNode } from "./types.js";
+import { buildSidebarTreeData } from "./sidebarTree.js";
 
 type SidebarProps = {
   nodes: ExplorerNode[];
@@ -29,6 +36,31 @@ export function Sidebar({
 }: SidebarProps) {
   const rootLabel =
     workspaceLabel === "No workspace open" ? "PLUMA DOCS" : workspaceLabel;
+  const treeData = buildSidebarTreeData(rootLabel, nodes);
+  const fallbackNode = treeData.tree[treeData.rootItemId];
+
+  if (!fallbackNode) {
+    throw new Error("Sidebar tree root node was not created.");
+  }
+
+  const tree = useTree<{
+    children?: string[];
+    kind: "folder" | "file";
+    label: string;
+  }>({
+    rootItemId: treeData.rootItemId,
+    getItemName: (item) => item.getItemData().label,
+    isItemFolder: (item) => item.getItemData().kind === "folder",
+    dataLoader: {
+      getItem: (itemId) => treeData.tree[itemId] ?? fallbackNode,
+      getChildren: (itemId) => treeData.tree[itemId]?.children ?? []
+    },
+    initialState: {
+      expandedItems: treeData.expandedItems,
+      selectedItems: treeData.selectedItems
+    },
+    features: [syncDataLoaderFeature, selectionFeature, hotkeysCoreFeature]
+  });
 
   return (
     <aside className="sidebar">
@@ -38,32 +70,37 @@ export function Sidebar({
         <span>{rootLabel}</span>
       </div>
 
-      <nav className="tree-list" aria-label="Files">
-        {nodes.map((node) => (
+      <div
+        {...tree.getContainerProps("Files")}
+        className="tree-list"
+        role="tree"
+      >
+        {tree.getItems().map((item) => (
           <button
-            className={node.isActive ? "tree-item is-active" : "tree-item"}
-            key={`${node.depth}-${node.kind}-${node.label}`}
-            style={getTreeItemStyle(node.depth)}
+            className={item.isSelected() ? "tree-item is-active" : "tree-item"}
+            key={item.getId()}
+            style={getTreeItemStyle(item.getItemMeta().level)}
             type="button"
+            {...item.getProps()}
           >
-            {node.kind === "folder" && node.isExpanded ? (
+            {item.isFolder() && item.isExpanded() ? (
               <ChevronDown className="disclosure-icon" aria-hidden="true" />
             ) : null}
-            {node.kind === "folder" && !node.isExpanded ? (
+            {item.isFolder() && !item.isExpanded() ? (
               <ChevronRight className="disclosure-icon" aria-hidden="true" />
             ) : null}
-            {node.kind === "file" ? (
+            {!item.isFolder() ? (
               <span className="disclosure-spacer" aria-hidden="true" />
             ) : null}
-            {node.kind === "folder" ? (
+            {item.isFolder() ? (
               <Folder className="tree-icon" aria-hidden="true" />
             ) : (
               <FileText className="tree-icon" aria-hidden="true" />
             )}
-            <span>{node.label}</span>
+            <span>{item.getItemName()}</span>
           </button>
         ))}
-      </nav>
+      </div>
 
       <div className="sidebar-footer">
         <button
