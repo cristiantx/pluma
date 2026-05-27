@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import "@pluma/ui-styles";
 import { App } from "./App";
 import { ErrorBoundary } from "./ErrorBoundary";
 import "./index.css";

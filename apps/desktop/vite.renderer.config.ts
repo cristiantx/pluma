@@ -11,7 +11,11 @@ export default defineConfig({
         __dirname,
         "../../packages/core/src/index.ts"
       ),
-      "@pluma/ui": path.resolve(__dirname, "../../packages/ui/src/index.ts")
+      "@pluma/ui": path.resolve(__dirname, "../../packages/ui/src/index.ts"),
+      "@pluma/ui-styles": path.resolve(
+        __dirname,
+        "../../packages/ui/src/styles/index.css"
+      )
     },
     dedupe: ["react", "react-dom"]
   }

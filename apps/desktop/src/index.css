@@ -1,9 +1,1 @@
-@import "./styles/vendor.css";
-@import "./styles/tokens.css";
-@import "./styles/base.css";
-@import "./styles/layout.css";
-@import "./styles/titlebar.css";
-@import "./styles/sidebar.css";
-@import "./styles/tabs.css";
-@import "./styles/editor.css";
-@import "./styles/statusbar.css";
+/* Desktop-specific stylesheet entry point. Shared shell styles live in @pluma/ui. */
