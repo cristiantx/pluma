@@ -4,7 +4,6 @@ import { TabStrip } from "./TabStrip.js";
 type EditorWorkspaceProps = {
   activeTabId: string;
   onActiveTabChange: (tabId: string) => void;
-  onOpenFile: () => void;
   onTabClose: (tabId: string) => void;
   onTabsReorder: (tabs: EditorTab[]) => void;
   tabs: EditorTab[];
@@ -41,7 +40,6 @@ const sourcePreviewLines = [
 export function EditorWorkspace({
   activeTabId,
   onActiveTabChange,
-  onOpenFile,
   onTabClose,
   onTabsReorder,
   tabs
@@ -51,7 +49,6 @@ export function EditorWorkspace({
       <TabStrip
         activeTabId={activeTabId}
         onActiveTabChange={onActiveTabChange}
-        onOpenFile={onOpenFile}
         onTabClose={onTabClose}
         onTabsReorder={onTabsReorder}
         tabs={tabs}

@@ -146,7 +146,6 @@ export function App() {
       onOpenFile={() => runCommand("open-file")}
       onOpenFolder={() => runCommand("open-folder")}
       onTabClose={handleTabClose}
-      onThemePreferenceChange={setThemePreference}
       onToggleMode={() => runCommand("toggle-mode")}
       onToggleTheme={() =>
         setThemePreference(resolvedTheme === "dark" ? "light" : "dark")
@@ -155,7 +154,6 @@ export function App() {
       resolvedTheme={resolvedTheme}
       statusMetrics={statusMetrics}
       tabs={openTabs}
-      themePreference={themePreference}
       workspaceLabel={workspaceLabel}
       workspacePath={workspacePath}
     />

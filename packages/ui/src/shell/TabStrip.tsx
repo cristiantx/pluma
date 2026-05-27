@@ -1,6 +1,6 @@
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
-import { FileText, GripVertical, Plus, X } from "lucide-react";
+import { FileText, X } from "lucide-react";
 
 import { getFileLocationName } from "@pluma/core";
 import { reorderTabsFromDragEvent, type EditorTab } from "./tabModel.js";
@@ -8,7 +8,6 @@ import { reorderTabsFromDragEvent, type EditorTab } from "./tabModel.js";
 type TabStripProps = {
   activeTabId: string;
   onActiveTabChange: (tabId: string) => void;
-  onOpenFile: () => void;
   onTabClose: (tabId: string) => void;
   onTabsReorder: (tabs: EditorTab[]) => void;
   tabs: EditorTab[];
@@ -41,17 +40,10 @@ function TabButton({
       role="presentation"
     >
       <button
-        aria-label={`Reorder ${tab.title}`}
-        className="tab-handle"
-        ref={sortable.handleRef}
-        type="button"
-      >
-        <GripVertical aria-hidden="true" />
-      </button>
-      <button
         aria-selected={tab.id === activeTabId}
         className="tab-activate"
         onClick={() => onActiveTabChange(tab.id)}
+        ref={sortable.handleRef}
         role="tab"
         type="button"
       >
@@ -91,7 +83,6 @@ function TabButton({
 export function TabStrip({
   activeTabId,
   onActiveTabChange,
-  onOpenFile,
   onTabClose,
   onTabsReorder,
   tabs
@@ -115,14 +106,6 @@ export function TabStrip({
             />
           ))}
         </div>
-        <button
-          aria-label="New tab"
-          className="new-tab"
-          onClick={onOpenFile}
-          type="button"
-        >
-          <Plus aria-hidden="true" />
-        </button>
       </div>
     </DragDropProvider>
   );

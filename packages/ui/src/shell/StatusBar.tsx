@@ -1,18 +1,10 @@
-import type { ThemePreference } from "../theme.js";
-import { ThemePreferenceGroup } from "./ThemePreferenceGroup.js";
 import type { StatusMetric } from "./types.js";
 
 type StatusBarProps = {
   metrics: StatusMetric[];
-  onThemePreferenceChange: (preference: ThemePreference) => void;
-  themePreference: ThemePreference;
 };
 
-export function StatusBar({
-  metrics,
-  onThemePreferenceChange,
-  themePreference
-}: StatusBarProps) {
+export function StatusBar({ metrics }: StatusBarProps) {
   return (
     <footer className="statusbar">
       <div className="statusbar-group">
@@ -23,10 +15,6 @@ export function StatusBar({
         ))}
       </div>
       <div className="statusbar-group">
-        <ThemePreferenceGroup
-          onChange={onThemePreferenceChange}
-          preference={themePreference}
-        />
         <span>Markdown</span>
       </div>
     </footer>

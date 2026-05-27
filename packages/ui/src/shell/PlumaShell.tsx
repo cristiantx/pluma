@@ -13,14 +13,12 @@ export function PlumaShell({
   onOpenFile,
   onOpenFolder,
   onTabClose,
-  onThemePreferenceChange,
   onToggleMode,
   onToggleTheme,
   onTabsReorder,
   resolvedTheme,
   statusMetrics,
   tabs,
-  themePreference,
   workspaceLabel,
   workspacePath
 }: PlumaShellProps) {
@@ -40,7 +38,6 @@ export function PlumaShell({
           <EditorWorkspace
             activeTabId={activeTabId}
             onActiveTabChange={onActiveTabChange}
-            onOpenFile={onOpenFile}
             onTabClose={onTabClose}
             onTabsReorder={onTabsReorder}
             tabs={tabs}
@@ -56,11 +53,7 @@ export function PlumaShell({
         }
       />
 
-      <StatusBar
-        metrics={statusMetrics}
-        onThemePreferenceChange={onThemePreferenceChange}
-        themePreference={themePreference}
-      />
+      <StatusBar metrics={statusMetrics} />
     </main>
   );
 }

@@ -1,4 +1,4 @@
-import type { ResolvedTheme, ThemePreference } from "../theme.js";
+import type { ResolvedTheme } from "../theme.js";
 import type { EditorTab } from "./tabModel.js";
 
 export type ExplorerNode = {
@@ -22,14 +22,12 @@ export type PlumaShellProps = {
   onOpenFile: () => void;
   onOpenFolder: () => void;
   onTabClose: (tabId: string) => void;
-  onThemePreferenceChange: (preference: ThemePreference) => void;
   onToggleMode: () => void;
   onToggleTheme: () => void;
   onTabsReorder: (tabs: EditorTab[]) => void;
   resolvedTheme: ResolvedTheme;
   statusMetrics: StatusMetric[];
   tabs: EditorTab[];
-  themePreference: ThemePreference;
   workspaceLabel: string;
   workspacePath: string;
 };

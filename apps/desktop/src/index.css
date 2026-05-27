@@ -104,8 +104,8 @@ button:focus-visible {
 }
 
 svg {
-  width: 1em;
-  height: 1em;
+  width: 22px;
+  height: 22px;
   flex: 0 0 auto;
   stroke-width: 1.8;
 }
@@ -167,8 +167,8 @@ button {
 }
 
 .tool-button {
-  width: 23px;
-  height: 23px;
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
   border: 1px solid transparent;
@@ -268,8 +268,8 @@ button {
 }
 
 .sidebar-action {
-  width: 17px;
-  height: 17px;
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
   color: var(--text-secondary);
@@ -289,9 +289,8 @@ button {
   display: flex;
   flex: 0 0 auto;
   align-items: stretch;
-  gap: 8px;
-  padding: 0 8px 0 0;
-  border-bottom: 1px solid var(--border-default);
+  gap: 0;
+  padding: 0;
   background: var(--chrome-bg);
 }
 
@@ -306,18 +305,16 @@ button {
 
 .tab {
   position: relative;
-  height: 32px;
+  height: var(--tabbar-height);
   flex: 0 0 auto;
-  min-width: 152px;
+  min-width: 172px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 6px;
-  border: 1px solid var(--border-default);
-  border-bottom: 0;
-  border-radius: 4px 4px 0 0;
+  gap: 0;
+  padding: 0;
+  border-right: 1px solid var(--border-default);
   color: var(--text-secondary);
-  background: color-mix(in srgb, var(--surface-bg) 88%, transparent);
+  background: color-mix(in srgb, var(--surface-bg) 78%, transparent);
   font-size: inherit;
 }
 
@@ -332,22 +329,22 @@ button {
   height: 100%;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 0 6px 0 0;
+  gap: 8px;
+  padding: 0 10px;
   text-align: left;
 }
 
-.tab-handle,
 .tab-close {
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
   border-radius: 4px;
   color: var(--text-muted);
+  align-self: center;
+  margin-right: 6px;
 }
 
-.tab-handle:hover,
 .tab-close:hover {
   background: var(--active-control);
   color: var(--text-primary);
@@ -400,14 +397,6 @@ button {
 .tab-drag-state.is-visible,
 .tab-drop-target.is-visible {
   opacity: 1;
-}
-
-.new-tab {
-  flex: 0 0 auto;
-  width: 35px;
-  height: 32px;
-  color: var(--text-secondary);
-  font-size: 1.08rem;
 }
 
 .editor-panes {
@@ -563,29 +552,6 @@ button {
   display: flex;
   align-items: center;
   gap: 23px;
-}
-
-.theme-preference-group {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px;
-  border: 1px solid var(--border-default);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--surface-bg) 88%, transparent);
-}
-
-.theme-preference-button {
-  min-width: 46px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  color: var(--text-secondary);
-  text-transform: capitalize;
-}
-
-.theme-preference-button:hover,
-.theme-preference-button.is-active {
-  background: var(--active-control);
-  color: var(--text-primary);
 }
 
 .allotment {
