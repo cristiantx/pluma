@@ -11,7 +11,10 @@ import path from "node:path";
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    icon: path.resolve(__dirname, "assets/icon")
+    icon: [
+      `${path.resolve(__dirname, "assets/icon")}.icns`,
+      `${path.resolve(__dirname, "assets/icon")}.icon`
+    ]
   },
   rebuildConfig: {},
   makers: [
