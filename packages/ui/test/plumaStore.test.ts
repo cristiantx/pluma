@@ -33,6 +33,7 @@ const baseSnapshot: PlumaShellSnapshot = {
     { depth: 0, kind: "folder", label: "Guides" },
     { depth: 1, isActive: true, kind: "file", label: "Welcome.md" }
   ],
+  hasWorkspace: true,
   isBridgeAvailable: true,
   statusMetrics: [
     { label: "Words", value: "312" },
@@ -57,6 +58,7 @@ describe("usePlumaStore", () => {
     const state = usePlumaStore.getState();
 
     expect(state.workspace.workspaceLabel).toBe("PLUMA DOCS");
+    expect(state.workspace.hasWorkspace).toBe(true);
     expect(state.workspace.explorerNodes).toHaveLength(2);
     expect(state.tabs.tabs).toEqual(baseTabs);
     expect(state.tabs.activeTabId).toBe("welcome");

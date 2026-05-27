@@ -16,6 +16,7 @@ export type ThemeSlice = {
 
 export type WorkspaceSlice = {
   explorerNodes: ExplorerNode[];
+  hasWorkspace: boolean;
   isBridgeAvailable: boolean;
   workspaceLabel: string;
   workspacePath: string;
@@ -36,6 +37,7 @@ export type CommandsSlice = {
 
 export type PlumaShellSnapshot = {
   explorerNodes: ExplorerNode[];
+  hasWorkspace: boolean;
   isBridgeAvailable: boolean;
   statusMetrics: StatusMetric[];
   tabs: EditorTab[];

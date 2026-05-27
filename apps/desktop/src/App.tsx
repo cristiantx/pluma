@@ -112,6 +112,7 @@ function getShellSnapshot(
 ): PlumaShellSnapshot {
   return {
     explorerNodes: getExplorerNodes(shellState),
+    hasWorkspace: Boolean(shellState.activeFolder),
     isBridgeAvailable,
     statusMetrics: getStatusMetrics(shellState),
     tabs: getOpenTabs(shellState),

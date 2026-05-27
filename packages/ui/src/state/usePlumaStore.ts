@@ -34,6 +34,7 @@ export const initialPlumaStoreState: PlumaStoreInitializer = {
   },
   workspace: {
     explorerNodes: [],
+    hasWorkspace: false,
     isBridgeAvailable: false,
     workspaceLabel: "No workspace open",
     workspacePath: "~/Documents/Pluma Docs"
@@ -80,6 +81,7 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
         },
         workspace: {
           explorerNodes: snapshot.explorerNodes,
+          hasWorkspace: snapshot.hasWorkspace,
           isBridgeAvailable: snapshot.isBridgeAvailable,
           workspaceLabel: snapshot.workspaceLabel,
           workspacePath: snapshot.workspacePath

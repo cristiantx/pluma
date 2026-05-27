@@ -7,13 +7,16 @@ import { TitleBar } from "./TitleBar.js";
 
 export function PlumaShell() {
   const resolvedTheme = usePlumaStore((state) => state.theme.resolvedTheme);
+  const hasWorkspace = usePlumaStore((state) => state.workspace.hasWorkspace);
 
   return (
     <main className="shell" data-theme={resolvedTheme}>
       <TitleBar />
-
-      <PaneLayout main={<EditorWorkspace />} primary={<Sidebar />} />
-
+      {hasWorkspace ? (
+        <PaneLayout main={<EditorWorkspace />} primary={<Sidebar />} />
+      ) : (
+        <EditorWorkspace />
+      )}
       <StatusBar />
     </main>
   );

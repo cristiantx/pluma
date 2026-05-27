@@ -9,8 +9,10 @@ import {
 } from "lucide-react";
 
 import { usePlumaStore } from "../state/usePlumaStore.js";
+import { PlumaLogo } from "./PlumaLogo.js";
 
 export function TitleBar() {
+  const hasWorkspace = usePlumaStore((state) => state.workspace.hasWorkspace);
   const isBridgeAvailable = usePlumaStore(
     (state) => state.workspace.isBridgeAvailable
   );
@@ -23,16 +25,23 @@ export function TitleBar() {
 
   return (
     <header className="titlebar">
-      <button
-        aria-label="Open folder"
-        className="titlebar-path"
-        onClick={triggerOpenFolder}
-        type="button"
-      >
-        <Folder aria-hidden="true" />
-        <span>{workspacePath}</span>
-        <ChevronDown aria-hidden="true" />
-      </button>
+      {hasWorkspace ? (
+        <button
+          aria-label="Open folder"
+          className="titlebar-path"
+          onClick={triggerOpenFolder}
+          type="button"
+        >
+          <Folder aria-hidden="true" />
+          <span>{workspacePath}</span>
+          <ChevronDown aria-hidden="true" />
+        </button>
+      ) : (
+        <div className="titlebar-brand">
+          <PlumaLogo />
+          <span>Pluma</span>
+        </div>
+      )}
 
       <div className="titlebar-actions">
         {!isBridgeAvailable ? (

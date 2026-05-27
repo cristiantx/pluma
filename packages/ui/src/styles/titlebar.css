@@ -11,11 +11,13 @@
 
 .titlebar-actions,
 .titlebar-path,
+.titlebar-brand,
 button {
   -webkit-app-region: no-drag;
 }
 
-.titlebar-path {
+.titlebar-path,
+.titlebar-brand {
   flex: 1 1 auto;
   max-width: min(312px, 100%);
   min-width: 0;
@@ -33,6 +35,19 @@ button {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.titlebar-brand {
+  gap: 8px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.pluma-logo {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  stroke: none;
 }
 
 .titlebar-actions {
