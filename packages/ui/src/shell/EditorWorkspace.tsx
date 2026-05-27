@@ -1,13 +1,4 @@
-import type { EditorTab } from "./tabModel.js";
 import { TabStrip } from "./TabStrip.js";
-
-type EditorWorkspaceProps = {
-  activeTabId: string;
-  onActiveTabChange: (tabId: string) => void;
-  onTabClose: (tabId: string) => void;
-  onTabsReorder: (tabs: EditorTab[]) => void;
-  tabs: EditorTab[];
-};
 
 const sourcePreviewLines = [
   "# Welcome to Pluma",
@@ -37,22 +28,10 @@ const sourcePreviewLines = [
   "> - Leonardo da Vinci"
 ];
 
-export function EditorWorkspace({
-  activeTabId,
-  onActiveTabChange,
-  onTabClose,
-  onTabsReorder,
-  tabs
-}: EditorWorkspaceProps) {
+export function EditorWorkspace() {
   return (
     <section className="editor-workspace">
-      <TabStrip
-        activeTabId={activeTabId}
-        onActiveTabChange={onActiveTabChange}
-        onTabClose={onTabClose}
-        onTabsReorder={onTabsReorder}
-        tabs={tabs}
-      />
+      <TabStrip />
 
       <div className="editor-panes">
         <article className="preview-pane" aria-label="Preview">

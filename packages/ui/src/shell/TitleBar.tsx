@@ -8,25 +8,17 @@ import {
   Sun
 } from "lucide-react";
 
-import type { ResolvedTheme } from "../theme.js";
+import { usePlumaStore } from "../state/usePlumaStore.js";
 
-type TitleBarProps = {
-  isBridgeAvailable: boolean;
-  onOpenFolder: () => void;
-  onToggleMode: () => void;
-  onToggleTheme: () => void;
-  resolvedTheme: ResolvedTheme;
-  workspacePath: string;
-};
-
-export function TitleBar({
-  isBridgeAvailable,
-  onOpenFolder,
-  onToggleMode,
-  onToggleTheme,
-  resolvedTheme,
-  workspacePath
-}: TitleBarProps) {
+export function TitleBar() {
+  const isBridgeAvailable = usePlumaStore(
+    (state) => state.workspace.isBridgeAvailable
+  );
+  const workspacePath = usePlumaStore((state) => state.workspace.workspacePath);
+  const resolvedTheme = usePlumaStore((state) => state.theme.resolvedTheme);
+  const triggerOpenFolder = usePlumaStore((state) => state.triggerOpenFolder);
+  const triggerToggleMode = usePlumaStore((state) => state.triggerToggleMode);
+  const toggleTheme = usePlumaStore((state) => state.toggleTheme);
   const ThemeToggleIcon = resolvedTheme === "dark" ? Sun : Moon;
 
   return (
@@ -34,7 +26,7 @@ export function TitleBar({
       <button
         aria-label="Open folder"
         className="titlebar-path"
-        onClick={onOpenFolder}
+        onClick={triggerOpenFolder}
         type="button"
       >
         <Folder aria-hidden="true" />
@@ -49,7 +41,7 @@ export function TitleBar({
         <button
           aria-label="Toggle theme"
           className="tool-button"
-          onClick={onToggleTheme}
+          onClick={toggleTheme}
           type="button"
         >
           <ThemeToggleIcon aria-hidden="true" />
@@ -57,7 +49,7 @@ export function TitleBar({
         <button
           aria-label="Toggle editor mode"
           className="tool-button is-active"
-          onClick={onToggleMode}
+          onClick={triggerToggleMode}
           type="button"
         >
           <Columns2 aria-hidden="true" />

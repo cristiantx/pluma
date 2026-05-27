@@ -17,4 +17,9 @@
 - Keep renderer boundaries clean:
   - Shared presentation and view logic belong in renderer modules.
   - Electron-only windowing, dialogs, menus, preload, and IPC glue stay out of presentational components.
+- Use typed shared state when renderer coordination starts crossing shell boundaries:
+  - Prefer the shared Zustand store for shell-wide theme, tabs, workspace, and status state.
+  - Define and export explicit slice, snapshot, and action types.
+  - Use narrow selectors in components instead of broad store reads.
+  - Keep domain logic in `packages/core`; the store coordinates UI state, not product rules.
 - Remove unused renderer dependencies and stale component files when replacing an approach.

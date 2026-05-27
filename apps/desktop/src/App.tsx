@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 
 import {
-  type EditorTab,
+  type PlumaCommandHandlers,
+  type PlumaShellSnapshot,
   PlumaShell,
+  initialPlumaStoreState,
   readStoredThemePreference,
-  resolveThemePreference,
   THEME_STORAGE_KEY,
-  type ThemePreference
+  usePlumaStore
 } from "@pluma/ui";
 import {
   initialShellState,
@@ -19,7 +21,8 @@ import {
   getStatusMetrics,
   getWorkspaceLabel
 } from "./shellView";
-function getInitialThemePreference(): ThemePreference {
+
+function getInitialThemePreference() {
   if (typeof window === "undefined") {
     return "system";
   }
@@ -29,29 +32,35 @@ function getInitialThemePreference(): ThemePreference {
   );
 }
 
-function getInitialSystemPreference(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
-}
-
 export function App() {
   const [shellState, setShellState] = useState(initialShellState);
-  const [themePreference, setThemePreference] = useState<ThemePreference>(
-    getInitialThemePreference
+  const themePreference = usePlumaStore((state) => state.theme.preference);
+  const resolvedTheme = usePlumaStore((state) => state.theme.resolvedTheme);
+  const hydrateShellSnapshot = usePlumaStore(
+    (state) => state.hydrateShellSnapshot
   );
-  const [systemPrefersDark, setSystemPrefersDark] = useState(
-    getInitialSystemPreference
+  const setCommandHandlers = usePlumaStore((state) => state.setCommandHandlers);
+  const setSystemPrefersDark = usePlumaStore(
+    (state) => state.setSystemPrefersDark
   );
-  const [isBridgeAvailable, setIsBridgeAvailable] = useState(false);
-  const [openTabs, setOpenTabs] = useState<EditorTab[]>(() =>
-    getOpenTabs(initialShellState)
-  );
-  const [activeTabId, setActiveTabId] = useState(() => openTabs[0]?.id ?? "");
+  const setThemePreference = usePlumaStore((state) => state.setThemePreference);
 
   useEffect(() => {
+    usePlumaStore.setState({
+      ...usePlumaStore.getState(),
+      ...initialPlumaStoreState
+    });
+  }, []);
+
+  useEffect(() => {
+    const commandHandlers: PlumaCommandHandlers = {
+      openFile: () => runCommand(setShellState, "open-file"),
+      openFolder: () => runCommand(setShellState, "open-folder"),
+      toggleMode: () => runCommand(setShellState, "toggle-mode")
+    };
+
+    setCommandHandlers(commandHandlers);
+
     if (!window.pluma) {
       setShellState((current) => ({
         ...current,
@@ -60,28 +69,10 @@ export function App() {
       return;
     }
 
-    setIsBridgeAvailable(true);
-
     return window.pluma.onEvent((event) => {
       setShellState((current) => reduceShellEvent(current, event));
     });
-  }, []);
-
-  useEffect(() => {
-    setOpenTabs((currentTabs) => {
-      if (currentTabs.length > 0) {
-        return currentTabs;
-      }
-
-      return getOpenTabs(shellState);
-    });
-  }, [shellState]);
-
-  useEffect(() => {
-    if (!openTabs.some((tab) => tab.id === activeTabId)) {
-      setActiveTabId(openTabs[0]?.id ?? "");
-    }
-  }, [activeTabId, openTabs]);
+  }, [setCommandHandlers]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -91,16 +82,16 @@ export function App() {
     };
 
     mediaQuery.addEventListener("change", handleChange);
+    setSystemPrefersDark(mediaQuery.matches);
 
     return () => {
       mediaQuery.removeEventListener("change", handleChange);
     };
-  }, []);
+  }, [setSystemPrefersDark]);
 
-  const resolvedTheme = resolveThemePreference(
-    themePreference,
-    systemPrefersDark
-  );
+  useEffect(() => {
+    setThemePreference(getInitialThemePreference());
+  }, [setThemePreference]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = resolvedTheme;
@@ -108,54 +99,38 @@ export function App() {
     window.localStorage.setItem(THEME_STORAGE_KEY, themePreference);
   }, [resolvedTheme, themePreference]);
 
-  const runCommand = (command: CommandName) => {
-    if (!window.pluma) {
-      setShellState((current) => ({
-        ...current,
-        status: `Cannot run "${command}" because IPC is unavailable.`
-      }));
-      return;
-    }
+  useEffect(() => {
+    hydrateShellSnapshot(getShellSnapshot(shellState, Boolean(window.pluma)));
+  }, [hydrateShellSnapshot, shellState]);
 
-    void window.pluma.runCommand(command);
+  return <PlumaShell />;
+}
+
+function getShellSnapshot(
+  shellState: typeof initialShellState,
+  isBridgeAvailable: boolean
+): PlumaShellSnapshot {
+  return {
+    explorerNodes: getExplorerNodes(shellState),
+    isBridgeAvailable,
+    statusMetrics: getStatusMetrics(shellState),
+    tabs: getOpenTabs(shellState),
+    workspaceLabel: getWorkspaceLabel(shellState),
+    workspacePath: shellState.activeFolder ?? "~/Documents/Pluma Docs"
   };
+}
 
-  const workspaceLabel = getWorkspaceLabel(shellState);
-  const explorerNodes = getExplorerNodes(shellState);
-  const statusMetrics = getStatusMetrics(shellState);
-  const workspacePath = shellState.activeFolder ?? "~/Documents/Pluma Docs";
+function runCommand(
+  setShellState: Dispatch<SetStateAction<typeof initialShellState>>,
+  command: CommandName
+) {
+  if (!window.pluma) {
+    setShellState((current) => ({
+      ...current,
+      status: `Cannot run "${command}" because IPC is unavailable.`
+    }));
+    return;
+  }
 
-  const handleTabClose = (tabId: string) => {
-    setOpenTabs((currentTabs) => {
-      const nextTabs = currentTabs.filter((tab) => tab.id !== tabId);
-
-      if (activeTabId === tabId) {
-        setActiveTabId(nextTabs[0]?.id ?? "");
-      }
-
-      return nextTabs;
-    });
-  };
-
-  return (
-    <PlumaShell
-      activeTabId={activeTabId}
-      explorerNodes={explorerNodes}
-      isBridgeAvailable={isBridgeAvailable}
-      onActiveTabChange={setActiveTabId}
-      onOpenFile={() => runCommand("open-file")}
-      onOpenFolder={() => runCommand("open-folder")}
-      onTabClose={handleTabClose}
-      onToggleMode={() => runCommand("toggle-mode")}
-      onToggleTheme={() =>
-        setThemePreference(resolvedTheme === "dark" ? "light" : "dark")
-      }
-      onTabsReorder={setOpenTabs}
-      resolvedTheme={resolvedTheme}
-      statusMetrics={statusMetrics}
-      tabs={openTabs}
-      workspaceLabel={workspaceLabel}
-      workspacePath={workspacePath}
-    />
-  );
+  void window.pluma.runCommand(command);
 }

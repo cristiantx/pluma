@@ -1,10 +1,8 @@
-import type { StatusMetric } from "./types.js";
+import { usePlumaStore } from "../state/usePlumaStore.js";
 
-type StatusBarProps = {
-  metrics: StatusMetric[];
-};
+export function StatusBar() {
+  const metrics = usePlumaStore((state) => state.status.statusMetrics);
 
-export function StatusBar({ metrics }: StatusBarProps) {
   return (
     <footer className="statusbar">
       <div className="statusbar-group">

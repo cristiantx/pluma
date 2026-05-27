@@ -14,26 +14,20 @@ import {
 } from "lucide-react";
 import type { CSSProperties } from "react";
 
-import type { ExplorerNode } from "./types.js";
+import { usePlumaStore } from "../state/usePlumaStore.js";
 import { buildSidebarTreeData } from "./sidebarTree.js";
-
-type SidebarProps = {
-  nodes: ExplorerNode[];
-  onOpenFile: () => void;
-  onOpenFolder: () => void;
-  workspaceLabel: string;
-};
 
 function getTreeItemStyle(depth: number): CSSProperties {
   return { "--depth": depth } as CSSProperties;
 }
 
-export function Sidebar({
-  nodes,
-  onOpenFile,
-  onOpenFolder,
-  workspaceLabel
-}: SidebarProps) {
+export function Sidebar() {
+  const nodes = usePlumaStore((state) => state.workspace.explorerNodes);
+  const workspaceLabel = usePlumaStore(
+    (state) => state.workspace.workspaceLabel
+  );
+  const triggerOpenFile = usePlumaStore((state) => state.triggerOpenFile);
+  const triggerOpenFolder = usePlumaStore((state) => state.triggerOpenFolder);
   const rootLabel =
     workspaceLabel === "No workspace open" ? "PLUMA DOCS" : workspaceLabel;
   const treeData = buildSidebarTreeData(rootLabel, nodes);
@@ -106,7 +100,7 @@ export function Sidebar({
         <button
           aria-label="New file"
           className="sidebar-action"
-          onClick={onOpenFile}
+          onClick={triggerOpenFile}
           type="button"
         >
           <FilePlus2 aria-hidden="true" />
@@ -114,7 +108,7 @@ export function Sidebar({
         <button
           aria-label="New folder"
           className="sidebar-action"
-          onClick={onOpenFolder}
+          onClick={triggerOpenFolder}
           type="button"
         >
           <FolderPlus aria-hidden="true" />

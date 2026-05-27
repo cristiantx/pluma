@@ -17,17 +17,20 @@ Pluma is an open-source, local-first Markdown editor. Markdown files stay as nor
 - `apps/desktop`: Electron app, preload bridge, native menu wiring, and desktop-specific shell integration.
 - `packages/core`: shared document, filesystem, and Markdown-domain code.
 - `packages/editor`: shared editor-facing abstractions and adapters.
-- `packages/ui`: shared React app UI for shell layout, title bar, sidebar, status bar, and theme behavior.
+- `packages/ui`: shared React app UI for shell layout, title bar, sidebar, status bar, theme behavior, and shared Zustand shell state.
 - `docs`: planning and design artifacts.
 
 ## Current Desktop Shell
 
 - Frameless desktop window with a custom title bar and drag regions.
 - Shared shell UI extracted into `@pluma/ui`.
+- Shared typed Zustand store in `@pluma/ui` for theme, workspace, tabs, shell commands, and status metrics.
 - Light, dark, and system theme support.
 - VS Code-inspired shell structure with title bar, sidebar, editor area, and status bar.
 - App menu commands wired for `Open File`, `Open Folder`, `Save`, `Save As`, and `Toggle Rich/Source Mode`.
 - Placeholder document preview/source surfaces while editor and file-session phases are still being implemented.
+
+State architecture is documented in [docs/state-architecture.md](./docs/state-architecture.md). The current desktop `App` now acts as an Electron/preload bridge that hydrates shared shell state for the reusable UI package.
 
 ## Development
 

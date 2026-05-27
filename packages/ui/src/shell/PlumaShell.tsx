@@ -1,59 +1,20 @@
 import { PaneLayout } from "../panes/PaneLayout.js";
+import { usePlumaStore } from "../state/usePlumaStore.js";
 import { EditorWorkspace } from "./EditorWorkspace.js";
 import { Sidebar } from "./Sidebar.js";
 import { StatusBar } from "./StatusBar.js";
 import { TitleBar } from "./TitleBar.js";
-import type { PlumaShellProps } from "./types.js";
 
-export function PlumaShell({
-  activeTabId,
-  explorerNodes,
-  isBridgeAvailable,
-  onActiveTabChange,
-  onOpenFile,
-  onOpenFolder,
-  onTabClose,
-  onToggleMode,
-  onToggleTheme,
-  onTabsReorder,
-  resolvedTheme,
-  statusMetrics,
-  tabs,
-  workspaceLabel,
-  workspacePath
-}: PlumaShellProps) {
+export function PlumaShell() {
+  const resolvedTheme = usePlumaStore((state) => state.theme.resolvedTheme);
+
   return (
     <main className="shell" data-theme={resolvedTheme}>
-      <TitleBar
-        isBridgeAvailable={isBridgeAvailable}
-        onOpenFolder={onOpenFolder}
-        onToggleMode={onToggleMode}
-        onToggleTheme={onToggleTheme}
-        resolvedTheme={resolvedTheme}
-        workspacePath={workspacePath}
-      />
+      <TitleBar />
 
-      <PaneLayout
-        main={
-          <EditorWorkspace
-            activeTabId={activeTabId}
-            onActiveTabChange={onActiveTabChange}
-            onTabClose={onTabClose}
-            onTabsReorder={onTabsReorder}
-            tabs={tabs}
-          />
-        }
-        primary={
-          <Sidebar
-            nodes={explorerNodes}
-            onOpenFile={onOpenFile}
-            onOpenFolder={onOpenFolder}
-            workspaceLabel={workspaceLabel}
-          />
-        }
-      />
+      <PaneLayout main={<EditorWorkspace />} primary={<Sidebar />} />
 
-      <StatusBar metrics={statusMetrics} />
+      <StatusBar />
     </main>
   );
 }

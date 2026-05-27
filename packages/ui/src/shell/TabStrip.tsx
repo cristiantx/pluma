@@ -3,15 +3,8 @@ import { useSortable } from "@dnd-kit/react/sortable";
 import { FileText, X } from "lucide-react";
 
 import { getFileLocationName } from "@pluma/core";
+import { usePlumaStore } from "../state/usePlumaStore.js";
 import { reorderTabsFromDragEvent, type EditorTab } from "./tabModel.js";
-
-type TabStripProps = {
-  activeTabId: string;
-  onActiveTabChange: (tabId: string) => void;
-  onTabClose: (tabId: string) => void;
-  onTabsReorder: (tabs: EditorTab[]) => void;
-  tabs: EditorTab[];
-};
 
 type TabButtonProps = {
   activeTabId: string;
@@ -80,17 +73,17 @@ function TabButton({
   );
 }
 
-export function TabStrip({
-  activeTabId,
-  onActiveTabChange,
-  onTabClose,
-  onTabsReorder,
-  tabs
-}: TabStripProps) {
+export function TabStrip() {
+  const activeTabId = usePlumaStore((state) => state.tabs.activeTabId);
+  const tabs = usePlumaStore((state) => state.tabs.tabs);
+  const setActiveTabId = usePlumaStore((state) => state.setActiveTabId);
+  const closeTab = usePlumaStore((state) => state.closeTab);
+  const reorderTabs = usePlumaStore((state) => state.reorderTabs);
+
   return (
     <DragDropProvider
       onDragEnd={(event) => {
-        onTabsReorder(reorderTabsFromDragEvent(tabs, event));
+        reorderTabs(reorderTabsFromDragEvent(tabs, event));
       }}
     >
       <div className="tabbar" aria-label="Open documents" role="tablist">
@@ -99,8 +92,8 @@ export function TabStrip({
             <TabButton
               activeTabId={activeTabId}
               key={tab.id}
-              onActiveTabChange={onActiveTabChange}
-              onTabClose={onTabClose}
+              onActiveTabChange={setActiveTabId}
+              onTabClose={closeTab}
               tab={tab}
               tabIndex={tabIndex}
             />

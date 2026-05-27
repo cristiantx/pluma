@@ -2,11 +2,24 @@ export { PlumaShell } from "./shell/PlumaShell.js";
 export { Pane, PaneLayout } from "./panes/PaneLayout.js";
 export { reorderTabItems, reorderTabsFromDragEvent } from "./shell/tabModel.js";
 export type { EditorTab } from "./shell/tabModel.js";
+export type { ExplorerNode, StatusMetric } from "./shell/types.js";
+export {
+  initialPlumaStoreState,
+  usePlumaStore
+} from "./state/usePlumaStore.js";
 export type {
-  ExplorerNode,
-  PlumaShellProps,
-  StatusMetric
-} from "./shell/types.js";
+  CommandsSlice,
+  PlumaCommandHandlers,
+  PlumaShellSnapshot,
+  PlumaStore,
+  PlumaStoreActions,
+  PlumaStoreInitializer,
+  PlumaStoreState,
+  StatusSlice,
+  TabsSlice,
+  ThemeSlice,
+  WorkspaceSlice
+} from "./state/plumaStoreTypes.js";
 export {
   THEME_STORAGE_KEY,
   isThemePreference,
