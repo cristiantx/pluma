@@ -1,0 +1,134 @@
+.editor-panes {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(228px, 42%) minmax(0, 1fr);
+}
+
+.preview-pane,
+.source-pane {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.preview-pane {
+  border-right: 1px solid var(--border-default);
+  background: var(--editor-bg);
+}
+
+.preview-document {
+  max-width: 312px;
+  margin: 41px auto 58px;
+  padding: 0 16px;
+  color: var(--text-primary);
+}
+
+.preview-document h1 {
+  margin: 0 0 13px;
+  font-size: 1.65rem;
+  line-height: 1.04;
+  letter-spacing: 0;
+}
+
+.preview-document p {
+  margin: 0 0 6px;
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  line-height: 1.55;
+}
+
+.preview-document hr {
+  margin: 23px 0 25px;
+  border: 0;
+  border-top: 1px solid var(--border-default);
+}
+
+.preview-document h2 {
+  margin: 0 0 11px;
+  font-size: 1.05rem;
+  line-height: 1.1;
+}
+
+.preview-document ul {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding-left: 16px;
+  color: var(--text-primary);
+  font-size: 0.65rem;
+}
+
+.preview-document pre {
+  margin: 0 0 28px;
+  padding: 13px 11px;
+  overflow: auto;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface-bg) 82%, var(--accent) 3%);
+  color: var(--text-secondary);
+  font-family: var(--font-editor);
+  font-size: 0.6rem;
+  line-height: 1.6;
+}
+
+.preview-document blockquote {
+  margin: 0;
+  padding-left: 18px;
+  border-left: 3px solid var(--border-strong);
+}
+
+.preview-document blockquote p:last-child {
+  margin-top: 8px;
+}
+
+.source-pane {
+  background: var(--editor-source-bg);
+  font-family: var(--font-editor);
+}
+
+.source-lines {
+  margin: 0;
+  padding: 7px 0 48px;
+  color: var(--text-secondary);
+  counter-reset: line;
+  font-size: 0.65rem;
+  line-height: 1.65;
+}
+
+.source-lines li {
+  display: grid;
+  grid-template-columns: 41px minmax(0, 1fr);
+  padding: 0 17px 0 0;
+  white-space: pre-wrap;
+}
+
+.source-lines li::before {
+  counter-increment: line;
+  content: counter(line);
+  padding-right: 13px;
+  color: var(--text-muted);
+  text-align: right;
+  user-select: none;
+}
+
+.source-lines code {
+  color: var(--text-secondary);
+  font: inherit;
+}
+
+.source-lines li:nth-child(1) code,
+.source-lines li:nth-child(8) code,
+.source-lines li:nth-child(21) code {
+  color: var(--accent-code);
+  font-weight: 650;
+}
+
+.source-lines li:nth-child(16) code {
+  color: var(--operator);
+}
+
+.source-lines li:nth-child(17) code,
+.source-lines li:nth-child(23) code,
+.source-lines li:nth-child(25) code {
+  color: var(--string);
+}

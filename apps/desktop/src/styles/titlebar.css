@@ -1,0 +1,67 @@
+.titlebar {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 162px;
+  align-items: center;
+  height: var(--titlebar-height);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--titlebar-bg);
+  -webkit-app-region: drag;
+}
+
+.titlebar-actions,
+.titlebar-path,
+button {
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-path {
+  justify-self: center;
+  max-width: min(312px, 100%);
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+  font-size: inherit;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.titlebar-path span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.titlebar-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 7px;
+  padding-right: 13px;
+}
+
+.tool-button {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+  font-size: inherit;
+}
+
+.tool-button:hover,
+.tool-button.is-active {
+  border-color: var(--border-default);
+  background: var(--active-control);
+  color: var(--text-primary);
+}
+
+.bridge-warning {
+  color: var(--warning);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}

@@ -1,0 +1,79 @@
+.sidebar {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  background: var(--sidebar-bg);
+  color: var(--text-secondary);
+}
+
+.sidebar-title {
+  padding: 13px 14px 12px;
+  font-size: inherit;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.workspace-root {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px 11px;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  font-size: inherit;
+}
+
+.tree-list {
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: 7px;
+}
+
+.tree-item {
+  width: 100%;
+  min-height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 calc(7px + var(--depth) * 11px);
+  color: var(--text-secondary);
+  text-align: left;
+  font-size: inherit;
+}
+
+.tree-item:hover,
+.tree-item.is-active {
+  background: var(--active-row);
+  color: var(--text-primary);
+}
+
+.disclosure-icon,
+.disclosure-spacer {
+  width: 8px;
+  flex: 0 0 8px;
+  color: var(--text-muted);
+}
+
+.tree-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+}
+
+.sidebar-footer {
+  display: flex;
+  gap: 13px;
+  padding: 11px 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sidebar-action {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  color: var(--text-secondary);
+  font-size: inherit;
+}

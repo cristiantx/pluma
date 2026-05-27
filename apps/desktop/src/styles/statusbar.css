@@ -1,0 +1,19 @@
+.statusbar {
+  height: var(--statusbar-height);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 11px;
+  padding: 0 20px;
+  border-top: 1px solid var(--border-default);
+  background: var(--chrome-bg);
+  color: var(--text-secondary);
+  font-size: var(--font-size-status);
+}
+
+.statusbar-group {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 23px;
+}

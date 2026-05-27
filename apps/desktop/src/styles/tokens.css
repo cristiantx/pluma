@@ -1,0 +1,64 @@
+:root {
+  color-scheme: light dark;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-editor:
+    "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+  --font-size-ui: 13px;
+  --font-size-status: 12px;
+  --app-bg: #eef1f4;
+  --chrome-bg: rgba(241, 244, 247, 0.94);
+  --titlebar-bg: #edf1f5;
+  --sidebar-bg: #edf1f5;
+  --surface-bg: #f8fafc;
+  --editor-bg: #fbfcfd;
+  --editor-source-bg: #f4f7fa;
+  --active-row: #dfe7ef;
+  --active-control: #d8e0e8;
+  --border-subtle: rgba(21, 31, 42, 0.08);
+  --border-default: rgba(21, 31, 42, 0.16);
+  --border-strong: rgba(21, 31, 42, 0.28);
+  --text-primary: #17202b;
+  --text-secondary: rgba(23, 32, 43, 0.76);
+  --text-muted: rgba(23, 32, 43, 0.52);
+  --accent: #0074a6;
+  --accent-strong: #005f8c;
+  --accent-code: #147cb0;
+  --keyword: #8a3ffc;
+  --string: #4f8f33;
+  --operator: #a05a00;
+  --warning: #9a4a1f;
+  --shadow-window: 0 22px 70px rgba(22, 33, 44, 0.12);
+  --titlebar-height: 36px;
+  --tabbar-height: 36px;
+  --statusbar-height: 36px;
+  --sidebar-width: 178px;
+  --radius-window: 6px;
+  --radius-control: 4px;
+}
+
+:root[data-theme="dark"] {
+  --app-bg: #070b0f;
+  --chrome-bg: rgba(18, 24, 31, 0.88);
+  --titlebar-bg: #111820;
+  --sidebar-bg: #111820;
+  --surface-bg: #0e151d;
+  --editor-bg: #0b1118;
+  --editor-source-bg: #081018;
+  --active-row: #252d39;
+  --active-control: #29323f;
+  --border-subtle: rgba(211, 222, 232, 0.08);
+  --border-default: rgba(211, 222, 232, 0.16);
+  --border-strong: rgba(211, 222, 232, 0.3);
+  --text-primary: #f0f4f8;
+  --text-secondary: rgba(240, 244, 248, 0.78);
+  --text-muted: rgba(240, 244, 248, 0.5);
+  --accent: #5cc8ff;
+  --accent-strong: #79d4ff;
+  --accent-code: #56c8ff;
+  --keyword: #d389ff;
+  --string: #9ddb7b;
+  --operator: #ffc55d;
+  --warning: #ffb38a;
+  --shadow-window: 0 24px 90px rgba(0, 0, 0, 0.36);
+}

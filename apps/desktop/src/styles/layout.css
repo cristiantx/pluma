@@ -1,0 +1,21 @@
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: var(--titlebar-height) 1fr var(--statusbar-height);
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-window);
+  background: var(--surface-bg);
+  box-shadow: var(--shadow-window);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-ui);
+}
+
+.pane-layout {
+  min-height: 0;
+  height: 100%;
+}
+
+.allotment {
+  background: var(--surface-bg);
+}
