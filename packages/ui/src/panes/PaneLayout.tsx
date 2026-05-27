@@ -28,7 +28,7 @@ export function Pane({ children, minSize, preferredSize, visible }: PaneProps) {
 
 export function PaneLayout({ main, primary, secondary }: PaneLayoutProps) {
   return (
-    <Allotment className="pane-layout">
+    <Allotment className="pane-layout" vertical={false}>
       <Pane minSize={160} preferredSize={178}>
         {primary}
       </Pane>
