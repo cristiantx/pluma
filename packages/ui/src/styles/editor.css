@@ -1,17 +1,20 @@
 .editor-panes {
+  flex: 1 1 auto;
   min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(228px, 42%) minmax(0, 1fr);
+  display: flex;
+  align-items: stretch;
 }
 
 .preview-pane,
 .source-pane {
+  flex: 1 1 0;
   min-width: 0;
   min-height: 0;
   overflow: auto;
 }
 
 .preview-pane {
+  max-width: 42%;
   border-right: 1px solid var(--border-default);
   background: var(--editor-bg);
 }

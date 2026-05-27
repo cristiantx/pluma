@@ -1,8 +1,8 @@
 .sidebar {
   min-height: 0;
   height: 100%;
-  display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  display: flex;
+  flex-direction: column;
   background: var(--sidebar-bg);
   color: var(--text-secondary);
 }
@@ -25,6 +25,7 @@
 }
 
 .tree-list {
+  flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
   padding-bottom: 7px;

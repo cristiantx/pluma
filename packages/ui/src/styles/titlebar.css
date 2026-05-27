@@ -1,7 +1,7 @@
 .titlebar {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 162px;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   height: var(--titlebar-height);
   border-bottom: 1px solid var(--border-subtle);
@@ -16,12 +16,13 @@ button {
 }
 
 .titlebar-path {
-  justify-self: center;
+  flex: 1 1 auto;
   max-width: min(312px, 100%);
   min-width: 0;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  justify-content: center;
   color: var(--text-primary);
   font-size: inherit;
   line-height: 1;
@@ -29,11 +30,13 @@ button {
 }
 
 .titlebar-path span:nth-child(2) {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .titlebar-actions {
+  flex: 0 0 162px;
   display: flex;
   justify-content: flex-end;
   align-items: center;

@@ -2,8 +2,8 @@
   min-width: 0;
   min-height: 0;
   height: 100%;
-  display: grid;
-  grid-template-rows: var(--tabbar-height) 1fr;
+  display: flex;
+  flex-direction: column;
   background: var(--editor-bg);
 }
 
