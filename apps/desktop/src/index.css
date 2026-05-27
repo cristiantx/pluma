@@ -1,17 +1,11 @@
 :root {
   color-scheme: light dark;
-  font-family:
-    "SF Pro Text",
-    "Segoe UI",
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
-  --font-ui:
-    "SF Pro Text", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont,
-    sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, sans-serif;
   --font-editor:
     "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+  --font-size-ui: 13px;
+  --font-size-status: 12px;
   --app-bg: #eef1f4;
   --chrome-bg: rgba(241, 244, 247, 0.94);
   --titlebar-bg: #edf1f5;
@@ -91,6 +85,7 @@ body {
   color: var(--text-primary);
   background: var(--app-bg);
   font-family: var(--font-ui);
+  font-size: var(--font-size-ui);
 }
 
 button {
@@ -122,6 +117,8 @@ svg {
   border-radius: var(--radius-window);
   background: var(--surface-bg);
   box-shadow: var(--shadow-window);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-ui);
 }
 
 .titlebar {
@@ -149,7 +146,7 @@ button {
   align-items: center;
   gap: 6px;
   color: var(--text-primary);
-  font-size: 0.71rem;
+  font-size: inherit;
   line-height: 1;
   white-space: nowrap;
 }
@@ -175,7 +172,7 @@ button {
   border: 1px solid transparent;
   border-radius: var(--radius-control);
   color: var(--text-secondary);
-  font-size: 0.73rem;
+  font-size: inherit;
 }
 
 .tool-button:hover,
@@ -187,7 +184,7 @@ button {
 
 .bridge-warning {
   color: var(--warning);
-  font-size: 0.45rem;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -209,7 +206,7 @@ button {
 
 .sidebar-title {
   padding: 13px 14px 12px;
-  font-size: 0.57rem;
+  font-size: inherit;
   text-transform: uppercase;
   color: var(--text-primary);
 }
@@ -221,7 +218,7 @@ button {
   padding: 2px 7px 11px;
   text-transform: uppercase;
   color: var(--text-primary);
-  font-size: 0.6rem;
+  font-size: inherit;
 }
 
 .tree-list {
@@ -239,7 +236,7 @@ button {
   padding: 0 8px 0 calc(7px + var(--depth) * 11px);
   color: var(--text-secondary);
   text-align: left;
-  font-size: 0.61rem;
+  font-size: inherit;
 }
 
 .tree-item:hover,
@@ -275,7 +272,7 @@ button {
   display: grid;
   place-items: center;
   color: var(--text-secondary);
-  font-size: 0.72rem;
+  font-size: inherit;
 }
 
 .editor-workspace {
@@ -306,7 +303,7 @@ button {
   border-radius: 4px 4px 0 0;
   color: var(--text-primary);
   background: var(--surface-bg);
-  font-size: 0.6rem;
+  font-size: inherit;
 }
 
 .tab-close {
@@ -468,7 +465,7 @@ button {
   border-top: 1px solid var(--border-default);
   background: var(--chrome-bg);
   color: var(--text-secondary);
-  font-size: 0.6rem;
+  font-size: var(--font-size-status);
 }
 
 .statusbar-group {
