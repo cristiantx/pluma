@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { reorderTabItems } from "../src/shell/tabModel.js";
+import { reorderTabItems } from "../src/adapters/tabModel.js";
 
 const tabs = [
   {

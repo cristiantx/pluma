@@ -14,8 +14,8 @@ import {
 } from "lucide-react";
 import type { CSSProperties } from "react";
 
+import { buildSidebarTreeData } from "../adapters/sidebarTree.js";
 import { usePlumaStore } from "../state/usePlumaStore.js";
-import { buildSidebarTreeData } from "./sidebarTree.js";
 
 function getTreeItemStyle(depth: number): CSSProperties {
   return { "--depth": depth } as CSSProperties;

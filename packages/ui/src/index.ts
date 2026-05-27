@@ -1,7 +1,10 @@
 export { PlumaShell } from "./shell/PlumaShell.js";
 export { Pane, PaneLayout } from "./panes/PaneLayout.js";
-export { reorderTabItems, reorderTabsFromDragEvent } from "./shell/tabModel.js";
-export type { EditorTab } from "./shell/tabModel.js";
+export {
+  reorderTabItems,
+  reorderTabsFromDragEvent
+} from "./adapters/tabModel.js";
+export type { EditorTab } from "./adapters/tabModel.js";
 export type { ExplorerNode, StatusMetric } from "./shell/types.js";
 export {
   initialPlumaStoreState,

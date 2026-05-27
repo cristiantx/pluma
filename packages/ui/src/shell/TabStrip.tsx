@@ -3,8 +3,11 @@ import { useSortable } from "@dnd-kit/react/sortable";
 import { FileText, X } from "lucide-react";
 
 import { getFileLocationName } from "@pluma/core";
+import {
+  reorderTabsFromDragEvent,
+  type EditorTab
+} from "../adapters/tabModel.js";
 import { usePlumaStore } from "../state/usePlumaStore.js";
-import { reorderTabsFromDragEvent, type EditorTab } from "./tabModel.js";
 
 type TabButtonProps = {
   activeTabId: string;

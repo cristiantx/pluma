@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildSidebarTreeData } from "../src/shell/sidebarTree.js";
+import { buildSidebarTreeData } from "../src/adapters/sidebarTree.js";
 
 describe("buildSidebarTreeData", () => {
   it("builds a nested tree structure from flat sidebar nodes", () => {

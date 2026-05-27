@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { EditorTab } from "../src/shell/tabModel.js";
+import type { EditorTab } from "../src/adapters/tabModel.js";
 import {
   initialPlumaStoreState,
   usePlumaStore

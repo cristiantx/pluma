@@ -1,4 +1,4 @@
-import type { EditorTab } from "../shell/tabModel.js";
+import type { EditorTab } from "../adapters/tabModel.js";
 import type { ExplorerNode, StatusMetric } from "../shell/types.js";
 import type { ResolvedTheme, ThemePreference } from "../theme.js";
 
