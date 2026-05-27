@@ -81,10 +81,10 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [x] Create `packages/ui` for shared renderer app UI that can be reused by desktop and a future web app.
 - [x] Define the `packages/ui` boundary so it contains shared React app UI and theme behavior, but no Electron-only imports.
 - [x] Extract the desktop renderer shell layout, sidebar, title bar content, status bar, and shared empty-state surfaces into `packages/ui`.
-- [ ] Add `allotment`-based shared pane primitives to `packages/ui` for sidebar, editor, and future secondary-pane layouts.
-- [ ] Add a shared custom tab strip to `packages/ui` for open documents, including active, inactive, close, and dirty states.
-- [ ] Add `dnd-kit`-based tab reordering to the shared tab strip.
-- [ ] Define shared file-location types for desktop paths and future browser handles.
+- [x] Add `allotment`-based shared pane primitives to `packages/ui` for sidebar, editor, and future secondary-pane layouts.
+- [x] Add a shared custom tab strip to `packages/ui` for open documents, including active, inactive, close, and dirty states.
+- [x] Add `dnd-kit`-based tab reordering to the shared tab strip.
+- [x] Define shared file-location types for desktop paths and future browser handles.
 - [ ] Define `FileSystemAdapter`.
 - [ ] Define `DocumentSession`.
 - [ ] Define `MarkdownPipeline`.
@@ -158,7 +158,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [x] Move workspace tree, title-area workspace presentation, and status-bar UI to shared `packages/ui` components where they do not depend on Electron APIs.
 - [ ] Apply the Pluma design system to the file tree, workspace browsing layout, title bar workspace label, and file-selection states.
 - [ ] Build the workspace shell on `allotment` so sidebar and editor panes resize like a desktop editor.
-- [ ] Replace the placeholder tab row with the shared `packages/ui` tab strip and wire tab ordering into document/workspace state.
+- [x] Replace the placeholder tab row with the shared `packages/ui` tab strip and wire tab ordering into document/workspace state.
 - [ ] Support selecting files from the tree.
 - [ ] Handle relative links and image references against the active file path.
 - [ ] Implement macOS `open-file` event handling.

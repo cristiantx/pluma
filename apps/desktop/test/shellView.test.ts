@@ -4,6 +4,7 @@ import { initialShellState } from "../src/shellState";
 import {
   extractLeafName,
   getExplorerNodes,
+  getOpenTabs,
   getStatusMetrics,
   getWorkspaceLabel
 } from "../src/shellView";
@@ -50,5 +51,15 @@ describe("getExplorerNodes", () => {
       kind: "folder",
       label: "Guides"
     });
+  });
+});
+
+describe("getOpenTabs", () => {
+  it("returns shared tab definitions for the current shell", () => {
+    expect(getOpenTabs(initialShellState).map((tab) => tab.id)).toEqual([
+      "welcome",
+      "syntax",
+      "readme"
+    ]);
   });
 });

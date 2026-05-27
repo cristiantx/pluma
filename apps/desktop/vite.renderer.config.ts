@@ -7,6 +7,10 @@ export default defineConfig({
   plugins: [react({})],
   resolve: {
     alias: {
+      "@pluma/core": path.resolve(
+        __dirname,
+        "../../packages/core/src/index.ts"
+      ),
       "@pluma/ui": path.resolve(__dirname, "../../packages/ui/src/index.ts")
     },
     dedupe: ["react", "react-dom"]

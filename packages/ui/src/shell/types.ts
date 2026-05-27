@@ -1,4 +1,5 @@
 import type { ResolvedTheme, ThemePreference } from "../theme.js";
+import type { EditorTab } from "./tabModel.js";
 
 export type ExplorerNode = {
   depth: number;
@@ -14,16 +15,20 @@ export type StatusMetric = {
 };
 
 export type PlumaShellProps = {
-  activeFileLabel: string;
+  activeTabId: string;
   explorerNodes: ExplorerNode[];
   isBridgeAvailable: boolean;
+  onActiveTabChange: (tabId: string) => void;
   onOpenFile: () => void;
   onOpenFolder: () => void;
+  onTabClose: (tabId: string) => void;
   onThemePreferenceChange: (preference: ThemePreference) => void;
   onToggleMode: () => void;
   onToggleTheme: () => void;
+  onTabsReorder: (tabs: EditorTab[]) => void;
   resolvedTheme: ResolvedTheme;
   statusMetrics: StatusMetric[];
+  tabs: EditorTab[];
   themePreference: ThemePreference;
   workspaceLabel: string;
   workspacePath: string;

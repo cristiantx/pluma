@@ -1,4 +1,4 @@
-import type { ExplorerNode, StatusMetric } from "@pluma/ui";
+import type { ExplorerNode, StatusMetric, EditorTab } from "@pluma/ui";
 
 import type { ShellState } from "./shellState";
 
@@ -90,5 +90,79 @@ export function getExplorerNodes(state: ShellState): ExplorerNode[] {
     { depth: 1, kind: "file", label: "Basic.md" },
     { depth: 1, kind: "file", label: "Advanced.md" },
     { depth: 0, kind: "file", label: "README.md" }
+  ];
+}
+
+export function getOpenTabs(state: ShellState): EditorTab[] {
+  if (state.activeFolder) {
+    return [
+      {
+        id: "welcome",
+        isDirty: true,
+        location: {
+          kind: "desktop-path",
+          path: `${state.activeFolder}/Guides/Welcome.md`
+        },
+        title: "Welcome.md"
+      },
+      {
+        id: "syntax",
+        location: {
+          kind: "desktop-path",
+          path: `${state.activeFolder}/Guides/Syntax.md`
+        },
+        title: "Syntax.md"
+      },
+      {
+        id: "readme",
+        location: {
+          kind: "desktop-path",
+          path: `${state.activeFolder}/README.md`
+        },
+        title: "README.md"
+      }
+    ];
+  }
+
+  if (state.activeFile) {
+    return [
+      {
+        id: "active-file",
+        isDirty: true,
+        location: {
+          kind: "desktop-path",
+          path: state.activeFile
+        },
+        title: extractLeafName(state.activeFile) ?? "current.md"
+      }
+    ];
+  }
+
+  return [
+    {
+      id: "welcome",
+      isDirty: true,
+      location: {
+        kind: "desktop-path",
+        path: "/Users/cristianc/Documents/Pluma Docs/Guides/Welcome.md"
+      },
+      title: "Welcome.md"
+    },
+    {
+      id: "syntax",
+      location: {
+        kind: "desktop-path",
+        path: "/Users/cristianc/Documents/Pluma Docs/Guides/Syntax.md"
+      },
+      title: "Syntax.md"
+    },
+    {
+      id: "readme",
+      location: {
+        kind: "desktop-path",
+        path: "/Users/cristianc/Documents/Pluma Docs/README.md"
+      },
+      title: "README.md"
+    }
   ];
 }

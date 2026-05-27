@@ -1,3 +1,5 @@
+@import "allotment/dist/style.css";
+
 :root {
   color-scheme: light dark;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
@@ -189,10 +191,9 @@ button {
   letter-spacing: 0.08em;
 }
 
-.workspace-shell {
+.pane-layout {
   min-height: 0;
-  display: grid;
-  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  height: 100%;
 }
 
 .sidebar {
@@ -284,33 +285,116 @@ button {
 }
 
 .tabbar {
+  min-width: 0;
   display: flex;
-  align-items: flex-end;
-  gap: 0;
+  align-items: stretch;
+  gap: 8px;
+  padding: 0 8px 0 0;
   border-bottom: 1px solid var(--border-default);
   background: var(--chrome-bg);
 }
 
+.tabbar-scroll {
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  overflow-x: auto;
+}
+
 .tab {
+  position: relative;
   height: 32px;
-  min-width: 117px;
+  min-width: 152px;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 0 10px;
+  gap: 4px;
+  padding: 0 6px;
   border: 1px solid var(--border-default);
   border-bottom: 0;
   border-radius: 4px 4px 0 0;
-  color: var(--text-primary);
-  background: var(--surface-bg);
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--surface-bg) 88%, transparent);
   font-size: inherit;
 }
 
+.tab.is-active {
+  color: var(--text-primary);
+  background: var(--surface-bg);
+}
+
+.tab-activate {
+  min-width: 0;
+  flex: 1 1 auto;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 6px 0 0;
+  text-align: left;
+}
+
+.tab-handle,
 .tab-close {
-  width: 9px;
-  height: 9px;
-  margin-left: auto;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
   color: var(--text-muted);
+}
+
+.tab-handle:hover,
+.tab-close:hover {
+  background: var(--active-control);
+  color: var(--text-primary);
+}
+
+.tab-label {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-dirty-indicator {
+  color: var(--accent);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.tab-path {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-drag-state,
+.tab-drop-target {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tab-drag-state {
+  background: var(--accent);
+}
+
+.tab-drop-target {
+  background: var(--accent-strong);
+}
+
+.tab-drag-state.is-visible,
+.tab-drop-target.is-visible {
+  opacity: 1;
 }
 
 .new-tab {
@@ -320,7 +404,7 @@ button {
   font-size: 1.08rem;
 }
 
-.editor-split {
+.editor-panes {
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(228px, 42%) minmax(0, 1fr);
@@ -496,4 +580,17 @@ button {
 .theme-preference-button.is-active {
   background: var(--active-control);
   color: var(--text-primary);
+}
+
+.allotment {
+  background: var(--surface-bg);
+}
+
+.allotment > .split-view-container > .split-view-view {
+  min-width: 0;
+  min-height: 0;
+}
+
+.allotment .split-view-separator-border {
+  background: var(--border-default);
 }

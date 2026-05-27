@@ -1,8 +1,13 @@
-import { FileText, Plus, X } from "lucide-react";
+import type { EditorTab } from "./tabModel.js";
+import { TabStrip } from "./TabStrip.js";
 
 type EditorWorkspaceProps = {
-  activeFileLabel: string;
+  activeTabId: string;
+  onActiveTabChange: (tabId: string) => void;
   onOpenFile: () => void;
+  onTabClose: (tabId: string) => void;
+  onTabsReorder: (tabs: EditorTab[]) => void;
+  tabs: EditorTab[];
 };
 
 const sourcePreviewLines = [
@@ -34,28 +39,25 @@ const sourcePreviewLines = [
 ];
 
 export function EditorWorkspace({
-  activeFileLabel,
-  onOpenFile
+  activeTabId,
+  onActiveTabChange,
+  onOpenFile,
+  onTabClose,
+  onTabsReorder,
+  tabs
 }: EditorWorkspaceProps) {
   return (
     <section className="editor-workspace">
-      <div className="tabbar">
-        <button className="tab is-active" type="button">
-          <FileText className="tree-icon" aria-hidden="true" />
-          <span>{activeFileLabel}</span>
-          <X className="tab-close" aria-hidden="true" />
-        </button>
-        <button
-          aria-label="New tab"
-          className="new-tab"
-          onClick={onOpenFile}
-          type="button"
-        >
-          <Plus aria-hidden="true" />
-        </button>
-      </div>
+      <TabStrip
+        activeTabId={activeTabId}
+        onActiveTabChange={onActiveTabChange}
+        onOpenFile={onOpenFile}
+        onTabClose={onTabClose}
+        onTabsReorder={onTabsReorder}
+        tabs={tabs}
+      />
 
-      <div className="editor-split">
+      <div className="editor-panes">
         <article className="preview-pane" aria-label="Preview">
           <div className="preview-document">
             <h1>Welcome to Pluma</h1>

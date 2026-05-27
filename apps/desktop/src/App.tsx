@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import {
+  type EditorTab,
   PlumaShell,
   readStoredThemePreference,
   resolveThemePreference,
@@ -13,8 +14,8 @@ import {
   type CommandName
 } from "./shellState";
 import {
-  extractLeafName,
   getExplorerNodes,
+  getOpenTabs,
   getStatusMetrics,
   getWorkspaceLabel
 } from "./shellView";
@@ -45,6 +46,10 @@ export function App() {
     getInitialSystemPreference
   );
   const [isBridgeAvailable, setIsBridgeAvailable] = useState(false);
+  const [openTabs, setOpenTabs] = useState<EditorTab[]>(() =>
+    getOpenTabs(initialShellState)
+  );
+  const [activeTabId, setActiveTabId] = useState(() => openTabs[0]?.id ?? "");
 
   useEffect(() => {
     if (!window.pluma) {
@@ -61,6 +66,22 @@ export function App() {
       setShellState((current) => reduceShellEvent(current, event));
     });
   }, []);
+
+  useEffect(() => {
+    setOpenTabs((currentTabs) => {
+      if (currentTabs.length > 0) {
+        return currentTabs;
+      }
+
+      return getOpenTabs(shellState);
+    });
+  }, [shellState]);
+
+  useEffect(() => {
+    if (!openTabs.some((tab) => tab.id === activeTabId)) {
+      setActiveTabId(openTabs[0]?.id ?? "");
+    }
+  }, [activeTabId, openTabs]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -102,24 +123,38 @@ export function App() {
   const workspaceLabel = getWorkspaceLabel(shellState);
   const explorerNodes = getExplorerNodes(shellState);
   const statusMetrics = getStatusMetrics(shellState);
-  const activeFileLabel =
-    extractLeafName(shellState.activeFile) ?? "Welcome.md";
   const workspacePath = shellState.activeFolder ?? "~/Documents/Pluma Docs";
+
+  const handleTabClose = (tabId: string) => {
+    setOpenTabs((currentTabs) => {
+      const nextTabs = currentTabs.filter((tab) => tab.id !== tabId);
+
+      if (activeTabId === tabId) {
+        setActiveTabId(nextTabs[0]?.id ?? "");
+      }
+
+      return nextTabs;
+    });
+  };
 
   return (
     <PlumaShell
-      activeFileLabel={activeFileLabel}
+      activeTabId={activeTabId}
       explorerNodes={explorerNodes}
       isBridgeAvailable={isBridgeAvailable}
+      onActiveTabChange={setActiveTabId}
       onOpenFile={() => runCommand("open-file")}
       onOpenFolder={() => runCommand("open-folder")}
+      onTabClose={handleTabClose}
       onThemePreferenceChange={setThemePreference}
       onToggleMode={() => runCommand("toggle-mode")}
       onToggleTheme={() =>
         setThemePreference(resolvedTheme === "dark" ? "light" : "dark")
       }
+      onTabsReorder={setOpenTabs}
       resolvedTheme={resolvedTheme}
       statusMetrics={statusMetrics}
+      tabs={openTabs}
       themePreference={themePreference}
       workspaceLabel={workspaceLabel}
       workspacePath={workspacePath}
