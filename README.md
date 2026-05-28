@@ -9,13 +9,13 @@ Pluma is an open-source, local-first Markdown editor. Markdown files stay as nor
 - Desktop-first MVP built as a monorepo.
 - Plain Markdown remains the canonical document format.
 - Local-first by default: no accounts, sync service, or server dependency in the MVP.
-- The current implementation includes the Electron desktop shell, shared renderer UI package, theming foundation, and custom title-bar shell.
-- Document sessions, real file loading, editor engines, and workspace browsing behavior are still in progress.
+- The current implementation includes the Electron desktop shell, shared renderer UI package, theming foundation, custom title-bar shell, and the initial core file/document interfaces.
+- Real workspace loading, editor engines, and file-backed editing flows are still in progress.
 
 ## Workspace Layout
 
 - `apps/desktop`: Electron app, preload bridge, native menu wiring, and desktop-specific shell integration.
-- `packages/core`: shared document, filesystem, and Markdown-domain code.
+- `packages/core`: shared document, filesystem, Markdown-domain code, and the desktop-safe core adapter contracts used by later workspace/editor phases.
 - `packages/editor`: shared editor-facing abstractions and adapters.
 - `packages/ui`: shared React app UI for shell layout, title bar, sidebar, status bar, theme behavior, and shared Zustand shell state.
 - `docs`: planning and design artifacts.

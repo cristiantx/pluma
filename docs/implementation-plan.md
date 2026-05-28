@@ -85,14 +85,14 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [x] Add a shared custom tab strip to `packages/ui` for open documents, including active, inactive, close, and dirty states.
 - [x] Add `dnd-kit`-based tab reordering to the shared tab strip.
 - [x] Define shared file-location types for desktop paths and future browser handles.
-- [ ] Define `FileSystemAdapter`.
-- [ ] Define `DocumentSession`.
-- [ ] Define `MarkdownPipeline`.
-- [ ] Define save and conflict result types.
-- [ ] Implement `DesktopFileSystemAdapter`.
-- [ ] Implement atomic writes using temp-file plus rename.
-- [ ] Track file metadata needed for conflict detection.
-- [ ] Add unit tests for the filesystem adapter behavior.
+- [x] Define `FileSystemAdapter`.
+- [x] Define `DocumentSession`.
+- [x] Define `MarkdownPipeline`.
+- [x] Define save and conflict result types.
+- [x] Implement `DesktopFileSystemAdapter`.
+- [x] Implement atomic writes using temp-file plus rename.
+- [x] Track file metadata needed for conflict detection.
+- [x] Add unit tests for the filesystem adapter behavior.
 
 ## Phase 3: File Opening And Workspace Browsing
 
