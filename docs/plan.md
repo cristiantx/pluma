@@ -29,6 +29,7 @@ Choose Electron for the MVP because it gives predictable cross-platform file ope
   - `FileSystemAdapter`
   - `DesktopFileSystemAdapter` now
   - `BrowserFileSystemAdapter` later
+- Build order should prioritize shared shell extraction, core file/document foundations, and real workspace navigation before the editor-engine phases, so CodeMirror and Milkdown land on top of real file-backed sessions.
 
 ### 2. Editor Engine And UX
 

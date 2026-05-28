@@ -76,7 +76,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [x] Define the status-bar metric model for word count, line count, mode, and save state.
 - [x] Document design-token usage rules for implementation.
 
-## Phase 2: Shared Core Interfaces
+## Phase 2: Shared UI And Core File Foundations
 
 - [x] Create `packages/ui` for shared renderer app UI that can be reused by desktop and a future web app.
 - [x] Define the `packages/ui` boundary so it contains shared React app UI and theme behavior, but no Electron-only imports.
@@ -94,7 +94,24 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Track file metadata needed for conflict detection.
 - [ ] Add unit tests for the filesystem adapter behavior.
 
-## Phase 3: Markdown Analysis And Safety
+## Phase 3: File Opening And Workspace Browsing
+
+- [ ] Implement Open File flow.
+- [ ] Implement Open Folder flow.
+- [ ] Add Markdown file tree for opened folders using `Headless Tree`.
+- [x] Move workspace tree, title-area workspace presentation, and status-bar UI to shared `packages/ui` components where they do not depend on Electron APIs.
+- [ ] Apply the Pluma design system to the file tree, workspace browsing layout, title bar workspace label, and file-selection states.
+- [ ] Build the workspace shell on `allotment` so sidebar and editor panes resize like a desktop editor.
+- [x] Replace the placeholder tab row with the shared `packages/ui` tab strip and wire tab ordering into document/workspace state.
+- [ ] Support selecting files from the tree.
+- [ ] Hydrate `DocumentSession` instances from selected files and opened tabs.
+- [ ] Handle relative links and image references against the active file path.
+- [ ] Implement macOS `open-file` event handling.
+- [ ] Implement Windows/Linux launch-argument file handling.
+- [ ] Implement `second-instance` routing for files opened while Pluma is already running.
+- [ ] Add smoke tests or manual QA steps for file association flows.
+
+## Phase 4: Markdown Analysis And Safety
 
 - [ ] Add Markdown parsing with:
   - [ ] `remark-parse`
@@ -113,7 +130,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
   - [ ] relative links and images
   - [ ] unsupported syntax that must not be destroyed
 
-## Phase 4: Source Editor
+## Phase 5: Source Editor
 
 - [ ] Add CodeMirror 6 wrapper in `packages/editor`.
 - [ ] Apply the Pluma design system to source-mode chrome and controls.
@@ -124,7 +141,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Add keyboard shortcuts for save and mode switching.
 - [ ] Add source-mode tests for editing and session updates.
 
-## Phase 5: Rich Editor
+## Phase 6: Rich Editor
 
 - [ ] Add Milkdown wrapper in `packages/editor`.
 - [ ] Apply the Pluma design system to rich-mode chrome and controls.
@@ -149,22 +166,6 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Block rich-mode save when the round-trip guard fails.
 - [ ] Route unsupported documents to source mode with preview.
 - [ ] Add tests for rich/source switching without content loss.
-
-## Phase 6: File Opening And Workspace Browsing
-
-- [ ] Implement Open File flow.
-- [ ] Implement Open Folder flow.
-- [ ] Add Markdown file tree for opened folders using `Headless Tree`.
-- [x] Move workspace tree, title-area workspace presentation, and status-bar UI to shared `packages/ui` components where they do not depend on Electron APIs.
-- [ ] Apply the Pluma design system to the file tree, workspace browsing layout, title bar workspace label, and file-selection states.
-- [ ] Build the workspace shell on `allotment` so sidebar and editor panes resize like a desktop editor.
-- [x] Replace the placeholder tab row with the shared `packages/ui` tab strip and wire tab ordering into document/workspace state.
-- [ ] Support selecting files from the tree.
-- [ ] Handle relative links and image references against the active file path.
-- [ ] Implement macOS `open-file` event handling.
-- [ ] Implement Windows/Linux launch-argument file handling.
-- [ ] Implement `second-instance` routing for files opened while Pluma is already running.
-- [ ] Add smoke tests or manual QA steps for file association flows.
 
 ## Phase 7: Autosave And Conflict Handling
 
