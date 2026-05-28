@@ -7,12 +7,16 @@
   border-bottom: 1px solid var(--border-subtle);
   background: var(--titlebar-bg);
   -webkit-app-region: drag;
+  user-select: none;
 }
 
 .titlebar-actions,
 .titlebar-path,
-.titlebar-brand,
 button {
+  -webkit-app-region: no-drag;
+}
+
+.titlebar.with-workspace .titlebar-brand {
   -webkit-app-region: no-drag;
 }
 
@@ -29,6 +33,7 @@ button {
   font-size: inherit;
   line-height: 1;
   white-space: nowrap;
+  margin: 0 auto;
 }
 
 .titlebar-path span:nth-child(2) {
@@ -51,7 +56,8 @@ button {
 }
 
 .titlebar-actions {
-  flex: 0 0 162px;
+  position: absolute;
+  right: 0;
   display: flex;
   justify-content: flex-end;
   align-items: center;

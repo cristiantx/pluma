@@ -24,7 +24,7 @@ export function TitleBar() {
   const ThemeToggleIcon = resolvedTheme === "dark" ? Sun : Moon;
 
   return (
-    <header className="titlebar">
+    <header className={`titlebar ${hasWorkspace ? "with-workspace" : ""}`}>
       {hasWorkspace ? (
         <button
           aria-label="Open folder"
