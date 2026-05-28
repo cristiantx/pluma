@@ -1,3 +1,5 @@
+import type { DocumentSession } from "@pluma/core";
+
 import type { EditorTab } from "../adapters/tabModel.js";
 import type { ExplorerNode, StatusMetric } from "../shell/types.js";
 import type { ResolvedTheme, ThemePreference } from "../theme.js";
@@ -5,6 +7,7 @@ import type { ResolvedTheme, ThemePreference } from "../theme.js";
 export type PlumaCommandHandlers = {
   openFile: () => void;
   openFolder: () => void;
+  openWorkspaceFile: (path: string) => void;
   toggleMode: () => void;
 };
 
@@ -27,6 +30,11 @@ export type TabsSlice = {
   tabs: EditorTab[];
 };
 
+export type DocumentSlice = {
+  activeDocument: DocumentSession | null;
+  documents: DocumentSession[];
+};
+
 export type StatusSlice = {
   statusMetrics: StatusMetric[];
 };
@@ -36,6 +44,9 @@ export type CommandsSlice = {
 };
 
 export type PlumaShellSnapshot = {
+  activeDocument: DocumentSession | null;
+  activeDocumentId: string | null;
+  documents: DocumentSession[];
   explorerNodes: ExplorerNode[];
   hasWorkspace: boolean;
   isBridgeAvailable: boolean;
@@ -47,6 +58,7 @@ export type PlumaShellSnapshot = {
 
 export type PlumaStoreState = {
   commands: CommandsSlice;
+  document: DocumentSlice;
   status: StatusSlice;
   tabs: TabsSlice;
   theme: ThemeSlice;
@@ -64,6 +76,7 @@ export type PlumaStoreActions = {
   toggleTheme: () => void;
   triggerOpenFile: () => void;
   triggerOpenFolder: () => void;
+  triggerOpenWorkspaceFile: (path: string) => void;
   triggerToggleMode: () => void;
 };
 
@@ -71,6 +84,7 @@ export type PlumaStore = PlumaStoreState & PlumaStoreActions;
 
 export type PlumaStoreInitializer = {
   commands: CommandsSlice;
+  document: DocumentSlice;
   status: StatusSlice;
   tabs: TabsSlice;
   theme: ThemeSlice;

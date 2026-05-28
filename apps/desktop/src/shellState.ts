@@ -1,11 +1,25 @@
+import type { DocumentSession } from "@pluma/core";
+
 export type EditorMode = "rich" | "source";
 
+export type WorkspaceTreeEntry = {
+  depth: number;
+  kind: "folder" | "file";
+  name: string;
+  path: string;
+};
+
+export type DesktopShellSnapshot = {
+  activeDocumentId: string | null;
+  documents: DocumentSession[];
+  status: string;
+  workspaceEntries: WorkspaceTreeEntry[];
+  workspacePath: string | null;
+};
+
 export type RendererEvent =
-  | { type: "file-opened"; path: string }
-  | { type: "folder-opened"; path: string }
-  | { type: "save-requested" }
-  | { type: "save-as-requested" }
   | { type: "mode-changed"; mode: EditorMode }
+  | { type: "shell-snapshot"; snapshot: DesktopShellSnapshot }
   | { type: "status"; message: string };
 
 export type CommandName =
@@ -15,20 +29,19 @@ export type CommandName =
   | "save-as"
   | "toggle-mode";
 
-export type ShellState = {
-  mode: EditorMode;
-  status: string;
-  activeFile: string | null;
-  activeFolder: string | null;
+export type ShellState = DesktopShellSnapshot & {
   activity: string[];
+  mode: EditorMode;
 };
 
 export const initialShellState: ShellState = {
+  activeDocumentId: null,
+  activity: [],
+  documents: [],
   mode: "rich",
   status: "Starting desktop shell...",
-  activeFile: null,
-  activeFolder: null,
-  activity: []
+  workspaceEntries: [],
+  workspacePath: null
 };
 
 export function appendActivity(activity: string[], message: string): string[] {
@@ -40,38 +53,18 @@ export function reduceShellEvent(
   event: RendererEvent
 ): ShellState {
   switch (event.type) {
-    case "file-opened":
-      return {
-        ...current,
-        activeFile: event.path,
-        status: "File selection received by the desktop shell.",
-        activity: appendActivity(current.activity, `Open file: ${event.path}`)
-      };
-    case "folder-opened":
-      return {
-        ...current,
-        activeFolder: event.path,
-        status: "Folder selection received by the desktop shell.",
-        activity: appendActivity(current.activity, `Open folder: ${event.path}`)
-      };
-    case "save-requested":
-      return {
-        ...current,
-        status: "Save requested. Document persistence arrives in Phase 2.",
-        activity: appendActivity(current.activity, "Save requested")
-      };
-    case "save-as-requested":
-      return {
-        ...current,
-        status: "Save As requested. Document persistence arrives in Phase 2.",
-        activity: appendActivity(current.activity, "Save As requested")
-      };
     case "mode-changed":
       return {
         ...current,
         mode: event.mode,
         status: `Editor mode switched to ${event.mode}.`,
         activity: appendActivity(current.activity, `Mode: ${event.mode}`)
+      };
+    case "shell-snapshot":
+      return {
+        ...current,
+        ...event.snapshot,
+        activity: appendActivity(current.activity, event.snapshot.status)
       };
     case "status":
       return {

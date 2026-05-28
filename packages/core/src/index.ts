@@ -13,6 +13,7 @@ export {
   markDocumentSessionSaving,
   updateDocumentSessionText
 } from "./documentSession.js";
+export { resolveFileLocationReference } from "./fileLocation.js";
 export type {
   FileMetadata,
   FileSystemAdapter,

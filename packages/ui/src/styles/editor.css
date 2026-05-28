@@ -5,6 +5,29 @@
   align-items: stretch;
 }
 
+.editor-empty-state {
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+}
+
+.editor-empty-copy {
+  max-width: 360px;
+  text-align: center;
+}
+
+.editor-empty-copy h1 {
+  margin: 0 0 12px;
+  font-size: 1.5rem;
+}
+
+.editor-empty-copy p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
 .preview-pane,
 .source-pane {
   flex: 1 1 0;
@@ -24,6 +47,16 @@
   margin: 41px auto 58px;
   padding: 0 16px;
   color: var(--text-primary);
+}
+
+.preview-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
 }
 
 .preview-document h1 {

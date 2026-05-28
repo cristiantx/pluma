@@ -3,7 +3,6 @@ import type { Dispatch, SetStateAction } from "react";
 
 import {
   type PlumaCommandHandlers,
-  type PlumaShellSnapshot,
   PlumaShell,
   initialPlumaStoreState,
   readStoredThemePreference,
@@ -15,12 +14,7 @@ import {
   reduceShellEvent,
   type CommandName
 } from "./shellState";
-import {
-  getExplorerNodes,
-  getOpenTabs,
-  getStatusMetrics,
-  getWorkspaceLabel
-} from "./shellView";
+import { getShellSnapshot } from "./shellView";
 
 function getInitialThemePreference() {
   if (typeof window === "undefined") {
@@ -56,6 +50,7 @@ export function App() {
     const commandHandlers: PlumaCommandHandlers = {
       openFile: () => runCommand(setShellState, "open-file"),
       openFolder: () => runCommand(setShellState, "open-folder"),
+      openWorkspaceFile: (path) => runWorkspaceFileCommand(setShellState, path),
       toggleMode: () => runCommand(setShellState, "toggle-mode")
     };
 
@@ -106,21 +101,6 @@ export function App() {
   return <PlumaShell />;
 }
 
-function getShellSnapshot(
-  shellState: typeof initialShellState,
-  isBridgeAvailable: boolean
-): PlumaShellSnapshot {
-  return {
-    explorerNodes: getExplorerNodes(shellState),
-    hasWorkspace: Boolean(shellState.activeFolder),
-    isBridgeAvailable,
-    statusMetrics: getStatusMetrics(shellState),
-    tabs: getOpenTabs(shellState),
-    workspaceLabel: getWorkspaceLabel(shellState),
-    workspacePath: shellState.activeFolder ?? "~/Documents/Pluma Docs"
-  };
-}
-
 function runCommand(
   setShellState: Dispatch<SetStateAction<typeof initialShellState>>,
   command: CommandName
@@ -134,4 +114,19 @@ function runCommand(
   }
 
   void window.pluma.runCommand(command);
+}
+
+function runWorkspaceFileCommand(
+  setShellState: Dispatch<SetStateAction<typeof initialShellState>>,
+  filePath: string
+) {
+  if (!window.pluma) {
+    setShellState((current) => ({
+      ...current,
+      status: `Cannot open "${filePath}" because IPC is unavailable.`
+    }));
+    return;
+  }
+
+  void window.pluma.openWorkspaceFile(filePath);
 }

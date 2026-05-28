@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { createDocumentSession } from "@pluma/core";
 
 import { initialShellState } from "../src/shellState";
 import {
+  getActiveDocument,
   extractLeafName,
   getExplorerNodes,
   getOpenTabs,
+  getShellSnapshot,
   getStatusMetrics,
   getWorkspaceLabel
 } from "../src/shellView";
@@ -21,8 +24,7 @@ describe("getWorkspaceLabel", () => {
     expect(
       getWorkspaceLabel({
         ...initialShellState,
-        activeFolder: "/tmp/pluma",
-        activeFile: "/tmp/pluma/notes.md"
+        workspacePath: "/tmp/pluma"
       })
     ).toBe("pluma");
   });
@@ -44,10 +46,18 @@ describe("getExplorerNodes", () => {
     expect(
       getExplorerNodes({
         ...initialShellState,
-        activeFolder: "/tmp/pluma",
-        activeFile: "/tmp/pluma/notes.md"
+        workspaceEntries: [
+          {
+            depth: 0,
+            kind: "folder",
+            name: "Guides",
+            path: "/tmp/pluma/Guides"
+          }
+        ],
+        workspacePath: "/tmp/pluma"
       })[0]
     ).toMatchObject({
+      id: "/tmp/pluma/Guides",
       kind: "folder",
       label: "Guides"
     });
@@ -55,11 +65,92 @@ describe("getExplorerNodes", () => {
 });
 
 describe("getOpenTabs", () => {
-  it("returns shared tab definitions for the current shell", () => {
-    expect(getOpenTabs(initialShellState).map((tab) => tab.id)).toEqual([
-      "welcome",
-      "syntax",
-      "readme"
-    ]);
+  it("returns tab definitions for the active document sessions", () => {
+    const session = createDocumentSession({
+      location: {
+        kind: "desktop-path",
+        path: "/tmp/pluma/notes.md"
+      },
+      metadata: {
+        fileId: "1",
+        mtimeMs: 10,
+        size: 10
+      },
+      rawText: "# Notes\n"
+    });
+
+    expect(
+      getOpenTabs({
+        ...initialShellState,
+        documents: [session]
+      }).map((tab) => tab.id)
+    ).toEqual([session.id]);
+  });
+});
+
+describe("getActiveDocument", () => {
+  it("returns the document selected by the active tab id", () => {
+    const session = createDocumentSession({
+      location: {
+        kind: "desktop-path",
+        path: "/tmp/pluma/notes.md"
+      },
+      metadata: {
+        fileId: "1",
+        mtimeMs: 10,
+        size: 10
+      },
+      rawText: "# Notes\n"
+    });
+
+    expect(
+      getActiveDocument({
+        ...initialShellState,
+        activeDocumentId: session.id,
+        documents: [session]
+      })
+    ).toEqual(session);
+  });
+});
+
+describe("getShellSnapshot", () => {
+  it("derives a pluma shell snapshot from the desktop shell state", () => {
+    const session = createDocumentSession({
+      location: {
+        kind: "desktop-path",
+        path: "/tmp/pluma/notes.md"
+      },
+      metadata: {
+        fileId: "1",
+        mtimeMs: 10,
+        size: 10
+      },
+      rawText: "# Notes\n"
+    });
+
+    expect(
+      getShellSnapshot(
+        {
+          ...initialShellState,
+          activeDocumentId: session.id,
+          documents: [session],
+          workspaceEntries: [
+            {
+              depth: 0,
+              kind: "file",
+              name: "notes.md",
+              path: "/tmp/pluma/notes.md"
+            }
+          ],
+          workspacePath: "/tmp/pluma"
+        },
+        true
+      )
+    ).toMatchObject({
+      activeDocumentId: session.id,
+      hasWorkspace: true,
+      isBridgeAvailable: true,
+      workspaceLabel: "pluma"
+    });
   });
 });

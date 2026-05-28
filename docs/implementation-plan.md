@@ -96,20 +96,20 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ## Phase 3: File Opening And Workspace Browsing
 
-- [ ] Implement Open File flow.
-- [ ] Implement Open Folder flow.
-- [ ] Add Markdown file tree for opened folders using `Headless Tree`.
+- [x] Implement Open File flow.
+- [x] Implement Open Folder flow.
+- [x] Add Markdown file tree for opened folders using `Headless Tree`.
 - [x] Move workspace tree, title-area workspace presentation, and status-bar UI to shared `packages/ui` components where they do not depend on Electron APIs.
-- [ ] Apply the Pluma design system to the file tree, workspace browsing layout, title bar workspace label, and file-selection states.
-- [ ] Build the workspace shell on `allotment` so sidebar and editor panes resize like a desktop editor.
+- [x] Apply the Pluma design system to the file tree, workspace browsing layout, title bar workspace label, and file-selection states.
+- [x] Build the workspace shell on `allotment` so sidebar and editor panes resize like a desktop editor.
 - [x] Replace the placeholder tab row with the shared `packages/ui` tab strip and wire tab ordering into document/workspace state.
-- [ ] Support selecting files from the tree.
-- [ ] Hydrate `DocumentSession` instances from selected files and opened tabs.
-- [ ] Handle relative links and image references against the active file path.
-- [ ] Implement macOS `open-file` event handling.
-- [ ] Implement Windows/Linux launch-argument file handling.
-- [ ] Implement `second-instance` routing for files opened while Pluma is already running.
-- [ ] Add smoke tests or manual QA steps for file association flows.
+- [x] Support selecting files from the tree.
+- [x] Hydrate `DocumentSession` instances from selected files and opened tabs.
+- [x] Handle relative links and image references against the active file path.
+- [x] Implement macOS `open-file` event handling.
+- [x] Implement Windows/Linux launch-argument file handling.
+- [x] Implement `second-instance` routing for files opened while Pluma is already running.
+- [x] Add smoke tests or manual QA steps for file association flows.
 
 ## Phase 4: Markdown Analysis And Safety
 
