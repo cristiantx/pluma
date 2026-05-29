@@ -139,24 +139,24 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ## Phase 4: Markdown Analysis And Safety
 
-- [ ] Add Markdown parsing with:
-  - [ ] `remark-parse`
-  - [ ] `remark-gfm`
-  - [ ] `remark-frontmatter`
-- [ ] Evaluate `dompurify` before any user-authored Markdown is rendered as HTML.
-- [ ] Evaluate `github-markdown-css` as a compatibility reference for preview defaults.
-- [ ] Implement Markdown capability analysis.
-- [ ] Detect whether a document is eligible for rich mode.
-- [ ] Implement a round-trip guard for rich-mode saves.
-- [ ] Define unsupported or unsafe syntax behavior.
-- [ ] Add fixture tests for:
-  - [ ] CommonMark basics
-  - [ ] GFM tables
-  - [ ] task lists
-  - [ ] fenced code blocks
-  - [ ] YAML frontmatter
-  - [ ] relative links and images
-  - [ ] unsupported syntax that must not be destroyed
+- [x] Add Markdown parsing with:
+  - [x] `remark-parse`
+  - [x] `remark-gfm`
+  - [x] `remark-frontmatter`
+- [x] Evaluate `dompurify` before any user-authored Markdown is rendered as HTML.
+- [x] Evaluate `github-markdown-css` as a compatibility reference for preview defaults.
+- [x] Implement Markdown capability analysis.
+- [x] Detect whether a document is eligible for rich mode.
+- [x] Implement a round-trip guard for rich-mode saves.
+- [x] Define unsupported or unsafe syntax behavior.
+- [x] Add fixture tests for:
+  - [x] CommonMark basics
+  - [x] GFM tables
+  - [x] task lists
+  - [x] fenced code blocks
+  - [x] YAML frontmatter
+  - [x] relative links and images
+  - [x] unsupported syntax that must not be destroyed
 
 ## Phase 5: Source Editor
 

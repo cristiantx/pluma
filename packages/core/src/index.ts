@@ -53,6 +53,15 @@ export type {
   MarkdownSerializationResult,
   MarkdownUnsupportedConstruct
 } from "./markdownPipeline.js";
+export {
+  analyzeMarkdownParseResult,
+  analyzeMarkdownText,
+  getMarkdownDocumentCapability,
+  guardMarkdownRoundTrip,
+  markdownPipeline,
+  parseMarkdown,
+  serializeMarkdownSession
+} from "./markdownPipeline.js";
 
 export interface ProjectInfo {
   name: string;
