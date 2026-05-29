@@ -70,7 +70,6 @@ export function getExplorerNodes(state: ShellState): ExplorerNode[] {
       entry.kind === "file" &&
       activeDocument?.location.kind === "desktop-path" &&
       activeDocument.location.path === entry.path,
-    isExpanded: entry.kind === "folder",
     kind: entry.kind,
     label: entry.name,
     ...(entry.kind === "file" || entry.kind === "folder"
@@ -112,6 +111,8 @@ export function getShellSnapshot(
     explorerNodes: getExplorerNodes(shellState),
     hasWorkspace: Boolean(shellState.workspacePath),
     isBridgeAvailable,
+    isDevelopment: shellState.isDevelopment,
+    paneSizes: shellState.paneSizes,
     statusMetrics: getStatusMetrics(shellState),
     tabs: getOpenTabs(shellState),
     workspaceLabel: getWorkspaceLabel(shellState),

@@ -1,10 +1,11 @@
 # Pluma Implementation Plan
 
-Pluma is an open-source, local-first Markdown editor. The MVP should feel polished and approachable while keeping Markdown files as normal files on disk. The desktop app is the first target, with architecture shaped so a future browser version can reuse the core document and filesystem abstractions.
+Pluma is an open-source, local-first Markdown editor. The MVP should feel polished and approachable while keeping Markdown files as normal files on disk. The first MVP target is macOS desktop, with architecture shaped so future Windows, Linux, and browser versions can reuse the same core document and filesystem abstractions.
 
 ## Guiding Decisions
 
 - [ ] Use Electron, React, TypeScript, Vite, and Electron Forge for the desktop MVP.
+- [ ] Target macOS only for the MVP; defer Windows and Linux packaging until after the first macOS release.
 - [ ] Use Radix Primitives for renderer UI primitives that are not provided by the OS shell.
 - [ ] Use `allotment` for VS Code-like split panes in the desktop and shared app shell.
 - [ ] Use `Headless Tree` for the workspace file tree and related tree interactions.
@@ -19,6 +20,31 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Preserve unsupported Markdown by avoiding destructive rich-mode saves.
 - [ ] Support direct `.md` file opening and folder-based Markdown browsing.
 - [ ] Defer accounts, sync, cloud storage, servers, plugins, auto-update, and pasted-image asset management.
+
+## Future Evaluation Notes
+
+- Keep editor engine logic isolated from Electron and app-shell UI.
+- Continue with Milkdown for rich mode and CodeMirror 6 for source mode unless implementation evidence shows a stronger reason to switch.
+- Library candidates worth evaluating during their relevant phases:
+  - `chokidar` for active-file and folder watching.
+  - `@vscode/ripgrep` for fast workspace search.
+  - `github-markdown-css` as a preview-rendering reference, not necessarily as Pluma's final visual layer.
+  - `katex` for math rendering.
+  - `mermaid` for diagram rendering.
+  - `dompurify` for sanitized rendered HTML if preview/export flows render user Markdown to HTML.
+  - `turndown` or a GFM-compatible variant for future HTML-to-Markdown import/paste cleanup.
+  - `electron-store` or an equivalent typed wrapper for app preferences and window/session state.
+- Feature candidates worth preserving for post-foundation planning:
+  - focus mode
+  - typewriter mode
+  - fast workspace search
+  - export to HTML and PDF
+  - KaTeX math blocks
+  - Mermaid diagrams
+  - YAML frontmatter handling
+  - emoji support
+  - spellcheck
+  - external file-change detection with clear conflict handling
 
 ## Phase 0: Project Foundation
 
@@ -107,7 +133,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [x] Hydrate `DocumentSession` instances from selected files and opened tabs.
 - [x] Handle relative links and image references against the active file path.
 - [x] Implement macOS `open-file` event handling.
-- [x] Implement Windows/Linux launch-argument file handling.
+- [x] Keep Windows/Linux launch-argument file handling as future-safe desktop infrastructure.
 - [x] Implement `second-instance` routing for files opened while Pluma is already running.
 - [x] Add smoke tests or manual QA steps for file association flows.
 
@@ -117,6 +143,8 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
   - [ ] `remark-parse`
   - [ ] `remark-gfm`
   - [ ] `remark-frontmatter`
+- [ ] Evaluate `dompurify` before any user-authored Markdown is rendered as HTML.
+- [ ] Evaluate `github-markdown-css` as a compatibility reference for preview defaults.
 - [ ] Implement Markdown capability analysis.
 - [ ] Detect whether a document is eligible for rich mode.
 - [ ] Implement a round-trip guard for rich-mode saves.
@@ -169,10 +197,19 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ## Phase 7: Autosave And Conflict Handling
 
+- [x] Persist desktop session identity across app launches:
+  - [x] open document paths
+  - [x] active document path
+  - [x] workspace folder path
+  - [x] editor mode
+  - [x] sidebar/editor pane sizes
+- [x] Persist desktop settings in `settings.json`:
+  - [x] theme preference
 - [ ] Implement autosave debounce.
 - [ ] Persist changes through `writeTextAtomic`.
 - [ ] Show save state in the UI.
 - [ ] Apply the Pluma design system to save, autosave, conflict, external-change, and status-bar metric states.
+- [ ] Evaluate `chokidar` for active-file and folder watching.
 - [ ] Watch active files for external changes.
 - [ ] Watch opened folders for file tree changes.
 - [ ] Detect external modification before saving.
@@ -194,6 +231,19 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Verify text does not overflow controls across common window sizes.
 - [ ] Keep the UI quiet, dense, and document-focused.
 
+## Phase 8.1: Post-Foundation Feature Candidates
+
+- [ ] Evaluate fast workspace search with `@vscode/ripgrep`.
+- [ ] Evaluate focus mode.
+- [ ] Evaluate typewriter mode.
+- [ ] Evaluate spellcheck using Electron's built-in spellchecker before adding native spellcheck dependencies.
+- [ ] Evaluate KaTeX math rendering.
+- [ ] Evaluate Mermaid diagram rendering.
+- [ ] Evaluate emoji support.
+- [ ] Evaluate HTML export.
+- [ ] Evaluate PDF export.
+- [ ] Evaluate HTML-to-Markdown import or paste cleanup with `turndown` or a GFM-compatible alternative.
+
 ## Phase 9: Packaging And Distribution
 
 - [ ] Configure app metadata:
@@ -201,15 +251,13 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
   - [ ] bundle identifiers
   - [ ] icons
   - [ ] copyright/license metadata
-- [ ] Configure Electron Forge makers:
-  - [ ] macOS DMG/ZIP
-  - [ ] Windows installer
-  - [ ] Linux DEB
-- [ ] Register `.md` file association.
+- [ ] Configure Electron Forge makers for macOS DMG/ZIP.
+- [ ] Defer Windows installer and Linux DEB packaging to post-MVP.
+- [ ] Register macOS `.md` file association.
 - [ ] Add signing/notarization placeholders and documentation.
 - [ ] Configure GitHub Releases publishing path.
 - [ ] Add manual release checklist.
-- [ ] Verify packaged app launch on each target OS.
+- [ ] Verify packaged app launch on macOS.
 - [ ] Verify double-clicking `.md` opens the file in Pluma.
 
 ## Phase 10: Future Browser Path
@@ -231,8 +279,8 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Autosave writes normal Markdown text back to disk.
 - [ ] Unsupported Markdown is not silently destroyed.
 - [ ] External file changes are detected and surfaced.
-- [ ] The packaged app can be installed and launched on macOS, Windows, and Linux.
-- [ ] `.md` file association works in packaged builds.
+- [ ] The packaged app can be installed and launched on macOS.
+- [ ] macOS `.md` file association works in packaged builds.
 
 ## Known Risks
 
@@ -240,4 +288,4 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Unsupported Markdown may be common in technical docs. Mitigation: source mode and preview remain first-class.
 - [ ] Electron bundles are large. Mitigation: accept for MVP; revisit Tauri only if adoption or performance data justifies it.
 - [ ] Browser local-file editing is not universally supported. Mitigation: design shared core now and treat browser support as Chromium-first until fallback flows are defined.
-- [ ] Cross-platform file association behavior is platform-specific. Mitigation: test packaged builds on all target OSes before release.
+- [ ] Cross-platform packaging remains future work. Mitigation: keep core, UI, and desktop launch handling portable, but validate only macOS for MVP.

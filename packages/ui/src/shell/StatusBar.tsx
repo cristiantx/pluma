@@ -1,6 +1,8 @@
+import { memo } from "react";
+
 import { usePlumaStore } from "../state/usePlumaStore.js";
 
-export function StatusBar() {
+export const StatusBar = memo(function StatusBar() {
   const metrics = usePlumaStore((state) => state.status.statusMetrics);
 
   return (
@@ -17,4 +19,4 @@ export function StatusBar() {
       </div>
     </footer>
   );
-}
+});

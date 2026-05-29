@@ -143,6 +143,8 @@ describe("getShellSnapshot", () => {
           ...initialShellState,
           activeDocumentId: session.id,
           documents: [session],
+          isDevelopment: true,
+          paneSizes: [230, 770],
           workspaceEntries: [
             {
               depth: 0,
@@ -159,6 +161,8 @@ describe("getShellSnapshot", () => {
       activeDocumentId: session.id,
       hasWorkspace: true,
       isBridgeAvailable: true,
+      isDevelopment: true,
+      paneSizes: [230, 770],
       workspaceLabel: "pluma"
     });
   });

@@ -6,17 +6,27 @@ type PaneProps = {
   minSize?: number;
   preferredSize?: number | string;
   visible?: boolean;
+  className?: string;
 };
 
 type PaneLayoutProps = {
   main: ReactNode;
+  onPaneSizesChange?: (sizes: number[]) => void;
+  paneSizes?: number[];
   primary: ReactNode;
   secondary?: ReactNode;
 };
 
-export function Pane({ children, minSize, preferredSize, visible }: PaneProps) {
+export function Pane({
+  children,
+  minSize,
+  preferredSize,
+  className,
+  visible
+}: PaneProps) {
   return (
     <Allotment.Pane
+      {...(className !== undefined ? { className } : {})}
       {...(minSize !== undefined ? { minSize } : {})}
       {...(preferredSize !== undefined ? { preferredSize } : {})}
       {...(visible !== undefined ? { visible } : {})}
@@ -26,21 +36,34 @@ export function Pane({ children, minSize, preferredSize, visible }: PaneProps) {
   );
 }
 
-export function PaneLayout({ main, primary, secondary }: PaneLayoutProps) {
+export function PaneLayout({
+  main,
+  onPaneSizesChange,
+  paneSizes,
+  primary,
+  secondary
+}: PaneLayoutProps) {
   const defaultSizes = secondary ? [178, 842, 260] : [178, 842];
+  const initialSizes =
+    paneSizes && paneSizes.length === defaultSizes.length
+      ? paneSizes
+      : defaultSizes;
 
   return (
     <Allotment
       className="pane-layout"
-      defaultSizes={defaultSizes}
+      defaultSizes={initialSizes}
+      {...(onPaneSizesChange ? { onChange: onPaneSizesChange } : {})}
       vertical={false}
     >
-      <Pane minSize={160} preferredSize={178}>
+      <Pane className="primary" minSize={160} preferredSize={178}>
         {primary}
       </Pane>
-      <Pane minSize={420}>{main}</Pane>
+      <Pane className="main" minSize={420}>
+        {main}
+      </Pane>
       {secondary ? (
-        <Pane minSize={200} preferredSize={260}>
+        <Pane className="secondary" minSize={200} preferredSize={260}>
           {secondary}
         </Pane>
       ) : null}

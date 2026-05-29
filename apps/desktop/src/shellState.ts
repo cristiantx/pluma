@@ -12,6 +12,8 @@ export type WorkspaceTreeEntry = {
 export type DesktopShellSnapshot = {
   activeDocumentId: string | null;
   documents: DocumentSession[];
+  isDevelopment: boolean;
+  paneSizes: number[];
   status: string;
   workspaceEntries: WorkspaceTreeEntry[];
   workspacePath: string | null;
@@ -23,6 +25,7 @@ export type RendererEvent =
   | { type: "status"; message: string };
 
 export type CommandName =
+  | "open-devtools"
   | "open-file"
   | "open-folder"
   | "save"
@@ -38,7 +41,9 @@ export const initialShellState: ShellState = {
   activeDocumentId: null,
   activity: [],
   documents: [],
+  isDevelopment: false,
   mode: "rich",
+  paneSizes: [],
   status: "Starting desktop shell...",
   workspaceEntries: [],
   workspacePath: null
@@ -54,6 +59,8 @@ function normalizeDesktopShellSnapshot(
   return {
     activeDocumentId: snapshot.activeDocumentId ?? null,
     documents: snapshot.documents ?? [],
+    isDevelopment: snapshot.isDevelopment ?? false,
+    paneSizes: snapshot.paneSizes ?? [],
     status: snapshot.status ?? initialShellState.status,
     workspaceEntries: snapshot.workspaceEntries ?? [],
     workspacePath: snapshot.workspacePath ?? null

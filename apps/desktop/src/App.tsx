@@ -1,12 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 
 import {
   type PlumaCommandHandlers,
   PlumaShell,
   initialPlumaStoreState,
-  readStoredThemePreference,
-  THEME_STORAGE_KEY,
   usePlumaStore
 } from "@pluma/ui";
 import {
@@ -16,19 +14,12 @@ import {
 } from "./shellState";
 import { getShellSnapshot } from "./shellView";
 
-function getInitialThemePreference() {
-  if (typeof window === "undefined") {
-    return "system";
-  }
-
-  return readStoredThemePreference(
-    window.localStorage.getItem(THEME_STORAGE_KEY)
-  );
-}
-
 export function App() {
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [shellState, setShellState] = useState(initialShellState);
   const themePreference = usePlumaStore((state) => state.theme.preference);
+  const lastPersistedThemePreference = useRef(themePreference);
+  const paneSizeSaveTimeout = useRef<number | null>(null);
   const resolvedTheme = usePlumaStore((state) => state.theme.resolvedTheme);
   const hydrateShellSnapshot = usePlumaStore(
     (state) => state.hydrateShellSnapshot
@@ -39,6 +30,23 @@ export function App() {
   );
   const setThemePreference = usePlumaStore((state) => state.setThemePreference);
 
+  const schedulePaneSizesSave = useCallback((paneSizes: number[]) => {
+    if (!window.pluma) {
+      return;
+    }
+
+    if (paneSizeSaveTimeout.current) {
+      window.clearTimeout(paneSizeSaveTimeout.current);
+    }
+
+    const nextPaneSizes = [...paneSizes];
+
+    paneSizeSaveTimeout.current = window.setTimeout(() => {
+      paneSizeSaveTimeout.current = null;
+      void window.pluma.updatePaneSizes(nextPaneSizes);
+    }, 250);
+  }, []);
+
   useEffect(() => {
     usePlumaStore.setState({
       ...usePlumaStore.getState(),
@@ -48,9 +56,12 @@ export function App() {
 
   useEffect(() => {
     const commandHandlers: PlumaCommandHandlers = {
+      closeTab: (tabId) => runCloseTabCommand(setShellState, tabId),
+      openDevTools: () => runCommand(setShellState, "open-devtools"),
       openFile: () => runCommand(setShellState, "open-file"),
       openFolder: () => runCommand(setShellState, "open-folder"),
       openWorkspaceFile: (path) => runWorkspaceFileCommand(setShellState, path),
+      updatePaneSizes: schedulePaneSizesSave,
       toggleMode: () => runCommand(setShellState, "toggle-mode")
     };
 
@@ -67,7 +78,15 @@ export function App() {
     return window.pluma.onEvent((event) => {
       setShellState((current) => reduceShellEvent(current, event));
     });
-  }, [setCommandHandlers]);
+  }, [schedulePaneSizesSave, setCommandHandlers]);
+
+  useEffect(() => {
+    return () => {
+      if (paneSizeSaveTimeout.current) {
+        window.clearTimeout(paneSizeSaveTimeout.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -85,14 +104,43 @@ export function App() {
   }, [setSystemPrefersDark]);
 
   useEffect(() => {
-    setThemePreference(getInitialThemePreference());
+    if (!window.pluma) {
+      setSettingsLoaded(true);
+      return;
+    }
+
+    let isActive = true;
+
+    void window.pluma.getSettings().then((settings) => {
+      if (!isActive) {
+        return;
+      }
+
+      setThemePreference(settings.themePreference);
+      lastPersistedThemePreference.current = settings.themePreference;
+      setSettingsLoaded(true);
+    });
+
+    return () => {
+      isActive = false;
+    };
   }, [setThemePreference]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = resolvedTheme;
     document.documentElement.dataset.themePreference = themePreference;
-    window.localStorage.setItem(THEME_STORAGE_KEY, themePreference);
-  }, [resolvedTheme, themePreference]);
+
+    if (!settingsLoaded || !window.pluma) {
+      return;
+    }
+
+    if (lastPersistedThemePreference.current === themePreference) {
+      return;
+    }
+
+    lastPersistedThemePreference.current = themePreference;
+    void window.pluma.updateSettings({ themePreference });
+  }, [resolvedTheme, settingsLoaded, themePreference]);
 
   useEffect(() => {
     hydrateShellSnapshot(getShellSnapshot(shellState, Boolean(window.pluma)));
@@ -129,4 +177,19 @@ function runWorkspaceFileCommand(
   }
 
   void window.pluma.openWorkspaceFile(filePath);
+}
+
+function runCloseTabCommand(
+  setShellState: Dispatch<SetStateAction<typeof initialShellState>>,
+  tabId: string
+) {
+  if (!window.pluma) {
+    setShellState((current) => ({
+      ...current,
+      status: `Cannot close "${tabId}" because IPC is unavailable.`
+    }));
+    return;
+  }
+
+  void window.pluma.closeTab(tabId);
 }

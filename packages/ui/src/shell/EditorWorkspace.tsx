@@ -1,9 +1,11 @@
+import { memo } from "react";
+
 import { getFileLocationName } from "@pluma/core";
 
 import { usePlumaStore } from "../state/usePlumaStore.js";
 import { TabStrip } from "./TabStrip.js";
 
-export function EditorWorkspace() {
+export const EditorWorkspace = memo(function EditorWorkspace() {
   const activeDocument = usePlumaStore(
     (state) => state.document.activeDocument
   );
@@ -92,7 +94,7 @@ export function EditorWorkspace() {
       </div>
     </section>
   );
-}
+});
 
 type PreviewBlock =
   | { key: string; kind: "heading1"; text: string }

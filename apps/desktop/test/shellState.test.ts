@@ -51,6 +51,7 @@ describe("reduceShellEvent", () => {
         snapshot: {
           activeDocumentId: session.id,
           documents: [session],
+          paneSizes: [220, 780],
           status: "Opened Notes.md.",
           workspaceEntries: [
             {
@@ -66,6 +67,7 @@ describe("reduceShellEvent", () => {
     ).toMatchObject({
       activeDocumentId: session.id,
       documents: [session],
+      paneSizes: [220, 780],
       status: "Opened Notes.md.",
       workspacePath: "/tmp/pluma"
     });
@@ -82,6 +84,7 @@ describe("reduceShellEvent", () => {
     ).toMatchObject({
       activeDocumentId: null,
       documents: [],
+      paneSizes: [],
       status: "Recovered from partial payload.",
       workspaceEntries: [],
       workspacePath: null

@@ -12,6 +12,7 @@
 
 .titlebar-actions,
 .titlebar-path,
+.titlebar-button,
 button {
   -webkit-app-region: no-drag;
 }
@@ -65,22 +66,57 @@ button {
   padding-right: 13px;
 }
 
-.tool-button {
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
+.titlebar-button {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid transparent;
   border-radius: var(--radius-control);
   color: var(--text-secondary);
   font-size: inherit;
 }
 
-.tool-button:hover,
-.tool-button.is-active {
+.titlebar-button:hover,
+.titlebar-button.is-active,
+.titlebar-button[aria-pressed="true"] {
   border-color: var(--border-default);
   background: var(--active-control);
   color: var(--text-primary);
+}
+
+.titlebar-button-tooltip {
+  z-index: 5;
+  max-width: 180px;
+  padding: 4px 7px;
+  border: 1px solid var(--border-default);
+  border-radius: 7px;
+  background: var(--surface-bg);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+  animation: titlebar-tooltip-in 120ms ease;
+}
+
+@keyframes titlebar-tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.titlebar-sidebar-toggle {
+  position: absolute;
+  left: 84px;
 }
 
 .bridge-warning {

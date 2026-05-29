@@ -1,30 +1,52 @@
 import {
+  Bug,
   ChevronDown,
   Columns2,
   Folder,
+  PanelLeft,
   Moon,
   PanelRight,
   Square,
   Sun
 } from "lucide-react";
+import { memo } from "react";
 
 import { usePlumaStore } from "../state/usePlumaStore.js";
 import { PlumaLogo } from "./PlumaLogo.js";
+import { TitleBarButton } from "./TitleBarButton.js";
 
-export function TitleBar() {
+export const TitleBar = memo(function TitleBar() {
   const hasWorkspace = usePlumaStore((state) => state.workspace.hasWorkspace);
   const isBridgeAvailable = usePlumaStore(
     (state) => state.workspace.isBridgeAvailable
   );
+  const isDevelopment = usePlumaStore((state) => state.workspace.isDevelopment);
   const workspacePath = usePlumaStore((state) => state.workspace.workspacePath);
+  const isSidebarVisible = usePlumaStore(
+    (state) => state.layout.isSidebarVisible
+  );
   const resolvedTheme = usePlumaStore((state) => state.theme.resolvedTheme);
+  const triggerOpenDevTools = usePlumaStore(
+    (state) => state.triggerOpenDevTools
+  );
   const triggerOpenFolder = usePlumaStore((state) => state.triggerOpenFolder);
   const triggerToggleMode = usePlumaStore((state) => state.triggerToggleMode);
   const toggleTheme = usePlumaStore((state) => state.toggleTheme);
+  const toggleSidebar = usePlumaStore((state) => state.toggleSidebar);
   const ThemeToggleIcon = resolvedTheme === "dark" ? Sun : Moon;
 
   return (
     <header className={`titlebar ${hasWorkspace ? "with-workspace" : ""}`}>
+      {hasWorkspace ? (
+        <TitleBarButton
+          aria-label={isSidebarVisible ? "Hide sidebar" : "Show sidebar"}
+          className="titlebar-sidebar-toggle"
+          icon={PanelLeft}
+          isPressed={isSidebarVisible}
+          onClick={toggleSidebar}
+        />
+      ) : null}
+
       {hasWorkspace ? (
         <button
           aria-label="Open folder"
@@ -47,29 +69,27 @@ export function TitleBar() {
         {!isBridgeAvailable ? (
           <span className="bridge-warning">Offline</span>
         ) : null}
-        <button
+        <TitleBarButton
           aria-label="Toggle theme"
-          className="tool-button"
+          icon={ThemeToggleIcon}
           onClick={toggleTheme}
-          type="button"
-        >
-          <ThemeToggleIcon aria-hidden="true" />
-        </button>
-        <button
+        />
+        {isDevelopment ? (
+          <TitleBarButton
+            aria-label="Open DevTools"
+            icon={Bug}
+            onClick={triggerOpenDevTools}
+          />
+        ) : null}
+        <TitleBarButton
           aria-label="Toggle editor mode"
-          className="tool-button is-active"
+          icon={Columns2}
+          isActive
           onClick={triggerToggleMode}
-          type="button"
-        >
-          <Columns2 aria-hidden="true" />
-        </button>
-        <button aria-label="Preview" className="tool-button" type="button">
-          <Square aria-hidden="true" />
-        </button>
-        <button aria-label="Outline" className="tool-button" type="button">
-          <PanelRight aria-hidden="true" />
-        </button>
+        />
+        <TitleBarButton aria-label="Preview" icon={Square} />
+        <TitleBarButton aria-label="Outline" icon={PanelRight} />
       </div>
     </header>
   );
-}
+});

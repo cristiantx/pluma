@@ -11,9 +11,12 @@ import type {
 const noop = () => {};
 
 const defaultCommandHandlers: PlumaCommandHandlers = {
+  closeTab: noop,
+  openDevTools: noop,
   openFile: noop,
   openFolder: noop,
   openWorkspaceFile: noop,
+  updatePaneSizes: noop,
   toggleMode: noop
 };
 
@@ -24,6 +27,10 @@ export const initialPlumaStoreState: PlumaStoreInitializer = {
   document: {
     activeDocument: null,
     documents: []
+  },
+  layout: {
+    isSidebarVisible: true,
+    paneSizes: []
   },
   status: {
     statusMetrics: []
@@ -41,6 +48,7 @@ export const initialPlumaStoreState: PlumaStoreInitializer = {
     explorerNodes: [],
     hasWorkspace: false,
     isBridgeAvailable: false,
+    isDevelopment: false,
     workspaceLabel: "No workspace open",
     workspacePath: "~/Documents/Pluma Docs"
   }
@@ -50,6 +58,8 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   ...initialPlumaStoreState,
 
   closeTab: (tabId) => {
+    const closeTabHandler = get().commands.commandHandlers.closeTab;
+
     set((state) => {
       const nextTabs = state.tabs.tabs.filter((tab) => tab.id !== tabId);
       const nextDocuments = state.document.documents.filter(
@@ -74,13 +84,27 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
         }
       };
     });
+
+    closeTabHandler(tabId);
   },
 
   hydrateShellSnapshot: (snapshot: PlumaShellSnapshot) => {
-    set(() => ({
+    set((state) => {
+      const isNewWorkspace =
+        snapshot.hasWorkspace &&
+        (!state.workspace.hasWorkspace ||
+          state.workspace.workspacePath !== snapshot.workspacePath);
+
+      return {
       document: {
         activeDocument: snapshot.activeDocument,
         documents: snapshot.documents
+      },
+      layout: {
+        isSidebarVisible: snapshot.hasWorkspace
+          ? isNewWorkspace || state.layout.isSidebarVisible
+          : false,
+        paneSizes: snapshot.paneSizes
       },
       status: {
         statusMetrics: snapshot.statusMetrics
@@ -93,10 +117,12 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
         explorerNodes: snapshot.explorerNodes,
         hasWorkspace: snapshot.hasWorkspace,
         isBridgeAvailable: snapshot.isBridgeAvailable,
+        isDevelopment: snapshot.isDevelopment,
         workspaceLabel: snapshot.workspaceLabel,
         workspacePath: snapshot.workspacePath
       }
-    }));
+      };
+    });
   },
 
   reorderTabs: (tabs) => {
@@ -177,8 +203,21 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     });
   },
 
+  toggleSidebar: () => {
+    set((state) => ({
+      layout: {
+        ...state.layout,
+        isSidebarVisible: !state.layout.isSidebarVisible
+      }
+    }));
+  },
+
   triggerOpenFile: () => {
     get().commands.commandHandlers.openFile();
+  },
+
+  triggerOpenDevTools: () => {
+    get().commands.commandHandlers.openDevTools();
   },
 
   triggerOpenFolder: () => {
@@ -187,6 +226,16 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
 
   triggerOpenWorkspaceFile: (path) => {
     get().commands.commandHandlers.openWorkspaceFile(path);
+  },
+
+  updatePaneSizes: (paneSizes) => {
+    set((state) => ({
+      layout: {
+        ...state.layout,
+        paneSizes
+      }
+    }));
+    get().commands.commandHandlers.updatePaneSizes(paneSizes);
   },
 
   triggerToggleMode: () => {

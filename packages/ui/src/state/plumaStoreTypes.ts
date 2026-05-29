@@ -5,9 +5,12 @@ import type { ExplorerNode, StatusMetric } from "../shell/types.js";
 import type { ResolvedTheme, ThemePreference } from "../theme.js";
 
 export type PlumaCommandHandlers = {
+  closeTab: (tabId: string) => void;
+  openDevTools: () => void;
   openFile: () => void;
   openFolder: () => void;
   openWorkspaceFile: (path: string) => void;
+  updatePaneSizes: (paneSizes: number[]) => void;
   toggleMode: () => void;
 };
 
@@ -21,6 +24,7 @@ export type WorkspaceSlice = {
   explorerNodes: ExplorerNode[];
   hasWorkspace: boolean;
   isBridgeAvailable: boolean;
+  isDevelopment: boolean;
   workspaceLabel: string;
   workspacePath: string;
 };
@@ -43,6 +47,11 @@ export type CommandsSlice = {
   commandHandlers: PlumaCommandHandlers;
 };
 
+export type LayoutSlice = {
+  paneSizes: number[];
+  isSidebarVisible: boolean;
+};
+
 export type PlumaShellSnapshot = {
   activeDocument: DocumentSession | null;
   activeDocumentId: string | null;
@@ -50,6 +59,8 @@ export type PlumaShellSnapshot = {
   explorerNodes: ExplorerNode[];
   hasWorkspace: boolean;
   isBridgeAvailable: boolean;
+  isDevelopment: boolean;
+  paneSizes: number[];
   statusMetrics: StatusMetric[];
   tabs: EditorTab[];
   workspaceLabel: string;
@@ -59,6 +70,7 @@ export type PlumaShellSnapshot = {
 export type PlumaStoreState = {
   commands: CommandsSlice;
   document: DocumentSlice;
+  layout: LayoutSlice;
   status: StatusSlice;
   tabs: TabsSlice;
   theme: ThemeSlice;
@@ -74,9 +86,12 @@ export type PlumaStoreActions = {
   setSystemPrefersDark: (matches: boolean) => void;
   setThemePreference: (preference: ThemePreference) => void;
   toggleTheme: () => void;
+  toggleSidebar: () => void;
+  triggerOpenDevTools: () => void;
   triggerOpenFile: () => void;
   triggerOpenFolder: () => void;
   triggerOpenWorkspaceFile: (path: string) => void;
+  updatePaneSizes: (paneSizes: number[]) => void;
   triggerToggleMode: () => void;
 };
 
@@ -85,6 +100,7 @@ export type PlumaStore = PlumaStoreState & PlumaStoreActions;
 export type PlumaStoreInitializer = {
   commands: CommandsSlice;
   document: DocumentSlice;
+  layout: LayoutSlice;
   status: StatusSlice;
   tabs: TabsSlice;
   theme: ThemeSlice;

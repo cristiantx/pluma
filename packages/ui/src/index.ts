@@ -12,6 +12,7 @@ export {
 } from "./state/usePlumaStore.js";
 export type {
   CommandsSlice,
+  LayoutSlice,
   PlumaCommandHandlers,
   PlumaShellSnapshot,
   PlumaStore,

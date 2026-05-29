@@ -66,6 +66,8 @@ const baseSnapshot: PlumaShellSnapshot = {
   ],
   hasWorkspace: true,
   isBridgeAvailable: true,
+  isDevelopment: false,
+  paneSizes: [210, 770],
   statusMetrics: [
     { label: "Words", value: "312" },
     { label: "Lines", value: "28" }
@@ -90,11 +92,14 @@ describe("usePlumaStore", () => {
 
     expect(state.workspace.workspaceLabel).toBe("PLUMA DOCS");
     expect(state.workspace.hasWorkspace).toBe(true);
+    expect(state.workspace.isDevelopment).toBe(false);
     expect(state.workspace.explorerNodes).toHaveLength(2);
     expect(state.document.activeDocument?.id).toBe(baseDocuments[0]?.id);
     expect(state.document.documents).toHaveLength(2);
     expect(state.tabs.tabs).toEqual(baseTabs);
     expect(state.tabs.activeTabId).toBe(baseDocuments[0]?.id);
+    expect(state.layout.paneSizes).toEqual([210, 770]);
+    expect(state.layout.isSidebarVisible).toBe(true);
     expect(state.status.statusMetrics[0]?.value).toBe("312");
   });
 
@@ -140,17 +145,72 @@ describe("usePlumaStore", () => {
     );
   });
 
+  it("notifies the shell when a tab is closed", () => {
+    const closeTab = vi.fn();
+    usePlumaStore.getState().setCommandHandlers({ closeTab });
+    usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
+
+    usePlumaStore.getState().closeTab(baseDocuments[0]?.id ?? "");
+
+    expect(closeTab).toHaveBeenCalledWith(baseDocuments[0]?.id);
+  });
+
+  it("notifies the shell when pane sizes change", () => {
+    const updatePaneSizes = vi.fn();
+    usePlumaStore.getState().setCommandHandlers({ updatePaneSizes });
+
+    usePlumaStore.getState().updatePaneSizes([240, 760]);
+
+    expect(usePlumaStore.getState().layout.paneSizes).toEqual([240, 760]);
+    expect(updatePaneSizes).toHaveBeenCalledWith([240, 760]);
+  });
+
+  it("keeps sidebar visibility scoped to workspace state", () => {
+    usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
+    usePlumaStore.getState().toggleSidebar();
+
+    expect(usePlumaStore.getState().layout.isSidebarVisible).toBe(false);
+
+    usePlumaStore.getState().hydrateShellSnapshot({
+      ...baseSnapshot,
+      activeDocument: baseDocuments[1] ?? null,
+      activeDocumentId: baseDocuments[1]?.id ?? null
+    });
+
+    expect(usePlumaStore.getState().layout.isSidebarVisible).toBe(false);
+
+    usePlumaStore.getState().hydrateShellSnapshot({
+      ...baseSnapshot,
+      hasWorkspace: false,
+      workspaceLabel: "No workspace open",
+      workspacePath: "/Users/cristianc/Documents/Standalone.md"
+    });
+
+    expect(usePlumaStore.getState().layout.isSidebarVisible).toBe(false);
+
+    usePlumaStore.getState().hydrateShellSnapshot({
+      ...baseSnapshot,
+      workspacePath: "/Users/cristianc/Documents/New Workspace"
+    });
+
+    expect(usePlumaStore.getState().layout.isSidebarVisible).toBe(true);
+  });
+
   it("triggers registered commands through typed handlers", () => {
+    const openDevTools = vi.fn();
     const openFile = vi.fn();
     const openWorkspaceFile = vi.fn();
 
     usePlumaStore.getState().setCommandHandlers({
+      openDevTools,
       openFile,
       openWorkspaceFile
     });
+    usePlumaStore.getState().triggerOpenDevTools();
     usePlumaStore.getState().triggerOpenFile();
     usePlumaStore.getState().triggerOpenWorkspaceFile("/tmp/Notes.md");
 
+    expect(openDevTools).toHaveBeenCalledTimes(1);
     expect(openFile).toHaveBeenCalledTimes(1);
     expect(openWorkspaceFile).toHaveBeenCalledWith("/tmp/Notes.md");
   });
