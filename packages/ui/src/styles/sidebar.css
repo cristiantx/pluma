@@ -59,7 +59,7 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 0;
+  left: -2px;
   width: var(--tree-guide-width);
   opacity: 0;
   pointer-events: none;
@@ -98,12 +98,6 @@
   color: var(--text-primary);
 }
 
-.tree-item-file {
-  padding-left: calc(
-    var(--tree-indent-base) + var(--depth) * var(--tree-indent-step) - 2px
-  );
-}
-
 .tree-item-label {
   min-width: 0;
   overflow: hidden;
@@ -131,7 +125,6 @@
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
-  margin-left: -2px;
   color: var(--text-muted);
 }
 
