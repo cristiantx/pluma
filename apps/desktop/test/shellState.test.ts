@@ -70,4 +70,21 @@ describe("reduceShellEvent", () => {
       workspacePath: "/tmp/pluma"
     });
   });
+
+  it("normalizes incomplete shell snapshots without crashing the renderer", () => {
+    expect(
+      reduceShellEvent(initialShellState, {
+        type: "shell-snapshot",
+        snapshot: {
+          status: "Recovered from partial payload."
+        } as never
+      })
+    ).toMatchObject({
+      activeDocumentId: null,
+      documents: [],
+      status: "Recovered from partial payload.",
+      workspaceEntries: [],
+      workspacePath: null
+    });
+  });
 });

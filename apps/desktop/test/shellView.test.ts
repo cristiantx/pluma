@@ -111,6 +111,15 @@ describe("getActiveDocument", () => {
       })
     ).toEqual(session);
   });
+
+  it("returns null when documents are missing at runtime", () => {
+    expect(
+      getActiveDocument({
+        ...initialShellState,
+        documents: undefined
+      } as never)
+    ).toBeNull();
+  });
 });
 
 describe("getShellSnapshot", () => {

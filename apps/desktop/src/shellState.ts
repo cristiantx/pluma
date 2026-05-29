@@ -48,6 +48,18 @@ export function appendActivity(activity: string[], message: string): string[] {
   return [message, ...activity].slice(0, 6);
 }
 
+function normalizeDesktopShellSnapshot(
+  snapshot: Partial<DesktopShellSnapshot>
+): DesktopShellSnapshot {
+  return {
+    activeDocumentId: snapshot.activeDocumentId ?? null,
+    documents: snapshot.documents ?? [],
+    status: snapshot.status ?? initialShellState.status,
+    workspaceEntries: snapshot.workspaceEntries ?? [],
+    workspacePath: snapshot.workspacePath ?? null
+  };
+}
+
 export function reduceShellEvent(
   current: ShellState,
   event: RendererEvent
@@ -60,12 +72,17 @@ export function reduceShellEvent(
         status: `Editor mode switched to ${event.mode}.`,
         activity: appendActivity(current.activity, `Mode: ${event.mode}`)
       };
-    case "shell-snapshot":
+    case "shell-snapshot": {
+      const normalizedSnapshot = normalizeDesktopShellSnapshot(
+        event.snapshot as Partial<DesktopShellSnapshot>
+      );
+
       return {
         ...current,
-        ...event.snapshot,
-        activity: appendActivity(current.activity, event.snapshot.status)
+        ...normalizedSnapshot,
+        activity: appendActivity(current.activity, normalizedSnapshot.status)
       };
+    }
     case "status":
       return {
         ...current,

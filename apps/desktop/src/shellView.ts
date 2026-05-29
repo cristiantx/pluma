@@ -8,6 +8,10 @@ import type {
 
 import type { ShellState } from "./shellState";
 
+function getDocuments(state: ShellState): DocumentSession[] {
+  return state.documents ?? [];
+}
+
 export function extractLeafName(path: string | null): string | null {
   if (!path) {
     return null;
@@ -21,11 +25,11 @@ export function extractLeafName(path: string | null): string | null {
 }
 
 export function getWorkspaceLabel(state: ShellState): string {
+  const firstDocument = getDocuments(state)[0] ?? null;
+
   return (
     extractLeafName(state.workspacePath) ??
-    (state.documents[0]
-      ? getFileLocationName(state.documents[0].location)
-      : null) ??
+    (firstDocument ? getFileLocationName(firstDocument.location) : null) ??
     "No workspace open"
   );
 }
@@ -81,7 +85,7 @@ export function getExplorerNodes(state: ShellState): ExplorerNode[] {
 }
 
 export function getOpenTabs(state: ShellState): EditorTab[] {
-  return state.documents.map((document) => ({
+  return getDocuments(state).map((document) => ({
     id: document.id,
     isDirty: document.saveState !== "idle",
     location: document.location,
@@ -91,7 +95,7 @@ export function getOpenTabs(state: ShellState): EditorTab[] {
 
 export function getActiveDocument(state: ShellState): DocumentSession | null {
   return (
-    state.documents.find(
+    getDocuments(state).find(
       (document) => document.id === state.activeDocumentId
     ) ?? null
   );
@@ -104,7 +108,7 @@ export function getShellSnapshot(
   return {
     activeDocument: getActiveDocument(shellState),
     activeDocumentId: shellState.activeDocumentId,
-    documents: shellState.documents,
+    documents: getDocuments(shellState),
     explorerNodes: getExplorerNodes(shellState),
     hasWorkspace: Boolean(shellState.workspacePath),
     isBridgeAvailable,
