@@ -1,4 +1,4 @@
-import { DragDropProvider } from "@dnd-kit/react";
+import { DragDropProvider, PointerSensor } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { FileText, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -186,6 +186,15 @@ export function TabStrip() {
 
   return (
     <DragDropProvider
+      sensors={[
+        PointerSensor.configure({
+          activationConstraints: {
+            distance: {
+              value: 6
+            }
+          }
+        })
+      ]}
       onDragEnd={(event) => {
         reorderTabs(reorderTabsFromDragEvent(tabs, event));
       }}

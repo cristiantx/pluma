@@ -82,6 +82,7 @@
   padding: 0 10px;
   text-align: left;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .tab-close {
