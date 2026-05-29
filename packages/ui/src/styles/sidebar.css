@@ -25,39 +25,14 @@
 }
 
 .tree-list {
-  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
   padding-bottom: 7px;
 }
 
-.tree-list::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  pointer-events: none;
-  background-image: repeating-linear-gradient(
-    to right,
-    transparent 0,
-    transparent 21px,
-    color-mix(in srgb, var(--text-muted) 22%, transparent) 21px,
-    color-mix(in srgb, var(--text-muted) 22%, transparent) 22px,
-    transparent 22px,
-    transparent 34px
-  );
-  background-position-x: 9px;
-  transition: opacity 120ms ease;
-}
-
-.tree-list:hover::before {
-  opacity: 1;
-}
-
 .tree-item {
   position: relative;
-  z-index: 1;
   width: 100%;
   min-height: 22px;
   display: flex;
@@ -67,6 +42,34 @@
   color: var(--text-secondary);
   text-align: left;
   font-size: inherit;
+}
+
+.tree-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 10px;
+  width: calc(var(--depth) * 12px);
+  opacity: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent 11px,
+    color-mix(in srgb, var(--text-muted) 18%, transparent) 11px,
+    color-mix(in srgb, var(--text-muted) 18%, transparent) 12px
+  );
+  transition: opacity 120ms ease;
+}
+
+.tree-list:hover .tree-item::before {
+  opacity: 1;
+}
+
+.tree-item > * {
+  position: relative;
+  z-index: 1;
 }
 
 .tree-item:hover,
