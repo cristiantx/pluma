@@ -17,8 +17,8 @@
 .workspace-root {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 2px 7px 11px;
+  gap: 6px;
+  padding: 2px 10px 10px;
   text-transform: uppercase;
   color: var(--text-primary);
   font-size: inherit;
@@ -36,8 +36,8 @@
   min-height: 22px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 8px 0 calc(7px + var(--depth) * 11px);
+  gap: 4px;
+  padding: 0 8px 0 calc(10px + var(--depth) * 12px);
   color: var(--text-secondary);
   text-align: left;
   font-size: inherit;
@@ -49,6 +49,17 @@
   color: var(--text-primary);
 }
 
+.tree-item-folder {
+  color: var(--text-primary);
+}
+
+.tree-item-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .disclosure-icon,
 .disclosure-spacer {
   width: 8px;
@@ -56,11 +67,15 @@
   color: var(--text-muted);
 }
 
+.tree-item-folder .disclosure-icon {
+  color: currentColor;
+}
+
 .tree-icon {
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
 .sidebar-footer {

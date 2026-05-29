@@ -9,7 +9,6 @@ import {
   ChevronRight,
   FilePlus2,
   FileText,
-  Folder,
   FolderPlus
 } from "lucide-react";
 import type { CSSProperties } from "react";
@@ -80,9 +79,13 @@ export function Sidebar() {
 
           return (
             <button
-              className={
-                item.isSelected() ? "tree-item is-active" : "tree-item"
-              }
+              className={[
+                "tree-item",
+                item.isFolder() ? "tree-item-folder" : "tree-item-file",
+                item.isSelected() ? "is-active" : ""
+              ]
+                .filter(Boolean)
+                .join(" ")}
               key={item.getId()}
               style={getTreeItemStyle(item.getItemMeta().level)}
               type="button"
@@ -107,12 +110,10 @@ export function Sidebar() {
               {!item.isFolder() ? (
                 <span className="disclosure-spacer" aria-hidden="true" />
               ) : null}
-              {item.isFolder() ? (
-                <Folder className="tree-icon" aria-hidden="true" />
-              ) : (
+              {!item.isFolder() ? (
                 <FileText className="tree-icon" aria-hidden="true" />
-              )}
-              <span>{item.getItemName()}</span>
+              ) : null}
+              <span className="tree-item-label">{item.getItemName()}</span>
             </button>
           );
         })}
