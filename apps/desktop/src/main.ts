@@ -10,7 +10,15 @@ import {
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { createDocumentSession, type DesktopFileLocation } from "@pluma/core";
+import {
+  createDocumentSession,
+  markDocumentSessionConflict,
+  markDocumentSessionSaved,
+  markDocumentSessionSaving,
+  updateDocumentSessionText,
+  type DesktopFileLocation,
+  type FileMetadata
+} from "@pluma/core";
 import { DesktopFileSystemAdapter } from "@pluma/core-desktop";
 import installExtension, {
   REACT_DEVELOPER_TOOLS
@@ -19,7 +27,7 @@ import started from "electron-squirrel-startup";
 import type {
   CommandName,
   DesktopShellSnapshot,
-  EditorMode,
+  EditorViewMode,
   RendererEvent,
   WorkspaceTreeEntry
 } from "./shellState";
@@ -28,7 +36,7 @@ declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
 let mainWindow: BrowserWindow | null = null;
-let currentMode: EditorMode = "rich";
+let currentMode: EditorViewMode = "source";
 let pendingOpenTargets: string[] = [];
 const fileSystem = new DesktopFileSystemAdapter();
 const isDevelopment = Boolean(MAIN_WINDOW_VITE_DEV_SERVER_URL);
@@ -48,7 +56,7 @@ const appSettingsFileName = "settings.json";
 type PersistedSessionState = {
   activeDocumentPath: string | null;
   documentPaths: string[];
-  editorMode: EditorMode;
+  editorMode: EditorViewMode;
   paneSizes?: number[];
   workspacePath: string | null;
 };
@@ -202,7 +210,7 @@ function isPersistedSessionState(
     candidate.documentPaths.every(
       (documentPath) => typeof documentPath === "string"
     ) &&
-    (candidate.editorMode === "rich" || candidate.editorMode === "source") &&
+    isEditorViewMode(candidate.editorMode) &&
     (candidate.paneSizes === undefined ||
       (Array.isArray(candidate.paneSizes) &&
         candidate.paneSizes.every(
@@ -211,6 +219,10 @@ function isPersistedSessionState(
     (candidate.workspacePath === null ||
       typeof candidate.workspacePath === "string")
   );
+}
+
+function isEditorViewMode(value: unknown): value is EditorViewMode {
+  return value === "source" || value === "rich" || value === "split";
 }
 
 async function persistSessionState(): Promise<void> {
@@ -433,6 +445,101 @@ async function openFolderPath(directoryPath: string): Promise<void> {
   emitShellSnapshot();
 }
 
+async function saveActiveDocument(): Promise<void> {
+  const activeDocument = shellData.documents.find(
+    (document) => document.id === shellData.activeDocumentId
+  );
+
+  if (!activeDocument) {
+    emitToRenderer({ type: "status", message: "No active document to save." });
+    return;
+  }
+
+  if (activeDocument.location.kind !== "desktop-path") {
+    emitToRenderer({
+      type: "status",
+      message: "Save is only available for desktop files."
+    });
+    return;
+  }
+
+  updateShellData({
+    documents: shellData.documents.map((document) =>
+      document.id === activeDocument.id
+        ? markDocumentSessionSaving(document)
+        : document
+    ),
+    status: `Saving ${path.basename(activeDocument.location.path)}.`
+  });
+  emitShellSnapshot();
+
+  const saveResult = await fileSystem.writeTextAtomic(
+    activeDocument.location,
+    activeDocument.rawText,
+    {
+      expectedMetadata: activeDocument.lastSavedMetadata
+    }
+  );
+
+  if (saveResult.kind === "success") {
+    updateShellData({
+      documents: shellData.documents.map((document) =>
+        document.id === activeDocument.id
+          ? markDocumentAfterSuccessfulWrite(
+              document,
+              activeDocument.rawText,
+              saveResult.metadata
+            )
+          : document
+      ),
+      status: `Saved ${path.basename(activeDocument.location.path)}.`
+    });
+    persistSessionStateSoon();
+    emitShellSnapshot();
+    return;
+  }
+
+  if (saveResult.kind === "conflict") {
+    updateShellData({
+      documents: shellData.documents.map((document) =>
+        document.id === activeDocument.id
+          ? markDocumentSessionConflict(document)
+          : document
+      ),
+      status: `Save conflict: file was ${saveResult.reason}.`
+    });
+    emitShellSnapshot();
+    return;
+  }
+
+  updateShellData({
+    documents: shellData.documents.map((document) =>
+      document.id === activeDocument.id
+        ? updateDocumentSessionText(document, activeDocument.rawText)
+        : document
+    ),
+    status: `Save failed: ${saveResult.message}`
+  });
+  emitShellSnapshot();
+}
+
+function markDocumentAfterSuccessfulWrite(
+  document: ReturnType<typeof createDocumentSession>,
+  savedText: string,
+  metadata: FileMetadata
+): ReturnType<typeof createDocumentSession> {
+  if (document.rawText === savedText) {
+    return markDocumentSessionSaved(document, metadata);
+  }
+
+  return {
+    ...document,
+    lastSavedMetadata: metadata,
+    lastSavedText: savedText,
+    saveState: "dirty"
+  };
+}
+
 async function restorePersistedSessionState(): Promise<void> {
   const persistedState = await readPersistedSessionState();
 
@@ -578,10 +685,7 @@ async function handleCommand(command: CommandName): Promise<void> {
       return;
     }
     case "save":
-      emitToRenderer({
-        type: "status",
-        message: "Save wiring lands after workspace and editor integration."
-      });
+      await saveActiveDocument();
       return;
     case "save-as":
       emitToRenderer({
@@ -592,6 +696,7 @@ async function handleCommand(command: CommandName): Promise<void> {
     case "toggle-mode":
       currentMode = currentMode === "rich" ? "source" : "rich";
       emitToRenderer({ type: "mode-changed", mode: currentMode });
+      persistSessionStateSoon();
       return;
     case "open-devtools":
       if (!isDevelopment) {
@@ -715,6 +820,16 @@ ipcMain.handle("pluma:command", async (_event, command: CommandName) => {
   await handleCommand(command);
 });
 
+ipcMain.handle("pluma:set-editor-mode", (_event, mode: unknown) => {
+  if (!isEditorViewMode(mode)) {
+    return;
+  }
+
+  currentMode = mode;
+  emitToRenderer({ type: "mode-changed", mode: currentMode });
+  persistSessionStateSoon();
+});
+
 ipcMain.handle(
   "pluma:open-workspace-file",
   async (_event, filePath: string) => {
@@ -739,6 +854,27 @@ ipcMain.handle("pluma:update-pane-sizes", (_event, paneSizes: unknown) => {
   updateShellData({ paneSizes });
   persistSessionStateSoon();
 });
+
+ipcMain.handle(
+  "pluma:update-document-text",
+  (_event, documentId: unknown, rawText: unknown) => {
+    if (typeof documentId !== "string" || typeof rawText !== "string") {
+      return;
+    }
+
+    const nextDocuments = shellData.documents.map((document) =>
+      document.id === documentId
+        ? updateDocumentSessionText(document, rawText)
+        : document
+    );
+
+    updateShellData({
+      documents: nextDocuments,
+      status: "Document edited."
+    });
+    emitShellSnapshot();
+  }
+);
 
 ipcMain.handle("pluma:get-settings", async () => {
   return readAppSettings();

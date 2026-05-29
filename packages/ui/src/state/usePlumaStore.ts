@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+import { updateDocumentSessionText } from "@pluma/core";
+
 import { resolveThemePreference } from "../theme.js";
 import type {
   PlumaCommandHandlers,
@@ -16,6 +18,8 @@ const defaultCommandHandlers: PlumaCommandHandlers = {
   openFile: noop,
   openFolder: noop,
   openWorkspaceFile: noop,
+  setEditorViewMode: noop,
+  updateDocumentText: noop,
   updatePaneSizes: noop,
   toggleMode: noop
 };
@@ -29,6 +33,7 @@ export const initialPlumaStoreState: PlumaStoreInitializer = {
     documents: []
   },
   layout: {
+    editorViewMode: "source",
     isSidebarVisible: true,
     paneSizes: []
   },
@@ -96,31 +101,32 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
           state.workspace.workspacePath !== snapshot.workspacePath);
 
       return {
-      document: {
-        activeDocument: snapshot.activeDocument,
-        documents: snapshot.documents
-      },
-      layout: {
-        isSidebarVisible: snapshot.hasWorkspace
-          ? isNewWorkspace || state.layout.isSidebarVisible
-          : false,
-        paneSizes: snapshot.paneSizes
-      },
-      status: {
-        statusMetrics: snapshot.statusMetrics
-      },
-      tabs: {
-        activeTabId: snapshot.activeDocumentId ?? "",
-        tabs: snapshot.tabs
-      },
-      workspace: {
-        explorerNodes: snapshot.explorerNodes,
-        hasWorkspace: snapshot.hasWorkspace,
-        isBridgeAvailable: snapshot.isBridgeAvailable,
-        isDevelopment: snapshot.isDevelopment,
-        workspaceLabel: snapshot.workspaceLabel,
-        workspacePath: snapshot.workspacePath
-      }
+        document: {
+          activeDocument: snapshot.activeDocument,
+          documents: snapshot.documents
+        },
+        layout: {
+          editorViewMode: snapshot.editorViewMode,
+          isSidebarVisible: snapshot.hasWorkspace
+            ? isNewWorkspace || state.layout.isSidebarVisible
+            : false,
+          paneSizes: snapshot.paneSizes
+        },
+        status: {
+          statusMetrics: snapshot.statusMetrics
+        },
+        tabs: {
+          activeTabId: snapshot.activeDocumentId ?? "",
+          tabs: snapshot.tabs
+        },
+        workspace: {
+          explorerNodes: snapshot.explorerNodes,
+          hasWorkspace: snapshot.hasWorkspace,
+          isBridgeAvailable: snapshot.isBridgeAvailable,
+          isDevelopment: snapshot.isDevelopment,
+          workspaceLabel: snapshot.workspaceLabel,
+          workspacePath: snapshot.workspacePath
+        }
       };
     });
   },
@@ -160,6 +166,16 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
         }
       }
     }));
+  },
+
+  setEditorViewMode: (mode) => {
+    set((state) => ({
+      layout: {
+        ...state.layout,
+        editorViewMode: mode
+      }
+    }));
+    get().commands.commandHandlers.setEditorViewMode(mode);
   },
 
   setSystemPrefersDark: (matches) => {
@@ -226,6 +242,43 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
 
   triggerOpenWorkspaceFile: (path) => {
     get().commands.commandHandlers.openWorkspaceFile(path);
+  },
+
+  updateDocumentText: (documentId, rawText) => {
+    set((state) => {
+      const nextDocuments = state.document.documents.map((document) =>
+        document.id === documentId
+          ? updateDocumentSessionText(document, rawText)
+          : document
+      );
+      const nextActiveDocument =
+        state.document.activeDocument?.id === documentId
+          ? (nextDocuments.find((document) => document.id === documentId) ??
+            null)
+          : state.document.activeDocument;
+      const nextTabs = state.tabs.tabs.map((tab) =>
+        tab.id === documentId
+          ? {
+              ...tab,
+              isDirty:
+                nextDocuments.find((document) => document.id === documentId)
+                  ?.saveState !== "idle"
+            }
+          : tab
+      );
+
+      return {
+        document: {
+          activeDocument: nextActiveDocument,
+          documents: nextDocuments
+        },
+        tabs: {
+          ...state.tabs,
+          tabs: nextTabs
+        }
+      };
+    });
+    get().commands.commandHandlers.updateDocumentText(documentId, rawText);
   },
 
   updatePaneSizes: (paneSizes) => {

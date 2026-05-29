@@ -160,13 +160,13 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ## Phase 5: Source Editor
 
-- [ ] Add CodeMirror 6 wrapper in `packages/editor`.
-- [ ] Apply the Pluma design system to source-mode chrome and controls.
-- [ ] Theme CodeMirror through Pluma theme tokens and supported syntax palettes.
-- [ ] Configure Markdown language support.
-- [ ] Add editor commands for common Markdown actions.
-- [ ] Add source editor state synchronization with `DocumentSession`.
-- [ ] Add keyboard shortcuts for save and mode switching.
+- [x] Add CodeMirror 6 wrapper in `packages/editor`.
+- [x] Apply the Pluma design system to source-mode chrome and controls.
+- [x] Theme CodeMirror through Pluma theme tokens and supported syntax palettes.
+- [x] Configure Markdown language support.
+- [x] Add editor commands for common Markdown actions.
+- [x] Add source editor state synchronization with `DocumentSession`.
+- [x] Add keyboard shortcuts for save and mode switching.
 - [ ] Add source-mode tests for editing and session updates.
 
 ## Phase 6: Rich Editor

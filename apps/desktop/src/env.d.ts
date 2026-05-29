@@ -1,5 +1,5 @@
 import type { CommandName, RendererEvent } from "./shellState";
-import type { ThemePreference } from "@pluma/ui";
+import type { EditorViewMode, ThemePreference } from "@pluma/ui";
 
 type AppSettings = {
   themePreference: ThemePreference;
@@ -12,6 +12,8 @@ declare global {
       getSettings(): Promise<AppSettings>;
       openWorkspaceFile(path: string): Promise<void>;
       runCommand(command: CommandName): Promise<void>;
+      setEditorMode(mode: EditorViewMode): Promise<void>;
+      updateDocumentText(documentId: string, rawText: string): Promise<void>;
       updatePaneSizes(paneSizes: number[]): Promise<void>;
       updateSettings(settings: Partial<AppSettings>): Promise<AppSettings>;
       onEvent(listener: (event: RendererEvent) => void): () => void;

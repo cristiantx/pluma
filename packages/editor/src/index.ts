@@ -1,5 +1,14 @@
 import type { ProjectInfo } from "@pluma/core";
 
+export { SourceEditor } from "./SourceEditor.js";
+export {
+  markdownCommandKeymap,
+  runMarkdownCommand,
+  type MarkdownCommandName
+} from "./markdownCommands.js";
+export { plumaSourceEditorTheme } from "./sourceEditorTheme.js";
+export type { SourceEditorProps } from "./SourceEditor.js";
+
 export interface EditorFoundation {
   packageName: "@pluma/editor";
   supportsSourceMode: true;

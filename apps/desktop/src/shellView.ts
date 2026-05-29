@@ -51,7 +51,7 @@ export function getStatusMetrics(state: ShellState): StatusMetric[] {
     },
     {
       label: "Mode",
-      value: state.mode === "rich" ? "Rich" : "Source"
+      value: toModeMetricValue(state.mode)
     },
     {
       label: "Save",
@@ -112,12 +112,24 @@ export function getShellSnapshot(
     hasWorkspace: Boolean(shellState.workspacePath),
     isBridgeAvailable,
     isDevelopment: shellState.isDevelopment,
+    editorViewMode: shellState.mode,
     paneSizes: shellState.paneSizes,
     statusMetrics: getStatusMetrics(shellState),
     tabs: getOpenTabs(shellState),
     workspaceLabel: getWorkspaceLabel(shellState),
     workspacePath: shellState.workspacePath ?? "~/Documents/Pluma Docs"
   };
+}
+
+function toModeMetricValue(mode: ShellState["mode"]): string {
+  switch (mode) {
+    case "rich":
+      return "Rich";
+    case "source":
+      return "Source";
+    case "split":
+      return "Split";
+  }
 }
 
 function toSaveMetricValue(document: DocumentSession): string {

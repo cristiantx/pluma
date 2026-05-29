@@ -10,9 +10,13 @@ export type PlumaCommandHandlers = {
   openFile: () => void;
   openFolder: () => void;
   openWorkspaceFile: (path: string) => void;
+  setEditorViewMode: (mode: EditorViewMode) => void;
+  updateDocumentText: (documentId: string, rawText: string) => void;
   updatePaneSizes: (paneSizes: number[]) => void;
   toggleMode: () => void;
 };
+
+export type EditorViewMode = "source" | "rich" | "split";
 
 export type ThemeSlice = {
   preference: ThemePreference;
@@ -48,6 +52,7 @@ export type CommandsSlice = {
 };
 
 export type LayoutSlice = {
+  editorViewMode: EditorViewMode;
   paneSizes: number[];
   isSidebarVisible: boolean;
 };
@@ -60,6 +65,7 @@ export type PlumaShellSnapshot = {
   hasWorkspace: boolean;
   isBridgeAvailable: boolean;
   isDevelopment: boolean;
+  editorViewMode: EditorViewMode;
   paneSizes: number[];
   statusMetrics: StatusMetric[];
   tabs: EditorTab[];
@@ -83,6 +89,7 @@ export type PlumaStoreActions = {
   reorderTabs: (tabs: EditorTab[]) => void;
   setActiveTabId: (tabId: string) => void;
   setCommandHandlers: (handlers: Partial<PlumaCommandHandlers>) => void;
+  setEditorViewMode: (mode: EditorViewMode) => void;
   setSystemPrefersDark: (matches: boolean) => void;
   setThemePreference: (preference: ThemePreference) => void;
   toggleTheme: () => void;
@@ -91,6 +98,7 @@ export type PlumaStoreActions = {
   triggerOpenFile: () => void;
   triggerOpenFolder: () => void;
   triggerOpenWorkspaceFile: (path: string) => void;
+  updateDocumentText: (documentId: string, rawText: string) => void;
   updatePaneSizes: (paneSizes: number[]) => void;
   triggerToggleMode: () => void;
 };

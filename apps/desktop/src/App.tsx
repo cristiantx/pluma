@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 
 import {
+  type EditorViewMode,
   type PlumaCommandHandlers,
   PlumaShell,
   initialPlumaStoreState,
@@ -61,6 +62,9 @@ export function App() {
       openFile: () => runCommand(setShellState, "open-file"),
       openFolder: () => runCommand(setShellState, "open-folder"),
       openWorkspaceFile: (path) => runWorkspaceFileCommand(setShellState, path),
+      setEditorViewMode: (mode) => runSetEditorViewMode(setShellState, mode),
+      updateDocumentText: (documentId, rawText) =>
+        runUpdateDocumentText(setShellState, documentId, rawText),
       updatePaneSizes: schedulePaneSizesSave,
       toggleMode: () => runCommand(setShellState, "toggle-mode")
     };
@@ -177,6 +181,38 @@ function runWorkspaceFileCommand(
   }
 
   void window.pluma.openWorkspaceFile(filePath);
+}
+
+function runSetEditorViewMode(
+  setShellState: Dispatch<SetStateAction<typeof initialShellState>>,
+  mode: EditorViewMode
+) {
+  if (!window.pluma) {
+    setShellState((current) => ({
+      ...current,
+      mode,
+      status: `Editor mode switched to ${mode}.`
+    }));
+    return;
+  }
+
+  void window.pluma.setEditorMode(mode);
+}
+
+function runUpdateDocumentText(
+  setShellState: Dispatch<SetStateAction<typeof initialShellState>>,
+  documentId: string,
+  rawText: string
+) {
+  if (!window.pluma) {
+    setShellState((current) => ({
+      ...current,
+      status: `Cannot update "${documentId}" because IPC is unavailable.`
+    }));
+    return;
+  }
+
+  void window.pluma.updateDocumentText(documentId, rawText);
 }
 
 function runCloseTabCommand(

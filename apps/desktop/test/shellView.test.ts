@@ -35,7 +35,7 @@ describe("getStatusMetrics", () => {
     expect(getStatusMetrics(initialShellState)).toEqual([
       { label: "Words", value: "--" },
       { label: "Lines", value: "--" },
-      { label: "Mode", value: "Rich" },
+      { label: "Mode", value: "Source" },
       { label: "Save", value: "Idle shell" }
     ]);
   });
@@ -159,6 +159,7 @@ describe("getShellSnapshot", () => {
       )
     ).toMatchObject({
       activeDocumentId: session.id,
+      editorViewMode: "source",
       hasWorkspace: true,
       isBridgeAvailable: true,
       isDevelopment: true,
