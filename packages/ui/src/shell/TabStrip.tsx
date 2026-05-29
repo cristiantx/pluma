@@ -1,7 +1,7 @@
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { FileText, X } from "lucide-react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import {
   reorderTabsFromDragEvent,
@@ -92,6 +92,31 @@ export function TabStrip() {
   const closeTab = usePlumaStore((state) => state.closeTab);
   const reorderTabs = usePlumaStore((state) => state.reorderTabs);
 
+  useEffect(() => {
+    const container = tabbarScrollRef.current;
+    if (!container) {
+      return;
+    }
+
+    const handleWheel = (event: WheelEvent) => {
+      if (
+        Math.abs(event.deltaY) <= Math.abs(event.deltaX) &&
+        event.deltaX === 0
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      container.scrollLeft += event.deltaY || event.deltaX;
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+
+    return () => {
+      container.removeEventListener("wheel", handleWheel);
+    };
+  }, []);
+
   return (
     <DragDropProvider
       onDragEnd={(event) => {
@@ -99,26 +124,7 @@ export function TabStrip() {
       }}
     >
       <div className="tabbar" aria-label="Open documents" role="tablist">
-        <div
-          className="tabbar-scroll"
-          onWheel={(event) => {
-            const container = tabbarScrollRef.current;
-            if (!container) {
-              return;
-            }
-
-            if (
-              Math.abs(event.deltaY) <= Math.abs(event.deltaX) &&
-              event.deltaX === 0
-            ) {
-              return;
-            }
-
-            event.preventDefault();
-            container.scrollLeft += event.deltaY || event.deltaX;
-          }}
-          ref={tabbarScrollRef}
-        >
+        <div className="tabbar-scroll" ref={tabbarScrollRef}>
           {tabs.map((tab, tabIndex) => (
             <TabButton
               activeTabId={activeTabId}
