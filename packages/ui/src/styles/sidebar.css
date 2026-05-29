@@ -62,8 +62,9 @@
 
 .disclosure-icon,
 .disclosure-spacer {
-  width: 8px;
-  flex: 0 0 8px;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
   color: var(--text-muted);
 }
 
