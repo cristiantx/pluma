@@ -1,6 +1,7 @@
 import type { DocumentSession } from "@pluma/core";
 
 export type EditorMode = "rich" | "source";
+export type EditorViewMode = EditorMode | "split";
 
 export type WorkspaceTreeEntry = {
   depth: number;
@@ -20,7 +21,7 @@ export type DesktopShellSnapshot = {
 };
 
 export type RendererEvent =
-  | { type: "mode-changed"; mode: EditorMode }
+  | { type: "mode-changed"; mode: EditorViewMode }
   | { type: "shell-snapshot"; snapshot: DesktopShellSnapshot }
   | { type: "status"; message: string };
 
@@ -34,7 +35,7 @@ export type CommandName =
 
 export type ShellState = DesktopShellSnapshot & {
   activity: string[];
-  mode: EditorMode;
+  mode: EditorViewMode;
 };
 
 export const initialShellState: ShellState = {
@@ -42,7 +43,7 @@ export const initialShellState: ShellState = {
   activity: [],
   documents: [],
   isDevelopment: false,
-  mode: "rich",
+  mode: "source",
   paneSizes: [],
   status: "Starting desktop shell...",
   workspaceEntries: [],

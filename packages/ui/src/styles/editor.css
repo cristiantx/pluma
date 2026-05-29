@@ -42,6 +42,15 @@
   background: var(--editor-bg);
 }
 
+.editor-panes[data-view-mode="rich"] .preview-pane {
+  max-width: none;
+  border-right: 0;
+}
+
+.editor-panes[data-view-mode="rich"] .preview-document {
+  max-width: 620px;
+}
+
 .preview-document {
   max-width: 312px;
   margin: 41px auto 58px;
@@ -120,6 +129,10 @@
 .source-pane {
   background: var(--editor-source-bg);
   font-family: var(--font-editor);
+}
+
+.pluma-source-editor {
+  height: 100%;
 }
 
 .source-lines {

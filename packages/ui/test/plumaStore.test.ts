@@ -64,6 +64,7 @@ const baseSnapshot: PlumaShellSnapshot = {
       label: "Welcome.md"
     }
   ],
+  editorViewMode: "source",
   hasWorkspace: true,
   isBridgeAvailable: true,
   isDevelopment: false,
@@ -99,6 +100,7 @@ describe("usePlumaStore", () => {
     expect(state.tabs.tabs).toEqual(baseTabs);
     expect(state.tabs.activeTabId).toBe(baseDocuments[0]?.id);
     expect(state.layout.paneSizes).toEqual([210, 770]);
+    expect(state.layout.editorViewMode).toBe("source");
     expect(state.layout.isSidebarVisible).toBe(true);
     expect(state.status.statusMetrics[0]?.value).toBe("312");
   });
@@ -163,6 +165,38 @@ describe("usePlumaStore", () => {
 
     expect(usePlumaStore.getState().layout.paneSizes).toEqual([240, 760]);
     expect(updatePaneSizes).toHaveBeenCalledWith([240, 760]);
+  });
+
+  it("sets the editor view mode through shared state", () => {
+    const setEditorViewMode = vi.fn();
+    usePlumaStore.getState().setCommandHandlers({ setEditorViewMode });
+
+    usePlumaStore.getState().setEditorViewMode("split");
+
+    expect(usePlumaStore.getState().layout.editorViewMode).toBe("split");
+    expect(setEditorViewMode).toHaveBeenCalledWith("split");
+  });
+
+  it("updates active document text and dirty tab state", () => {
+    const updateDocumentText = vi.fn();
+    usePlumaStore.getState().setCommandHandlers({ updateDocumentText });
+    usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
+
+    usePlumaStore
+      .getState()
+      .updateDocumentText(baseDocuments[0]?.id ?? "", "# Edited\n");
+
+    expect(usePlumaStore.getState().document.activeDocument?.rawText).toBe(
+      "# Edited\n"
+    );
+    expect(usePlumaStore.getState().document.activeDocument?.saveState).toBe(
+      "dirty"
+    );
+    expect(usePlumaStore.getState().tabs.tabs[0]?.isDirty).toBe(true);
+    expect(updateDocumentText).toHaveBeenCalledWith(
+      baseDocuments[0]?.id,
+      "# Edited\n"
+    );
   });
 
   it("keeps sidebar visibility scoped to workspace state", () => {

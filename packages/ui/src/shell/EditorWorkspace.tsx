@@ -1,6 +1,7 @@
 import { memo } from "react";
 
 import { getFileLocationName } from "@pluma/core";
+import { SourceEditor } from "@pluma/editor";
 
 import { usePlumaStore } from "../state/usePlumaStore.js";
 import { TabStrip } from "./TabStrip.js";
@@ -9,7 +10,9 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   const activeDocument = usePlumaStore(
     (state) => state.document.activeDocument
   );
+  const editorViewMode = usePlumaStore((state) => state.layout.editorViewMode);
   const hasWorkspace = usePlumaStore((state) => state.workspace.hasWorkspace);
+  const updateDocumentText = usePlumaStore((state) => state.updateDocumentText);
 
   if (!activeDocument) {
     return (
@@ -31,66 +34,71 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
     );
   }
 
-  const sourcePreviewLines = activeDocument.rawText.split(/\r?\n/);
   const previewBlocks = buildPreviewBlocks(activeDocument.rawText);
+  const showPreview = editorViewMode === "rich" || editorViewMode === "split";
+  const showSource = editorViewMode === "source" || editorViewMode === "split";
 
   return (
     <section className="editor-workspace">
       <TabStrip />
 
-      <div className="editor-panes">
-        <article className="preview-pane" aria-label="Preview">
-          <div className="preview-document">
-            <div className="preview-meta">
-              <span>{getFileLocationName(activeDocument.location)}</span>
-              <span>{activeDocument.saveState}</span>
+      <div className="editor-panes" data-view-mode={editorViewMode}>
+        {showPreview ? (
+          <article className="preview-pane" aria-label="Preview">
+            <div className="preview-document">
+              <div className="preview-meta">
+                <span>{getFileLocationName(activeDocument.location)}</span>
+                <span>{activeDocument.saveState}</span>
+              </div>
+              {previewBlocks.map((block) => {
+                switch (block.kind) {
+                  case "heading1":
+                    return <h1 key={block.key}>{block.text}</h1>;
+                  case "heading2":
+                    return <h2 key={block.key}>{block.text}</h2>;
+                  case "rule":
+                    return <hr key={block.key} />;
+                  case "list":
+                    return (
+                      <ul key={block.key}>
+                        {block.items.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    );
+                  case "quote":
+                    return (
+                      <blockquote key={block.key}>
+                        {block.lines.map((line) => (
+                          <p key={line}>{line}</p>
+                        ))}
+                      </blockquote>
+                    );
+                  case "code":
+                    return (
+                      <pre key={block.key}>
+                        <code>{block.code}</code>
+                      </pre>
+                    );
+                  case "paragraph":
+                    return <p key={block.key}>{block.text}</p>;
+                }
+              })}
             </div>
-            {previewBlocks.map((block) => {
-              switch (block.kind) {
-                case "heading1":
-                  return <h1 key={block.key}>{block.text}</h1>;
-                case "heading2":
-                  return <h2 key={block.key}>{block.text}</h2>;
-                case "rule":
-                  return <hr key={block.key} />;
-                case "list":
-                  return (
-                    <ul key={block.key}>
-                      {block.items.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  );
-                case "quote":
-                  return (
-                    <blockquote key={block.key}>
-                      {block.lines.map((line) => (
-                        <p key={line}>{line}</p>
-                      ))}
-                    </blockquote>
-                  );
-                case "code":
-                  return (
-                    <pre key={block.key}>
-                      <code>{block.code}</code>
-                    </pre>
-                  );
-                case "paragraph":
-                  return <p key={block.key}>{block.text}</p>;
-              }
-            })}
-          </div>
-        </article>
+          </article>
+        ) : null}
 
-        <article className="source-pane" aria-label="Markdown source">
-          <ol className="source-lines">
-            {sourcePreviewLines.map((line, index) => (
-              <li key={`${index}-${line}`}>
-                <code>{line || " "}</code>
-              </li>
-            ))}
-          </ol>
-        </article>
+        {showSource ? (
+          <article className="source-pane" aria-label="Markdown source">
+            <SourceEditor
+              documentId={activeDocument.id}
+              onChange={(rawText) =>
+                updateDocumentText(activeDocument.id, rawText)
+              }
+              rawText={activeDocument.rawText}
+            />
+          </article>
+        ) : null}
       </div>
     </section>
   );

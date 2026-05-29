@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { CommandName, RendererEvent } from "./shellState";
+import type { CommandName, EditorViewMode, RendererEvent } from "./shellState";
 
 const api = {
   closeTab(tabId: string) {
@@ -14,11 +14,21 @@ const api = {
   runCommand(command: CommandName) {
     return ipcRenderer.invoke("pluma:command", command);
   },
+  setEditorMode(mode: EditorViewMode) {
+    return ipcRenderer.invoke("pluma:set-editor-mode", mode);
+  },
   updateSettings(settings: unknown) {
     return ipcRenderer.invoke("pluma:update-settings", settings);
   },
   updatePaneSizes(paneSizes: number[]) {
     return ipcRenderer.invoke("pluma:update-pane-sizes", paneSizes);
+  },
+  updateDocumentText(documentId: string, rawText: string) {
+    return ipcRenderer.invoke(
+      "pluma:update-document-text",
+      documentId,
+      rawText
+    );
   },
   onEvent(listener: (event: RendererEvent) => void) {
     const wrapped = (

@@ -1,12 +1,12 @@
 import {
+  BookOpen,
   Bug,
   ChevronDown,
+  Code2,
   Columns2,
   Folder,
   PanelLeft,
   Moon,
-  PanelRight,
-  Square,
   Sun
 } from "lucide-react";
 import { memo } from "react";
@@ -30,7 +30,8 @@ export const TitleBar = memo(function TitleBar() {
     (state) => state.triggerOpenDevTools
   );
   const triggerOpenFolder = usePlumaStore((state) => state.triggerOpenFolder);
-  const triggerToggleMode = usePlumaStore((state) => state.triggerToggleMode);
+  const editorViewMode = usePlumaStore((state) => state.layout.editorViewMode);
+  const setEditorViewMode = usePlumaStore((state) => state.setEditorViewMode);
   const toggleTheme = usePlumaStore((state) => state.toggleTheme);
   const toggleSidebar = usePlumaStore((state) => state.toggleSidebar);
   const ThemeToggleIcon = resolvedTheme === "dark" ? Sun : Moon;
@@ -82,13 +83,23 @@ export const TitleBar = memo(function TitleBar() {
           />
         ) : null}
         <TitleBarButton
-          aria-label="Toggle editor mode"
-          icon={Columns2}
-          isActive
-          onClick={triggerToggleMode}
+          aria-label="Source view"
+          icon={Code2}
+          isActive={editorViewMode === "source"}
+          onClick={() => setEditorViewMode("source")}
         />
-        <TitleBarButton aria-label="Preview" icon={Square} />
-        <TitleBarButton aria-label="Outline" icon={PanelRight} />
+        <TitleBarButton
+          aria-label="Split view"
+          icon={Columns2}
+          isActive={editorViewMode === "split"}
+          onClick={() => setEditorViewMode("split")}
+        />
+        <TitleBarButton
+          aria-label="Rich view"
+          icon={BookOpen}
+          isActive={editorViewMode === "rich"}
+          onClick={() => setEditorViewMode("rich")}
+        />
       </div>
     </header>
   );

@@ -31,6 +31,18 @@ describe("reduceShellEvent", () => {
     });
   });
 
+  it("accepts split as a renderer mode event", () => {
+    expect(
+      reduceShellEvent(initialShellState, {
+        type: "mode-changed",
+        mode: "split"
+      })
+    ).toMatchObject({
+      mode: "split",
+      status: "Editor mode switched to split."
+    });
+  });
+
   it("hydrates the shell snapshot when workspace data arrives", () => {
     const session = createDocumentSession({
       location: {
