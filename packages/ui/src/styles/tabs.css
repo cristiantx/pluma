@@ -69,7 +69,7 @@
 
 .tab.is-active {
   color: var(--text-primary);
-  background: var(--surface-bg);
+  background: var(--editor-bg);
 }
 
 .tab-activate {
