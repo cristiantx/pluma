@@ -1,7 +1,10 @@
+import type { FileLocation } from "@pluma/core";
+
 export type SidebarTreeNode = {
   children?: string[];
   kind: "folder" | "file";
   label: string;
+  location?: FileLocation;
 };
 
 export type SidebarTreeData = {
@@ -19,10 +22,12 @@ export function buildSidebarTreeData(
   workspaceLabel: string,
   nodes: Array<{
     depth: number;
+    id?: string;
     isActive?: boolean;
     isExpanded?: boolean;
     kind: "folder" | "file";
     label: string;
+    location?: FileLocation;
   }>
 ): SidebarTreeData {
   const rootItemId = "workspace-root";
@@ -41,13 +46,15 @@ export function buildSidebarTreeData(
   nodes.forEach((node) => {
     const parentId = ancestors[node.depth] ?? rootItemId;
     const siblingCount = siblingCounts.get(parentId) ?? 0;
-    const nodeId = `${parentId}/${normalizeNodeId(node.label)}-${siblingCount}`;
+    const nodeId =
+      node.id ?? `${parentId}/${normalizeNodeId(node.label)}-${siblingCount}`;
 
     siblingCounts.set(parentId, siblingCount + 1);
     tree[nodeId] = {
       ...(node.kind === "folder" ? { children: [] } : {}),
       kind: node.kind,
-      label: node.label
+      label: node.label,
+      ...(node.location ? { location: node.location } : {})
     };
     tree[parentId]?.children?.push(nodeId);
 

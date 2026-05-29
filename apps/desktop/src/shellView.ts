@@ -1,6 +1,16 @@
-import type { ExplorerNode, StatusMetric, EditorTab } from "@pluma/ui";
+import { getFileLocationName, type DocumentSession } from "@pluma/core";
+import type {
+  EditorTab,
+  ExplorerNode,
+  PlumaShellSnapshot,
+  StatusMetric
+} from "@pluma/ui";
 
 import type { ShellState } from "./shellState";
+
+function getDocuments(state: ShellState): DocumentSession[] {
+  return state.documents ?? [];
+}
 
 export function extractLeafName(path: string | null): string | null {
   if (!path) {
@@ -15,24 +25,29 @@ export function extractLeafName(path: string | null): string | null {
 }
 
 export function getWorkspaceLabel(state: ShellState): string {
+  const firstDocument = getDocuments(state)[0] ?? null;
+
   return (
-    extractLeafName(state.activeFolder) ??
-    extractLeafName(state.activeFile) ??
+    extractLeafName(state.workspacePath) ??
+    (firstDocument ? getFileLocationName(firstDocument.location) : null) ??
     "No workspace open"
   );
 }
 
 export function getStatusMetrics(state: ShellState): StatusMetric[] {
-  const hasFile = Boolean(state.activeFile);
+  const activeDocument = getActiveDocument(state);
+  const sourceText = activeDocument?.rawText ?? "";
+  const lines = sourceText ? sourceText.split(/\r?\n/).length : 0;
+  const words = sourceText.trim() ? sourceText.trim().split(/\s+/).length : 0;
 
   return [
     {
       label: "Words",
-      value: hasFile ? "0" : "--"
+      value: activeDocument ? String(words) : "--"
     },
     {
       label: "Lines",
-      value: hasFile ? "0" : "--"
+      value: activeDocument ? String(lines) : "--"
     },
     {
       label: "Mode",
@@ -40,129 +55,79 @@ export function getStatusMetrics(state: ShellState): StatusMetric[] {
     },
     {
       label: "Save",
-      value: state.status.toLowerCase().includes("save")
-        ? "Pending"
-        : "Idle shell"
+      value: activeDocument ? toSaveMetricValue(activeDocument) : "Idle shell"
     }
   ];
 }
 
 export function getExplorerNodes(state: ShellState): ExplorerNode[] {
-  if (state.activeFolder) {
-    const workspace = extractLeafName(state.activeFolder) ?? "Workspace";
-    const activeFile = extractLeafName(state.activeFile) ?? "notes.md";
+  const activeDocument = getActiveDocument(state);
 
-    return [
-      { depth: 0, kind: "folder", label: "Guides", isExpanded: true },
-      { depth: 1, kind: "file", label: activeFile, isActive: true },
-      { depth: 1, kind: "file", label: "Syntax.md" },
-      { depth: 1, kind: "file", label: "Links.md" },
-      {
-        depth: 0,
-        kind: "folder",
-        label: `${workspace} drafts`,
-        isExpanded: true
-      },
-      { depth: 1, kind: "file", label: "Outline.md" },
-      { depth: 1, kind: "file", label: "Reference.md" },
-      { depth: 0, kind: "file", label: "README.md" }
-    ];
-  }
-
-  if (state.activeFile) {
-    const activeFile = extractLeafName(state.activeFile) ?? "current.md";
-
-    return [
-      { depth: 0, kind: "folder", label: "Current", isExpanded: true },
-      { depth: 1, kind: "file", label: activeFile, isActive: true },
-      { depth: 1, kind: "file", label: "Outline.md" },
-      { depth: 1, kind: "file", label: "Reference.md" }
-    ];
-  }
-
-  return [
-    { depth: 0, kind: "folder", label: "Guides", isExpanded: true },
-    { depth: 1, kind: "file", label: "Welcome.md", isActive: true },
-    { depth: 1, kind: "file", label: "Syntax.md" },
-    { depth: 1, kind: "file", label: "Links.md" },
-    { depth: 1, kind: "file", label: "Images.md" },
-    { depth: 0, kind: "folder", label: "Examples", isExpanded: true },
-    { depth: 1, kind: "file", label: "Basic.md" },
-    { depth: 1, kind: "file", label: "Advanced.md" },
-    { depth: 0, kind: "file", label: "README.md" }
-  ];
+  return state.workspaceEntries.map((entry) => ({
+    depth: entry.depth,
+    id: entry.path,
+    isActive:
+      entry.kind === "file" &&
+      activeDocument?.location.kind === "desktop-path" &&
+      activeDocument.location.path === entry.path,
+    isExpanded: entry.kind === "folder",
+    kind: entry.kind,
+    label: entry.name,
+    ...(entry.kind === "file" || entry.kind === "folder"
+      ? {
+          location: {
+            kind: "desktop-path" as const,
+            path: entry.path
+          }
+        }
+      : {})
+  }));
 }
 
 export function getOpenTabs(state: ShellState): EditorTab[] {
-  if (state.activeFolder) {
-    return [
-      {
-        id: "welcome",
-        isDirty: true,
-        location: {
-          kind: "desktop-path",
-          path: `${state.activeFolder}/Guides/Welcome.md`
-        },
-        title: "Welcome.md"
-      },
-      {
-        id: "syntax",
-        location: {
-          kind: "desktop-path",
-          path: `${state.activeFolder}/Guides/Syntax.md`
-        },
-        title: "Syntax.md"
-      },
-      {
-        id: "readme",
-        location: {
-          kind: "desktop-path",
-          path: `${state.activeFolder}/README.md`
-        },
-        title: "README.md"
-      }
-    ];
-  }
+  return getDocuments(state).map((document) => ({
+    id: document.id,
+    isDirty: document.saveState !== "idle",
+    location: document.location,
+    title: getFileLocationName(document.location)
+  }));
+}
 
-  if (state.activeFile) {
-    return [
-      {
-        id: "active-file",
-        isDirty: true,
-        location: {
-          kind: "desktop-path",
-          path: state.activeFile
-        },
-        title: extractLeafName(state.activeFile) ?? "current.md"
-      }
-    ];
-  }
+export function getActiveDocument(state: ShellState): DocumentSession | null {
+  return (
+    getDocuments(state).find(
+      (document) => document.id === state.activeDocumentId
+    ) ?? null
+  );
+}
 
-  return [
-    {
-      id: "welcome",
-      isDirty: true,
-      location: {
-        kind: "desktop-path",
-        path: "/Users/cristianc/Documents/Pluma Docs/Guides/Welcome.md"
-      },
-      title: "Welcome.md"
-    },
-    {
-      id: "syntax",
-      location: {
-        kind: "desktop-path",
-        path: "/Users/cristianc/Documents/Pluma Docs/Guides/Syntax.md"
-      },
-      title: "Syntax.md"
-    },
-    {
-      id: "readme",
-      location: {
-        kind: "desktop-path",
-        path: "/Users/cristianc/Documents/Pluma Docs/README.md"
-      },
-      title: "README.md"
-    }
-  ];
+export function getShellSnapshot(
+  shellState: ShellState,
+  isBridgeAvailable: boolean
+): PlumaShellSnapshot {
+  return {
+    activeDocument: getActiveDocument(shellState),
+    activeDocumentId: shellState.activeDocumentId,
+    documents: getDocuments(shellState),
+    explorerNodes: getExplorerNodes(shellState),
+    hasWorkspace: Boolean(shellState.workspacePath),
+    isBridgeAvailable,
+    statusMetrics: getStatusMetrics(shellState),
+    tabs: getOpenTabs(shellState),
+    workspaceLabel: getWorkspaceLabel(shellState),
+    workspacePath: shellState.workspacePath ?? "~/Documents/Pluma Docs"
+  };
+}
+
+function toSaveMetricValue(document: DocumentSession): string {
+  switch (document.saveState) {
+    case "idle":
+      return "Saved";
+    case "dirty":
+      return "Dirty";
+    case "saving":
+      return "Saving";
+    case "conflict":
+      return "Conflict";
+  }
 }

@@ -9,10 +9,10 @@ import {
   ChevronRight,
   FilePlus2,
   FileText,
-  Folder,
   FolderPlus
 } from "lucide-react";
 import type { CSSProperties } from "react";
+import type { FileLocation } from "@pluma/core";
 
 import { buildSidebarTreeData } from "../adapters/sidebarTree.js";
 import { usePlumaStore } from "../state/usePlumaStore.js";
@@ -28,6 +28,9 @@ export function Sidebar() {
   );
   const triggerOpenFile = usePlumaStore((state) => state.triggerOpenFile);
   const triggerOpenFolder = usePlumaStore((state) => state.triggerOpenFolder);
+  const triggerOpenWorkspaceFile = usePlumaStore(
+    (state) => state.triggerOpenWorkspaceFile
+  );
   const rootLabel =
     workspaceLabel === "No workspace open" ? "PLUMA DOCS" : workspaceLabel;
   const treeData = buildSidebarTreeData(rootLabel, nodes);
@@ -41,6 +44,7 @@ export function Sidebar() {
     children?: string[];
     kind: "folder" | "file";
     label: string;
+    location?: FileLocation;
   }>({
     rootItemId: treeData.rootItemId,
     getItemName: (item) => item.getItemData().label,
@@ -69,31 +73,50 @@ export function Sidebar() {
         className="tree-list"
         role="tree"
       >
-        {tree.getItems().map((item) => (
-          <button
-            className={item.isSelected() ? "tree-item is-active" : "tree-item"}
-            key={item.getId()}
-            style={getTreeItemStyle(item.getItemMeta().level)}
-            type="button"
-            {...item.getProps()}
-          >
-            {item.isFolder() && item.isExpanded() ? (
-              <ChevronDown className="disclosure-icon" aria-hidden="true" />
-            ) : null}
-            {item.isFolder() && !item.isExpanded() ? (
-              <ChevronRight className="disclosure-icon" aria-hidden="true" />
-            ) : null}
-            {!item.isFolder() ? (
-              <span className="disclosure-spacer" aria-hidden="true" />
-            ) : null}
-            {item.isFolder() ? (
-              <Folder className="tree-icon" aria-hidden="true" />
-            ) : (
-              <FileText className="tree-icon" aria-hidden="true" />
-            )}
-            <span>{item.getItemName()}</span>
-          </button>
-        ))}
+        {tree.getItems().map((item) => {
+          const itemProps = item.getProps();
+          const itemData = item.getItemData();
+
+          return (
+            <button
+              className={[
+                "tree-item",
+                item.isFolder() ? "tree-item-folder" : "tree-item-file",
+                item.isSelected() ? "is-active" : ""
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              key={item.getId()}
+              style={getTreeItemStyle(item.getItemMeta().level)}
+              type="button"
+              {...itemProps}
+              onClick={(event) => {
+                itemProps.onClick?.(event);
+
+                if (
+                  itemData.kind === "file" &&
+                  itemData.location?.kind === "desktop-path"
+                ) {
+                  triggerOpenWorkspaceFile(itemData.location.path);
+                }
+              }}
+            >
+              {item.isFolder() && item.isExpanded() ? (
+                <ChevronDown className="disclosure-icon" aria-hidden="true" />
+              ) : null}
+              {item.isFolder() && !item.isExpanded() ? (
+                <ChevronRight className="disclosure-icon" aria-hidden="true" />
+              ) : null}
+              {!item.isFolder() ? (
+                <span className="disclosure-spacer" aria-hidden="true" />
+              ) : null}
+              {!item.isFolder() ? (
+                <FileText className="tree-icon" aria-hidden="true" />
+              ) : null}
+              <span className="tree-item-label">{item.getItemName()}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="sidebar-footer">

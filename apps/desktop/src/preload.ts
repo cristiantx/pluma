@@ -2,6 +2,9 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { CommandName, RendererEvent } from "./shellState";
 
 const api = {
+  openWorkspaceFile(path: string) {
+    return ipcRenderer.invoke("pluma:open-workspace-file", path);
+  },
   runCommand(command: CommandName) {
     return ipcRenderer.invoke("pluma:command", command);
   },

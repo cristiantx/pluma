@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createDocumentSession } from "@pluma/core";
 
 import {
   appendActivity,
@@ -27,6 +28,63 @@ describe("reduceShellEvent", () => {
     ).toMatchObject({
       mode: "source",
       status: "Editor mode switched to source."
+    });
+  });
+
+  it("hydrates the shell snapshot when workspace data arrives", () => {
+    const session = createDocumentSession({
+      location: {
+        kind: "desktop-path",
+        path: "/tmp/pluma/Notes.md"
+      },
+      metadata: {
+        fileId: "1",
+        mtimeMs: 10,
+        size: 10
+      },
+      rawText: "# Notes\n"
+    });
+
+    expect(
+      reduceShellEvent(initialShellState, {
+        type: "shell-snapshot",
+        snapshot: {
+          activeDocumentId: session.id,
+          documents: [session],
+          status: "Opened Notes.md.",
+          workspaceEntries: [
+            {
+              depth: 0,
+              kind: "file",
+              name: "Notes.md",
+              path: "/tmp/pluma/Notes.md"
+            }
+          ],
+          workspacePath: "/tmp/pluma"
+        }
+      })
+    ).toMatchObject({
+      activeDocumentId: session.id,
+      documents: [session],
+      status: "Opened Notes.md.",
+      workspacePath: "/tmp/pluma"
+    });
+  });
+
+  it("normalizes incomplete shell snapshots without crashing the renderer", () => {
+    expect(
+      reduceShellEvent(initialShellState, {
+        type: "shell-snapshot",
+        snapshot: {
+          status: "Recovered from partial payload."
+        } as never
+      })
+    ).toMatchObject({
+      activeDocumentId: null,
+      documents: [],
+      status: "Recovered from partial payload.",
+      workspaceEntries: [],
+      workspacePath: null
     });
   });
 });

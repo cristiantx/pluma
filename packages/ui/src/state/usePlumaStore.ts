@@ -13,12 +13,17 @@ const noop = () => {};
 const defaultCommandHandlers: PlumaCommandHandlers = {
   openFile: noop,
   openFolder: noop,
+  openWorkspaceFile: noop,
   toggleMode: noop
 };
 
 export const initialPlumaStoreState: PlumaStoreInitializer = {
   commands: {
     commandHandlers: defaultCommandHandlers
+  },
+  document: {
+    activeDocument: null,
+    documents: []
   },
   status: {
     statusMetrics: []
@@ -47,12 +52,22 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   closeTab: (tabId) => {
     set((state) => {
       const nextTabs = state.tabs.tabs.filter((tab) => tab.id !== tabId);
+      const nextDocuments = state.document.documents.filter(
+        (document) => document.id !== tabId
+      );
       const nextActiveTabId =
         state.tabs.activeTabId === tabId
           ? (nextTabs[0]?.id ?? "")
           : state.tabs.activeTabId;
+      const nextActiveDocument =
+        nextDocuments.find((document) => document.id === nextActiveTabId) ??
+        null;
 
       return {
+        document: {
+          activeDocument: nextActiveDocument,
+          documents: nextDocuments
+        },
         tabs: {
           activeTabId: nextActiveTabId,
           tabs: nextTabs
@@ -62,32 +77,26 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   },
 
   hydrateShellSnapshot: (snapshot: PlumaShellSnapshot) => {
-    set((state) => {
-      const nextTabs =
-        state.tabs.tabs.length > 0 ? state.tabs.tabs : snapshot.tabs;
-      const nextActiveTabId = nextTabs.some(
-        (tab) => tab.id === state.tabs.activeTabId
-      )
-        ? state.tabs.activeTabId
-        : (nextTabs[0]?.id ?? "");
-
-      return {
-        status: {
-          statusMetrics: snapshot.statusMetrics
-        },
-        tabs: {
-          activeTabId: nextActiveTabId,
-          tabs: nextTabs
-        },
-        workspace: {
-          explorerNodes: snapshot.explorerNodes,
-          hasWorkspace: snapshot.hasWorkspace,
-          isBridgeAvailable: snapshot.isBridgeAvailable,
-          workspaceLabel: snapshot.workspaceLabel,
-          workspacePath: snapshot.workspacePath
-        }
-      };
-    });
+    set(() => ({
+      document: {
+        activeDocument: snapshot.activeDocument,
+        documents: snapshot.documents
+      },
+      status: {
+        statusMetrics: snapshot.statusMetrics
+      },
+      tabs: {
+        activeTabId: snapshot.activeDocumentId ?? "",
+        tabs: snapshot.tabs
+      },
+      workspace: {
+        explorerNodes: snapshot.explorerNodes,
+        hasWorkspace: snapshot.hasWorkspace,
+        isBridgeAvailable: snapshot.isBridgeAvailable,
+        workspaceLabel: snapshot.workspaceLabel,
+        workspacePath: snapshot.workspacePath
+      }
+    }));
   },
 
   reorderTabs: (tabs) => {
@@ -103,6 +112,12 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
 
   setActiveTabId: (tabId) => {
     set((state) => ({
+      document: {
+        activeDocument:
+          state.document.documents.find((document) => document.id === tabId) ??
+          null,
+        documents: state.document.documents
+      },
       tabs: {
         ...state.tabs,
         activeTabId: tabId
@@ -168,6 +183,10 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
 
   triggerOpenFolder: () => {
     get().commands.commandHandlers.openFolder();
+  },
+
+  triggerOpenWorkspaceFile: (path) => {
+    get().commands.commandHandlers.openWorkspaceFile(path);
   },
 
   triggerToggleMode: () => {

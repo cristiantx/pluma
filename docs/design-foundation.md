@@ -21,7 +21,7 @@ The visual tone should feel quiet, dense, and durable. It should read as a writi
 
 ## Color Tokens
 
-Core semantic tokens live in [`apps/desktop/src/index.css`](../apps/desktop/src/index.css):
+Core semantic tokens live in [`packages/ui/src/styles/tokens.css`](../packages/ui/src/styles/tokens.css):
 
 - app backgrounds: `--app-bg`, `--app-bg-raised`
 - shell regions: `--titlebar-bg`, `--sidebar-bg`, `--editor-bg`, `--statusbar-bg`
@@ -40,16 +40,15 @@ Rules:
 ## Density And Spacing
 
 - Desktop density is the default; avoid oversized padding and mobile spacing
-- Title bar height: `54px`
-- Status bar height: `34px`
-- Primary spacing scale:
-  - `--space-1`: `4px`
-  - `--space-2`: `8px`
-  - `--space-3`: `12px`
-  - `--space-4`: `16px`
-  - `--space-5`: `20px`
-  - `--space-6`: `24px`
-- Default surface radius is restrained: `10px` controls, `18px` panels
+- Title bar height comes from `--titlebar-height` and currently resolves to `36px`
+- Tab bar height comes from `--tabbar-height` and currently resolves to `36px`
+- Status bar height comes from `--statusbar-height` and currently resolves to `36px`
+- Shared shell spacing stays tight:
+  - outer sidebar header padding is in the `10px` to `14px` range
+  - explorer row horizontal inset is `4px` per side
+  - explorer row internal padding is `3px 8px`
+  - explorer tree indentation starts at `12px` and steps by `22px` per depth level
+- Default surface radius is restrained; the explorer row uses an `8px` rounded rectangle for hover and active states
 
 ## Component Language
 
@@ -62,6 +61,10 @@ Rules:
 ### Sidebar
 
 - Compact explorer tree with clear active-row treatment
+- Folder rows rely on the chevron as the primary structural cue; avoid separate folder icons in the tree body
+- File rows keep a subtle file icon, but their text column should align with the folder text column
+- Explorer rows are inset from the pane edge and hover as rounded rectangles rather than full-width strips
+- Tree guide lines are depth-based and subtle; they should appear as hierarchy cues, not as a full background grid
 - Secondary sections may show outline, warnings, or workspace metadata
 - Tree rows should feel closer to an editor than a dashboard list
 
