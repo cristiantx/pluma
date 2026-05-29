@@ -25,13 +25,39 @@
 }
 
 .tree-list {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
   padding-bottom: 7px;
 }
 
+.tree-list::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent 21px,
+    color-mix(in srgb, var(--text-muted) 22%, transparent) 21px,
+    color-mix(in srgb, var(--text-muted) 22%, transparent) 22px,
+    transparent 22px,
+    transparent 34px
+  );
+  background-position-x: 9px;
+  transition: opacity 120ms ease;
+}
+
+.tree-list:hover::before {
+  opacity: 1;
+}
+
 .tree-item {
+  position: relative;
+  z-index: 1;
   width: 100%;
   min-height: 22px;
   display: flex;
@@ -58,17 +84,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 22px;
 }
 
 .disclosure-icon,
 .disclosure-spacer {
-  width: 12px;
-  height: 12px;
-  flex: 0 0 12px;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
   color: var(--text-muted);
 }
 
 .tree-item-folder .disclosure-icon {
+  display: block;
+  margin-top: 1px;
   color: currentColor;
 }
 
