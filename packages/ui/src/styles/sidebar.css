@@ -90,8 +90,18 @@
   color: var(--text-primary);
 }
 
+.tree-item.is-active {
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
 .tree-item-folder {
   color: var(--text-primary);
+}
+
+.tree-item-file {
+  padding-left: calc(
+    var(--tree-indent-base) + var(--depth) * var(--tree-indent-step) - 2px
+  );
 }
 
 .tree-item-label {
@@ -121,6 +131,7 @@
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
+  margin-left: -2px;
   color: var(--text-muted);
 }
 
