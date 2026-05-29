@@ -7,31 +7,11 @@
   color: var(--text-secondary);
 }
 
-.sidebar-title {
-  padding: 13px 14px 12px;
-  font-size: inherit;
-  text-transform: uppercase;
-  color: var(--text-primary);
-}
-
-.workspace-root {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 10px 10px;
-  text-transform: uppercase;
-  color: var(--text-primary);
-  font-size: inherit;
-}
-
-.workspace-root .disclosure-icon {
-  display: block;
-}
-
 .tree-list {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+  padding-top: 6px;
   padding-bottom: 7px;
 }
 

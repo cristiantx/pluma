@@ -62,12 +62,6 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-title">Explorer</div>
-      <div className="workspace-root">
-        <ChevronDown className="disclosure-icon" aria-hidden="true" />
-        <span>{rootLabel}</span>
-      </div>
-
       <div
         {...tree.getContainerProps("Files")}
         className="tree-list"
