@@ -24,6 +24,27 @@
   align-items: stretch;
   gap: 0;
   overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-muted) 28%, transparent)
+    transparent;
+}
+
+.tabbar-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tabbar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tabbar-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-muted) 22%, transparent);
+  border-radius: 999px;
+}
+
+.tabbar-scroll::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text-muted) 34%, transparent);
 }
 
 .tab {
@@ -55,6 +76,7 @@
   gap: 8px;
   padding: 0 10px;
   text-align: left;
+  white-space: nowrap;
 }
 
 .tab-close {
@@ -88,16 +110,6 @@
   color: var(--accent);
   font-size: 12px;
   line-height: 1;
-}
-
-.tab-path {
-  min-width: 0;
-  flex: 0 1 auto;
-  color: var(--text-muted);
-  font-size: 11px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .tab-drag-state,

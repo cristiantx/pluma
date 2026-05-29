@@ -1,8 +1,8 @@
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { FileText, X } from "lucide-react";
+import { useRef } from "react";
 
-import { getFileLocationName } from "@pluma/core";
 import {
   reorderTabsFromDragEvent,
   type EditorTab
@@ -28,16 +28,25 @@ function TabButton({
     id: tab.id,
     index: tabIndex
   });
+  const isActive = tab.id === activeTabId;
 
   return (
     <div
-      className={tab.id === activeTabId ? "tab is-active" : "tab"}
+      className={isActive ? "tab is-active" : "tab"}
       ref={sortable.ref}
       role="presentation"
     >
       <button
-        aria-selected={tab.id === activeTabId}
+        aria-selected={isActive}
         className="tab-activate"
+        onAuxClick={(event) => {
+          if (event.button !== 1) {
+            return;
+          }
+
+          event.preventDefault();
+          onTabClose(tab.id);
+        }}
         onClick={() => onActiveTabChange(tab.id)}
         ref={sortable.handleRef}
         role="tab"
@@ -48,7 +57,6 @@ function TabButton({
           {tab.title}
           {tab.isDirty ? <span className="tab-dirty-indicator">•</span> : null}
         </span>
-        <span className="tab-path">{getFileLocationName(tab.location)}</span>
       </button>
       <span
         aria-hidden="true"
@@ -77,6 +85,7 @@ function TabButton({
 }
 
 export function TabStrip() {
+  const tabbarScrollRef = useRef<HTMLDivElement | null>(null);
   const activeTabId = usePlumaStore((state) => state.tabs.activeTabId);
   const tabs = usePlumaStore((state) => state.tabs.tabs);
   const setActiveTabId = usePlumaStore((state) => state.setActiveTabId);
@@ -90,7 +99,26 @@ export function TabStrip() {
       }}
     >
       <div className="tabbar" aria-label="Open documents" role="tablist">
-        <div className="tabbar-scroll">
+        <div
+          className="tabbar-scroll"
+          onWheel={(event) => {
+            const container = tabbarScrollRef.current;
+            if (!container) {
+              return;
+            }
+
+            if (
+              Math.abs(event.deltaY) <= Math.abs(event.deltaX) &&
+              event.deltaX === 0
+            ) {
+              return;
+            }
+
+            event.preventDefault();
+            container.scrollLeft += event.deltaY || event.deltaX;
+          }}
+          ref={tabbarScrollRef}
+        >
           {tabs.map((tab, tabIndex) => (
             <TabButton
               activeTabId={activeTabId}
