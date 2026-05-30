@@ -153,7 +153,10 @@ export function guardMarkdownRoundTrip(
   parseResult: MarkdownParseResult
 ): MarkdownSerializationResult {
   const markdown = toMarkdown(parseResult.ast, {
-    extensions: [gfmToMarkdown(), frontmatterToMarkdown(["yaml"])]
+    bullet: "-",
+    extensions: [gfmToMarkdown(), frontmatterToMarkdown(["yaml"])],
+    fences: true,
+    listItemIndent: "one"
   });
 
   if (normalizeMarkdown(markdown) !== normalizeMarkdown(parseResult.rawText)) {

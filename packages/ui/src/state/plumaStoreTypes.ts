@@ -10,6 +10,7 @@ export type PlumaCommandHandlers = {
   openFile: () => void;
   openFolder: () => void;
   openWorkspaceFile: (path: string) => void;
+  setActiveTabId: (tabId: string) => void;
   setEditorViewMode: (mode: EditorViewMode) => void;
   updateDocumentText: (documentId: string, rawText: string) => void;
   updatePaneSizes: (paneSizes: number[]) => void;

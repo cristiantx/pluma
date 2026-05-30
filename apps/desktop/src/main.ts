@@ -12,6 +12,7 @@ import path from "node:path";
 
 import {
   createDocumentSession,
+  formatMarkdownText,
   getMarkdownDocumentCapability,
   markDocumentSessionConflict,
   markDocumentSessionSaved,
@@ -492,8 +493,16 @@ async function saveActiveDocument(): Promise<void> {
     return;
   }
 
+  const textToSave =
+    currentMode === "rich"
+      ? (await formatMarkdownText(activeDocument.rawText)).markdown
+      : activeDocument.rawText;
+
   if (currentMode === "rich") {
-    const serialized = serializeMarkdownSession(activeDocument);
+    const serialized = serializeMarkdownSession({
+      ...activeDocument,
+      rawText: textToSave
+    });
 
     if (serialized.fidelityWarnings.length > 0) {
       const fidelityWarning =
@@ -527,7 +536,7 @@ async function saveActiveDocument(): Promise<void> {
 
   const saveResult = await fileSystem.writeTextAtomic(
     activeDocument.location,
-    activeDocument.rawText,
+    textToSave,
     {
       expectedMetadata: activeDocument.lastSavedMetadata
     }
@@ -539,8 +548,9 @@ async function saveActiveDocument(): Promise<void> {
         document.id === activeDocument.id
           ? markDocumentAfterSuccessfulWrite(
               document,
-              activeDocument.rawText,
-              saveResult.metadata
+              textToSave,
+              saveResult.metadata,
+              activeDocument.rawText
             )
           : document
       ),
@@ -567,7 +577,7 @@ async function saveActiveDocument(): Promise<void> {
   updateShellData({
     documents: shellData.documents.map((document) =>
       document.id === activeDocument.id
-        ? updateDocumentSessionText(document, activeDocument.rawText)
+        ? updateDocumentSessionText(document, textToSave)
         : document
     ),
     status: `Save failed: ${saveResult.message}`
@@ -578,17 +588,25 @@ async function saveActiveDocument(): Promise<void> {
 function markDocumentAfterSuccessfulWrite(
   document: ReturnType<typeof createDocumentSession>,
   savedText: string,
-  metadata: FileMetadata
+  metadata: FileMetadata,
+  originalText: string
 ): ReturnType<typeof createDocumentSession> {
-  if (document.rawText === savedText) {
-    return markDocumentSessionSaved(document, metadata);
+  if (document.rawText === originalText || document.rawText === savedText) {
+    return markDocumentSessionSaved(
+      {
+        ...document,
+        rawText: savedText
+      },
+      metadata
+    );
   }
 
   return {
     ...document,
     lastSavedMetadata: metadata,
     lastSavedText: savedText,
-    saveState: "dirty"
+    rawText: savedText,
+    saveState: "idle"
   };
 }
 
@@ -880,6 +898,21 @@ ipcMain.handle("pluma:set-editor-mode", (_event, mode: unknown) => {
   currentMode = getAllowedEditorMode(mode);
   emitToRenderer({ type: "mode-changed", mode: currentMode });
   persistSessionStateSoon();
+});
+
+ipcMain.handle("pluma:set-active-document", (_event, documentId: unknown) => {
+  if (
+    typeof documentId !== "string" ||
+    !shellData.documents.some((document) => document.id === documentId)
+  ) {
+    return;
+  }
+
+  updateShellData({
+    activeDocumentId: documentId
+  });
+  persistSessionStateSoon();
+  emitShellSnapshot();
 });
 
 ipcMain.handle(

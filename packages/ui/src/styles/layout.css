@@ -2,7 +2,9 @@
   height: 100vh;
   min-height: 100vh;
   display: grid;
-  grid-template-rows: var(--titlebar-height) minmax(0, 1fr) var(--statusbar-height);
+  grid-template-rows: var(--titlebar-height) minmax(0, 1fr) var(
+      --statusbar-height
+    );
   overflow: hidden;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-window);

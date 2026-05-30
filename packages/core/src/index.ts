@@ -62,6 +62,11 @@ export {
   parseMarkdown,
   serializeMarkdownSession
 } from "./markdownPipeline.js";
+export type { MarkdownFormatResult } from "./markdownFormatter.js";
+export {
+  formatMarkdownText,
+  normalizeAccidentalLooseLists
+} from "./markdownFormatter.js";
 
 export interface ProjectInfo {
   name: string;

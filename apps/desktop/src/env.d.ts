@@ -12,6 +12,7 @@ declare global {
       getSettings(): Promise<AppSettings>;
       openWorkspaceFile(path: string): Promise<void>;
       runCommand(command: CommandName): Promise<void>;
+      setActiveDocument(documentId: string): Promise<void>;
       setEditorMode(mode: EditorViewMode): Promise<void>;
       updateDocumentText(documentId: string, rawText: string): Promise<void>;
       updatePaneSizes(paneSizes: number[]): Promise<void>;

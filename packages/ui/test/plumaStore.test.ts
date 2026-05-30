@@ -147,6 +147,22 @@ describe("usePlumaStore", () => {
     );
   });
 
+  it("notifies the shell when the active tab changes", () => {
+    const setActiveTabId = vi.fn();
+    usePlumaStore.getState().setCommandHandlers({ setActiveTabId });
+    usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
+
+    usePlumaStore.getState().setActiveTabId(baseDocuments[1]?.id ?? "");
+
+    expect(usePlumaStore.getState().tabs.activeTabId).toBe(
+      baseDocuments[1]?.id
+    );
+    expect(usePlumaStore.getState().document.activeDocument?.id).toBe(
+      baseDocuments[1]?.id
+    );
+    expect(setActiveTabId).toHaveBeenCalledWith(baseDocuments[1]?.id);
+  });
+
   it("notifies the shell when a tab is closed", () => {
     const closeTab = vi.fn();
     usePlumaStore.getState().setCommandHandlers({ closeTab });
