@@ -17,6 +17,9 @@ const api = {
   setEditorMode(mode: EditorViewMode) {
     return ipcRenderer.invoke("pluma:set-editor-mode", mode);
   },
+  setActiveDocument(documentId: string) {
+    return ipcRenderer.invoke("pluma:set-active-document", documentId);
+  },
   updateSettings(settings: unknown) {
     return ipcRenderer.invoke("pluma:update-settings", settings);
   },

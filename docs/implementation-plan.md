@@ -197,32 +197,32 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ## Phase 7: Pluma Markdown Formatter And Linting
 
-- [ ] Define Pluma Markdown as CommonMark + GFM + YAML frontmatter in project docs.
-- [ ] Add canonical formatting for rich-mode Markdown output.
-- [ ] Use Prettier as the formatter with explicit Markdown options:
-  - [ ] `parser: "markdown"`
-  - [ ] `proseWrap: "preserve"`
-  - [ ] stable line endings
-- [ ] Preserve Pluma source conventions after formatting:
-  - [ ] dash bullets for unordered lists and task lists
-  - [ ] tight task lists unless the user intentionally creates multi-paragraph items
-  - [ ] fenced code blocks
-  - [ ] GFM tables
-  - [ ] YAML frontmatter
-- [ ] Run formatted rich-mode output through the round-trip guard before storing or saving.
-- [ ] Keep source-mode editing unformatted during typing.
-- [ ] Add an explicit source-mode "Format Document" command or defer it behind a setting.
-- [ ] Add fixture tests for formatting:
-  - [ ] task lists do not gain blank lines between items
-  - [ ] task list markers remain `- [ ]` and `- [x]`
-  - [ ] bullet and ordered lists remain stable
-  - [ ] tables remain valid GFM
-  - [ ] frontmatter remains at the top of the document
-  - [ ] fenced code blocks preserve language info
-  - [ ] unsupported HTML is not rewritten through rich mode
-- [ ] Add markdownlint as a diagnostics and CI policy layer.
-- [ ] Decide which markdownlint rules are warnings vs fixable checks.
-- [ ] Document that Prettier owns formatting and markdownlint owns style diagnostics.
+- [x] Define Pluma Markdown as CommonMark + GFM + YAML frontmatter in project docs.
+- [x] Add canonical formatting for rich-mode Markdown output.
+- [x] Use Prettier as the formatter with explicit Markdown options:
+  - [x] `parser: "markdown"`
+  - [x] `proseWrap: "preserve"`
+  - [x] stable line endings
+- [x] Preserve Pluma source conventions after formatting:
+  - [x] dash bullets for unordered lists and task lists
+  - [x] tight task lists unless the user intentionally creates multi-paragraph items
+  - [x] fenced code blocks
+  - [x] GFM tables
+  - [x] YAML frontmatter
+- [x] Run formatted rich-mode output through the round-trip guard before storing or saving.
+- [x] Keep source-mode editing unformatted during typing.
+- [x] Add an explicit source-mode "Format Document" command or defer it behind a setting.
+- [x] Add fixture tests for formatting:
+  - [x] task lists do not gain blank lines between items
+  - [x] task list markers remain `- [ ]` and `- [x]`
+  - [x] bullet and ordered lists remain stable
+  - [x] tables remain valid GFM
+  - [x] frontmatter remains at the top of the document
+  - [x] fenced code blocks preserve language info
+  - [x] unsupported HTML is not rewritten through rich mode
+- [x] Add markdownlint as a diagnostics and CI policy layer.
+- [x] Decide which markdownlint rules are warnings vs fixable checks.
+- [x] Document that Prettier owns formatting and markdownlint owns style diagnostics.
 
 ## Phase 8: Autosave And Conflict Handling
 

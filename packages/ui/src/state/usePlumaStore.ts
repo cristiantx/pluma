@@ -18,6 +18,7 @@ const defaultCommandHandlers: PlumaCommandHandlers = {
   openFile: noop,
   openFolder: noop,
   openWorkspaceFile: noop,
+  setActiveTabId: noop,
   setEditorViewMode: noop,
   updateDocumentText: noop,
   updatePaneSizes: noop,
@@ -155,6 +156,7 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
         activeTabId: tabId
       }
     }));
+    get().commands.commandHandlers.setActiveTabId(tabId);
   },
 
   setCommandHandlers: (handlers) => {

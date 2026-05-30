@@ -13,9 +13,7 @@ describe("buildSidebarTreeData", () => {
 
     expect(treeData.rootItemId).toBe("workspace-root");
     expect(treeData.expandedItems).toContain("workspace-root");
-    expect(treeData.expandedItems).not.toContain(
-      "workspace-root/guides-0"
-    );
+    expect(treeData.expandedItems).not.toContain("workspace-root/guides-0");
     expect(treeData.selectedItems).toHaveLength(1);
     expect(treeData.tree["workspace-root"]?.children).toHaveLength(2);
   });

@@ -102,7 +102,7 @@ title: Draft
   });
 
   it("preserves original source when serialization changes formatting", () => {
-    const rawText = "- one\n- two\n";
+    const rawText = "* one\n* two\n";
     const result = guardMarkdownRoundTrip(parseMarkdown(rawText));
 
     expect(result.markdown).toBe(rawText);

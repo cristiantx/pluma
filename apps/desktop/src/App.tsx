@@ -62,6 +62,7 @@ export function App() {
       openFile: () => runCommand(setShellState, "open-file"),
       openFolder: () => runCommand(setShellState, "open-folder"),
       openWorkspaceFile: (path) => runWorkspaceFileCommand(setShellState, path),
+      setActiveTabId: (tabId) => runSetActiveTabCommand(setShellState, tabId),
       setEditorViewMode: (mode) => runSetEditorViewMode(setShellState, mode),
       updateDocumentText: (documentId, rawText) =>
         runUpdateDocumentText(setShellState, documentId, rawText),
@@ -197,6 +198,28 @@ function runSetEditorViewMode(
   }
 
   void window.pluma.setEditorMode(mode);
+}
+
+function runSetActiveTabCommand(
+  setShellState: Dispatch<SetStateAction<typeof initialShellState>>,
+  tabId: string
+) {
+  setShellState((current) => {
+    if (!current.documents.some((document) => document.id === tabId)) {
+      return current;
+    }
+
+    return {
+      ...current,
+      activeDocumentId: tabId
+    };
+  });
+
+  if (!window.pluma) {
+    return;
+  }
+
+  void window.pluma.setActiveDocument(tabId);
 }
 
 function runUpdateDocumentText(

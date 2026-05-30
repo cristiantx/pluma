@@ -1,7 +1,7 @@
 import { Crepe } from "@milkdown/crepe";
 import { useEffect, useRef, useState } from "react";
 
-import { normalizeRichMarkdown } from "./normalizeRichMarkdown.js";
+import { formatMarkdownText } from "@pluma/core";
 
 export type RichEditorProps = {
   "aria-label"?: string;
@@ -20,6 +20,7 @@ export function RichEditor({
 }: RichEditorProps) {
   const editorRef = useRef<Crepe | null>(null);
   const lastAppliedMarkdownRef = useRef(rawText);
+  const markdownUpdateRevisionRef = useRef(0);
   const onChangeRef = useRef(onChange);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [editorRevision, setEditorRevision] = useState(0);
@@ -44,10 +45,20 @@ export function RichEditor({
 
     editor.on((api) => {
       api.markdownUpdated((_, markdown) => {
-        const normalizedMarkdown = normalizeRichMarkdown(markdown);
+        const updateRevision = markdownUpdateRevisionRef.current + 1;
+        markdownUpdateRevisionRef.current = updateRevision;
 
-        lastAppliedMarkdownRef.current = normalizedMarkdown;
-        onChangeRef.current(normalizedMarkdown);
+        void formatMarkdownText(markdown).then((formatResult) => {
+          if (
+            isDisposed ||
+            updateRevision !== markdownUpdateRevisionRef.current
+          ) {
+            return;
+          }
+
+          lastAppliedMarkdownRef.current = formatResult.markdown;
+          onChangeRef.current(formatResult.markdown);
+        });
       });
     });
 
