@@ -1,11 +1,13 @@
 import type { ProjectInfo } from "@pluma/core";
 
+export { RichEditor } from "./RichEditor.js";
 export { SourceEditor } from "./SourceEditor.js";
 export {
   markdownCommandKeymap,
   runMarkdownCommand,
   type MarkdownCommandName
 } from "./markdownCommands.js";
+export type { RichEditorProps } from "./RichEditor.js";
 export { plumaSourceEditorTheme } from "./sourceEditorTheme.js";
 export type { SourceEditorProps } from "./SourceEditor.js";
 

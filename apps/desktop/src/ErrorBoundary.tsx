@@ -34,7 +34,7 @@ export class ErrorBoundary extends Component<
             background: "#1b1511",
             color: "#f4e7d5",
             fontFamily:
-              '"IBM Plex Sans", "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif'
+              '"Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
           }}
         >
           <h1 style={{ marginTop: 0 }}>Renderer error</h1>

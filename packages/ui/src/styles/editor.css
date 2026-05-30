@@ -28,7 +28,7 @@
   line-height: 1.5;
 }
 
-.preview-pane,
+.rich-pane,
 .source-pane {
   flex: 1 1 0;
   min-width: 0;
@@ -36,99 +36,201 @@
   overflow: auto;
 }
 
-.preview-pane {
-  max-width: 42%;
+.rich-pane {
   border-right: 1px solid var(--border-default);
   background: var(--editor-bg);
 }
 
-.editor-panes[data-view-mode="rich"] .preview-pane {
+.editor-panes[data-view-mode="rich"] .rich-pane {
   max-width: none;
   border-right: 0;
 }
 
-.editor-panes[data-view-mode="rich"] .preview-document {
-  max-width: 620px;
-}
-
-.preview-document {
-  max-width: 312px;
-  margin: 41px auto 58px;
-  padding: 0 16px;
+.rich-document {
+  min-height: 100%;
   color: var(--text-primary);
 }
 
-.preview-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0 0 16px;
-  color: var(--text-muted);
-  font-size: 12px;
-  text-transform: uppercase;
+.rich-editor {
+  min-height: 100%;
+  background: var(--editor-bg);
 }
 
-.preview-document h1 {
-  margin: 0 0 13px;
-  font-size: 1.65rem;
-  line-height: 1.04;
-  letter-spacing: 0;
+.rich-editor-surface {
+  min-height: 100%;
 }
 
-.preview-document p {
-  margin: 0 0 6px;
-  color: var(--text-secondary);
-  font-size: 0.65rem;
-  line-height: 1.55;
+.rich-editor .milkdown {
+  min-height: 100%;
+  --crepe-color-background: var(--editor-bg);
+  --crepe-color-on-background: var(--text-primary);
+  --crepe-color-surface: var(--surface-bg);
+  --crepe-color-surface-low: var(--editor-source-bg);
+  --crepe-color-on-surface: var(--text-primary);
+  --crepe-color-on-surface-variant: var(--text-secondary);
+  --crepe-color-outline: var(--border-strong);
+  --crepe-color-primary: var(--accent);
+  --crepe-color-secondary: var(--active-control);
+  --crepe-color-on-secondary: var(--text-primary);
+  --crepe-color-inverse: var(--text-primary);
+  --crepe-color-on-inverse: var(--surface-bg);
+  --crepe-color-inline-code: var(--accent-code);
+  --crepe-color-error: var(--warning);
+  --crepe-color-hover: var(--active-row);
+  --crepe-color-selected: var(--active-control);
+  --crepe-color-inline-area: var(--editor-source-bg);
+  --crepe-font-title: var(--font-ui);
+  --crepe-font-default: var(--font-ui);
+  --crepe-font-code: var(--font-editor);
+  --crepe-shadow-1: 0 8px 28px rgba(16, 24, 32, 0.14);
+  --crepe-shadow-2: 0 16px 44px rgba(16, 24, 32, 0.18);
 }
 
-.preview-document hr {
-  margin: 23px 0 25px;
-  border: 0;
-  border-top: 1px solid var(--border-default);
+.rich-editor .ProseMirror {
+  min-height: calc(
+    100vh - var(--titlebar-height) - var(--tabbar-height) -
+      var(--statusbar-height)
+  );
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 64px 92px 88px;
 }
 
-.preview-document h2 {
-  margin: 0 0 11px;
-  font-size: 1.05rem;
+.rich-editor .ProseMirror > *:first-child {
+  margin-top: 0;
+}
+
+.rich-editor .ProseMirror h1 {
+  margin: 0 0 14px;
+  font-size: 1.55rem;
   line-height: 1.1;
 }
 
-.preview-document ul {
-  display: grid;
-  gap: 8px;
-  margin: 0 0 16px;
-  padding-left: 16px;
-  color: var(--text-primary);
-  font-size: 0.65rem;
+.rich-editor .ProseMirror h2 {
+  margin: 18px 0 10px;
+  font-size: 1.12rem;
+  line-height: 1.18;
 }
 
-.preview-document pre {
-  margin: 0 0 28px;
-  padding: 13px 11px;
+.rich-editor .ProseMirror h3 {
+  margin: 16px 0 8px;
+  font-size: 0.95rem;
+  line-height: 1.24;
+}
+
+.rich-editor .ProseMirror p {
+  margin: 0 0 10px;
+  color: var(--text-secondary);
+}
+
+.rich-editor .ProseMirror ul,
+.rich-editor .ProseMirror ol {
+  margin: 0 0 12px;
+  padding-left: 22px;
+  color: var(--text-secondary);
+}
+
+.rich-editor .ProseMirror li {
+  margin: 4px 0;
+}
+
+.rich-editor .milkdown-list-item-block {
+  margin: 2px 0;
+  padding: 0;
+}
+
+.rich-editor .milkdown-list-item-block > .list-item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  list-style: none;
+}
+
+.rich-editor .milkdown-list-item-block > .list-item::marker {
+  content: "";
+}
+
+.rich-editor .milkdown-list-item-block .label-wrapper {
+  flex: 0 0 24px;
+  height: 28px;
+  color: var(--text-muted);
+}
+
+.rich-editor .milkdown-list-item-block .label-wrapper svg {
+  fill: currentColor;
+}
+
+.rich-editor .milkdown-list-item-block .children {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.rich-editor .milkdown-list-item-block .children > :first-child {
+  margin-top: 0;
+}
+
+.rich-editor .milkdown-list-item-block .children > :last-child {
+  margin-bottom: 0;
+}
+
+.rich-editor .ProseMirror blockquote {
+  margin: 12px 0;
+  padding-left: 14px;
+  border-left: 3px solid var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.rich-editor .ProseMirror code {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--editor-source-bg);
+  color: var(--accent-code);
+  font-family: var(--font-editor);
+  font-size: 0.9em;
+}
+
+.rich-editor .ProseMirror pre {
+  margin: 12px 0 16px;
+  padding: 12px;
   overflow: auto;
   border: 1px solid var(--border-default);
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--surface-bg) 82%, var(--accent) 3%);
+  border-radius: var(--radius-control);
+  background: var(--editor-source-bg);
+}
+
+.rich-editor .ProseMirror pre code {
+  border: 0;
+  background: transparent;
   color: var(--text-secondary);
-  font-family: var(--font-editor);
-  font-size: 0.6rem;
-  line-height: 1.6;
 }
 
-.preview-document blockquote {
-  margin: 0;
-  padding-left: 18px;
-  border-left: 3px solid var(--border-strong);
+.rich-editor .ProseMirror table {
+  width: 100%;
+  margin: 12px 0;
+  border-collapse: collapse;
+  font-size: 13px;
 }
 
-.preview-document blockquote p:last-child {
-  margin-top: 8px;
+.rich-editor .ProseMirror th,
+.rich-editor .ProseMirror td {
+  padding: 6px 8px;
+  border: 1px solid var(--border-default);
+  text-align: left;
 }
 
 .source-pane {
   background: var(--editor-source-bg);
   font-family: var(--font-editor);
+}
+
+.source-only-notice {
+  border-bottom: 1px solid var(--border-default);
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--warning) 12%, var(--editor-source-bg));
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 12px;
 }
 
 .pluma-source-editor {
