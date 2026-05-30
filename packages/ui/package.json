@@ -14,8 +14,10 @@
   },
   "dependencies": {
     "@dnd-kit/react": "^0.1.21",
+    "@fontsource/open-sans": "^5.2.7",
     "@headless-tree/core": "^1.4.0",
     "@headless-tree/react": "^1.4.0",
+    "@milkdown/crepe": "^7.21.1",
     "@pluma/core": "workspace:*",
     "@pluma/editor": "workspace:*",
     "@radix-ui/react-tooltip": "^1.2.8",

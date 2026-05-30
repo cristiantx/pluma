@@ -12,9 +12,12 @@ import path from "node:path";
 
 import {
   createDocumentSession,
+  getMarkdownDocumentCapability,
   markDocumentSessionConflict,
   markDocumentSessionSaved,
   markDocumentSessionSaving,
+  markdownPipeline,
+  serializeMarkdownSession,
   updateDocumentSessionText,
   type DesktopFileLocation,
   type FileMetadata
@@ -225,6 +228,26 @@ function isEditorViewMode(value: unknown): value is EditorViewMode {
   return value === "source" || value === "rich" || value === "split";
 }
 
+function getActiveDocumentCapability(): ReturnType<
+  typeof getMarkdownDocumentCapability
+> | null {
+  const activeDocument = shellData.documents.find(
+    (document) => document.id === shellData.activeDocumentId
+  );
+
+  return activeDocument?.capability ?? null;
+}
+
+function getAllowedEditorMode(mode: EditorViewMode): EditorViewMode {
+  return mode !== "source" && getActiveDocumentCapability() === "source-only"
+    ? "source"
+    : mode;
+}
+
+function getNextEditorMode(): EditorViewMode {
+  return getAllowedEditorMode(currentMode === "rich" ? "source" : "rich");
+}
+
 async function persistSessionState(): Promise<void> {
   if (!app.isReady()) {
     return;
@@ -302,10 +325,14 @@ async function createSessionForFilePath(
   }
 
   const rawText = await fileSystem.readText(fileLocation);
+  const analysis = markdownPipeline.analyze(markdownPipeline.parse(rawText));
+  const capability = getMarkdownDocumentCapability(analysis);
 
   return createDocumentSession({
+    capability,
     location: fileLocation,
     metadata,
+    mode: capability === "rich-safe" ? "rich" : "source",
     rawText
   });
 }
@@ -422,11 +449,13 @@ async function openFilePath(
       : null);
 
   mergeDocumentSession(session);
+  currentMode = getAllowedEditorMode(currentMode);
   updateShellData({
     status: `Opened ${path.basename(filePath)}.`,
     workspaceEntries: workspacePath ? shellData.workspaceEntries : [],
     workspacePath
   });
+  emitToRenderer({ type: "mode-changed", mode: currentMode });
   persistSessionStateSoon();
   emitShellSnapshot();
 }
@@ -461,6 +490,29 @@ async function saveActiveDocument(): Promise<void> {
       message: "Save is only available for desktop files."
     });
     return;
+  }
+
+  if (currentMode === "rich") {
+    const serialized = serializeMarkdownSession(activeDocument);
+
+    if (serialized.fidelityWarnings.length > 0) {
+      const fidelityWarning =
+        serialized.fidelityWarnings[0] ??
+        "Rich-mode save was blocked to avoid losing Markdown fidelity.";
+
+      updateShellData({
+        documents: shellData.documents.map((document) =>
+          document.id === activeDocument.id
+            ? { ...document, capability: "source-only", mode: "source" }
+            : document
+        ),
+        status: fidelityWarning
+      });
+      currentMode = "source";
+      emitToRenderer({ type: "mode-changed", mode: currentMode });
+      emitShellSnapshot();
+      return;
+    }
   }
 
   updateShellData({
@@ -694,7 +746,7 @@ async function handleCommand(command: CommandName): Promise<void> {
       });
       return;
     case "toggle-mode":
-      currentMode = currentMode === "rich" ? "source" : "rich";
+      currentMode = getNextEditorMode();
       emitToRenderer({ type: "mode-changed", mode: currentMode });
       persistSessionStateSoon();
       return;
@@ -825,7 +877,7 @@ ipcMain.handle("pluma:set-editor-mode", (_event, mode: unknown) => {
     return;
   }
 
-  currentMode = mode;
+  currentMode = getAllowedEditorMode(mode);
   emitToRenderer({ type: "mode-changed", mode: currentMode });
   persistSessionStateSoon();
 });

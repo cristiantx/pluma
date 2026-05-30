@@ -171,31 +171,60 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ## Phase 6: Rich Editor
 
-- [ ] Add Milkdown wrapper in `packages/editor`.
-- [ ] Apply the Pluma design system to rich-mode chrome and controls.
-- [ ] Theme Milkdown through Pluma theme tokens for light and dark modes.
-- [ ] Enable CommonMark support.
-- [ ] Enable GFM support.
-- [ ] Add basic rich editing controls for:
-  - [ ] heading levels
-  - [ ] bold
-  - [ ] italic
-  - [ ] strikethrough
-  - [ ] inline code
-  - [ ] bullet list
-  - [ ] ordered list
-  - [ ] task list
-  - [ ] blockquote
-  - [ ] fenced code block
-  - [ ] table insertion
-  - [ ] link insertion
-  - [ ] image link insertion
-- [ ] Synchronize Milkdown output back to `DocumentSession`.
-- [ ] Block rich-mode save when the round-trip guard fails.
-- [ ] Route unsupported documents to source mode with preview.
-- [ ] Add tests for rich/source switching without content loss.
+- [x] Add Milkdown wrapper in `packages/editor`.
+- [x] Apply the Pluma design system to rich-mode chrome and controls.
+- [x] Theme Milkdown through Pluma theme tokens for light and dark modes.
+- [x] Enable CommonMark support.
+- [x] Enable GFM support.
+- [x] Add basic rich editing controls through Crepe's built-in floating toolbar, top bar, block menu, and block handles for:
+  - [x] heading levels
+  - [x] bold
+  - [x] italic
+  - [x] strikethrough
+  - [x] inline code
+  - [x] bullet list
+  - [x] ordered list
+  - [x] task list
+  - [x] blockquote
+  - [x] fenced code block
+  - [x] table insertion
+  - [x] link insertion
+  - [x] image link insertion
+- [x] Synchronize Milkdown output back to `DocumentSession`.
+- [x] Block rich-mode save when the round-trip guard fails.
+- [x] Route unsupported documents to source mode with preview.
+- [x] Add tests for rich/source switching without content loss.
 
-## Phase 7: Autosave And Conflict Handling
+## Phase 7: Pluma Markdown Formatter And Linting
+
+- [ ] Define Pluma Markdown as CommonMark + GFM + YAML frontmatter in project docs.
+- [ ] Add canonical formatting for rich-mode Markdown output.
+- [ ] Use Prettier as the formatter with explicit Markdown options:
+  - [ ] `parser: "markdown"`
+  - [ ] `proseWrap: "preserve"`
+  - [ ] stable line endings
+- [ ] Preserve Pluma source conventions after formatting:
+  - [ ] dash bullets for unordered lists and task lists
+  - [ ] tight task lists unless the user intentionally creates multi-paragraph items
+  - [ ] fenced code blocks
+  - [ ] GFM tables
+  - [ ] YAML frontmatter
+- [ ] Run formatted rich-mode output through the round-trip guard before storing or saving.
+- [ ] Keep source-mode editing unformatted during typing.
+- [ ] Add an explicit source-mode "Format Document" command or defer it behind a setting.
+- [ ] Add fixture tests for formatting:
+  - [ ] task lists do not gain blank lines between items
+  - [ ] task list markers remain `- [ ]` and `- [x]`
+  - [ ] bullet and ordered lists remain stable
+  - [ ] tables remain valid GFM
+  - [ ] frontmatter remains at the top of the document
+  - [ ] fenced code blocks preserve language info
+  - [ ] unsupported HTML is not rewritten through rich mode
+- [ ] Add markdownlint as a diagnostics and CI policy layer.
+- [ ] Decide which markdownlint rules are warnings vs fixable checks.
+- [ ] Document that Prettier owns formatting and markdownlint owns style diagnostics.
+
+## Phase 8: Autosave And Conflict Handling
 
 - [x] Persist desktop session identity across app launches:
   - [x] open document paths
@@ -220,7 +249,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
   - [ ] compare manually
 - [ ] Add tests for autosave, atomic save, and external modification detection.
 
-## Phase 8: MVP UI Polish
+## Phase 9: MVP UI Polish
 
 - [ ] Finalize light and dark theme polish across shell, sidebar, editor chrome, and status surfaces.
 - [ ] Verify consistency of the implemented design system across all major UI surfaces.
@@ -231,7 +260,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Verify text does not overflow controls across common window sizes.
 - [ ] Keep the UI quiet, dense, and document-focused.
 
-## Phase 8.1: Post-Foundation Feature Candidates
+## Phase 9.1: Post-Foundation Feature Candidates
 
 - [ ] Evaluate fast workspace search with `@vscode/ripgrep`.
 - [ ] Evaluate focus mode.
@@ -244,7 +273,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Evaluate PDF export.
 - [ ] Evaluate HTML-to-Markdown import or paste cleanup with `turndown` or a GFM-compatible alternative.
 
-## Phase 9: Packaging And Distribution
+## Phase 10: Packaging And Distribution
 
 - [ ] Configure app metadata:
   - [ ] app name
@@ -260,7 +289,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Verify packaged app launch on macOS.
 - [ ] Verify double-clicking `.md` opens the file in Pluma.
 
-## Phase 10: Future Browser Path
+## Phase 11: Future Browser Path
 
 - [ ] Keep browser-specific work out of the MVP runtime.
 - [ ] Document the planned `BrowserFileSystemAdapter`.

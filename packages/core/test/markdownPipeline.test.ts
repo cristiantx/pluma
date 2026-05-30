@@ -110,4 +110,38 @@ title: Draft
       "Markdown serialization changed the source text. Source text was preserved to avoid losing document fidelity."
     ]);
   });
+
+  it("allows rich saves only when Markdown can round-trip without content loss", () => {
+    const safeSession = createDocumentSession({
+      capability: "rich-safe",
+      location: {
+        kind: "desktop-path",
+        path: "/Users/me/Documents/safe.md"
+      },
+      metadata: null,
+      mode: "rich",
+      rawText: "# Safe\n"
+    });
+    const sourceOnlySession = createDocumentSession({
+      capability: "source-only",
+      location: {
+        kind: "desktop-path",
+        path: "/Users/me/Documents/source-only.md"
+      },
+      metadata: null,
+      mode: "source",
+      rawText: "<aside>Keep exact</aside>\n"
+    });
+
+    expect(serializeMarkdownSession(safeSession)).toEqual({
+      fidelityWarnings: [],
+      markdown: "# Safe\n"
+    });
+    expect(serializeMarkdownSession(sourceOnlySession)).toEqual({
+      fidelityWarnings: [
+        "Inline or block HTML is preserved in source mode because rich editing could change execution or rendering semantics."
+      ],
+      markdown: "<aside>Keep exact</aside>\n"
+    });
+  });
 });
