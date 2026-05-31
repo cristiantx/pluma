@@ -3,7 +3,12 @@ import type { FileMetadata } from "./fileSystemAdapter.js";
 
 export type DocumentCapability = "rich-safe" | "source-only" | "unknown";
 export type DocumentMode = "rich" | "source";
-export type DocumentSaveState = "conflict" | "dirty" | "idle" | "saving";
+export type DocumentSaveState =
+  | "conflict"
+  | "dirty"
+  | "external-change"
+  | "idle"
+  | "saving";
 
 export type DocumentSession = {
   capability: DocumentCapability;
@@ -85,5 +90,15 @@ export function markDocumentSessionConflict(
   return {
     ...session,
     saveState: "conflict"
+  };
+}
+
+export function markDocumentSessionExternalChange(
+  session: DocumentSession
+): DocumentSession {
+  return {
+    ...session,
+    saveState:
+      session.rawText === session.lastSavedText ? "external-change" : "conflict"
   };
 }

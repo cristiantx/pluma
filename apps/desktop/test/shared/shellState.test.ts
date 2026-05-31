@@ -5,7 +5,7 @@ import {
   appendActivity,
   initialShellState,
   reduceShellEvent
-} from "../src/shellState";
+} from "../../src/shared/shellState";
 
 describe("appendActivity", () => {
   it("caps the activity feed to six items", () => {

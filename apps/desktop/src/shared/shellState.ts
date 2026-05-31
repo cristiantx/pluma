@@ -26,9 +26,12 @@ export type RendererEvent =
   | { type: "status"; message: string };
 
 export type CommandName =
+  | "compare-conflict"
+  | "keep-editing"
   | "open-devtools"
   | "open-file"
   | "open-folder"
+  | "reload-from-disk"
   | "save"
   | "save-as"
   | "toggle-mode";

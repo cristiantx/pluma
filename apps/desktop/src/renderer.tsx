@@ -2,8 +2,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import "@pluma/ui-styles";
-import { App } from "./App";
-import { ErrorBoundary } from "./ErrorBoundary";
+import { App } from "./renderer/App";
+import { ErrorBoundary } from "./renderer/ErrorBoundary";
 import "./index.css";
 
 const rootElement = document.getElementById("root");

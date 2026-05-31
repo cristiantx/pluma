@@ -9,6 +9,7 @@ export {
   createDocumentSession,
   getDocumentSessionId,
   markDocumentSessionConflict,
+  markDocumentSessionExternalChange,
   markDocumentSessionSaved,
   markDocumentSessionSaving,
   updateDocumentSessionText

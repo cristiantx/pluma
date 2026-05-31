@@ -6,7 +6,7 @@ import type {
   StatusMetric
 } from "@pluma/ui";
 
-import type { ShellState } from "./shellState";
+import type { ShellState } from "../shared/shellState";
 
 function getDocuments(state: ShellState): DocumentSession[] {
   return state.documents ?? [];
@@ -138,6 +138,8 @@ function toSaveMetricValue(document: DocumentSession): string {
       return "Saved";
     case "dirty":
       return "Dirty";
+    case "external-change":
+      return "Changed on disk";
     case "saving":
       return "Saving";
     case "conflict":
