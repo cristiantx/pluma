@@ -24,6 +24,8 @@ const defaultCommandHandlers: PlumaCommandHandlers = {
   reloadFromDisk: noop,
   setActiveTabId: noop,
   setEditorViewMode: noop,
+  showTabContextMenu: noop,
+  showWorkspaceContextMenu: noop,
   updateDocumentText: noop,
   updatePaneSizes: noop,
   toggleMode: noop
@@ -148,6 +150,21 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
       tabs: {
         ...state.tabs,
         activeTabId: tabId
+      },
+      workspace: {
+        ...state.workspace,
+        explorerNodes: state.workspace.explorerNodes.map((node) => ({
+          ...node,
+          isActive:
+            node.kind === "file" &&
+            state.document.documents.some(
+              (document) =>
+                document.id === tabId &&
+                document.location.kind === "desktop-path" &&
+                node.location?.kind === "desktop-path" &&
+                document.location.path === node.location.path
+            )
+        }))
       }
     }));
     get().commands.commandHandlers.setActiveTabId(tabId);
@@ -172,6 +189,14 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
       }
     }));
     get().commands.commandHandlers.setEditorViewMode(mode);
+  },
+
+  showTabContextMenu: (tabId) => {
+    get().commands.commandHandlers.showTabContextMenu(tabId);
+  },
+
+  showWorkspaceContextMenu: (path, kind) => {
+    get().commands.commandHandlers.showWorkspaceContextMenu(path, kind);
   },
 
   setSystemPrefersDark: (matches) => {

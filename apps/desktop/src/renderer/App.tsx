@@ -68,6 +68,10 @@ export function App() {
       reloadFromDisk: () => runCommand(setShellState, "reload-from-disk"),
       setActiveTabId: (tabId) => runSetActiveTabCommand(setShellState, tabId),
       setEditorViewMode: (mode) => runSetEditorViewMode(setShellState, mode),
+      showTabContextMenu: (tabId) =>
+        runShowTabContextMenuCommand(setShellState, tabId),
+      showWorkspaceContextMenu: (path, kind) =>
+        runShowWorkspaceContextMenuCommand(setShellState, path, kind),
       updateDocumentText: (documentId, rawText) =>
         runUpdateDocumentText(setShellState, documentId, rawText),
       updatePaneSizes: schedulePaneSizesSave,
@@ -255,4 +259,35 @@ function runCloseTabCommand(
   }
 
   void window.pluma.closeTab(tabId);
+}
+
+function runShowTabContextMenuCommand(
+  setShellState: Dispatch<SetStateAction<typeof initialShellState>>,
+  tabId: string
+) {
+  if (!window.pluma) {
+    setShellState((current) => ({
+      ...current,
+      status: `Cannot show tab menu for "${tabId}" because IPC is unavailable.`
+    }));
+    return;
+  }
+
+  void window.pluma.showTabContextMenu(tabId);
+}
+
+function runShowWorkspaceContextMenuCommand(
+  setShellState: Dispatch<SetStateAction<typeof initialShellState>>,
+  filePath: string,
+  kind: "file" | "folder"
+) {
+  if (!window.pluma) {
+    setShellState((current) => ({
+      ...current,
+      status: `Cannot show file menu for "${filePath}" because IPC is unavailable.`
+    }));
+    return;
+  }
+
+  void window.pluma.showWorkspaceContextMenu(filePath, kind);
 }

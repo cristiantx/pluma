@@ -12,6 +12,7 @@ import { usePlumaStore } from "../state/usePlumaStore.js";
 type TabButtonProps = {
   activeTabId: string;
   onActiveTabChange: (tabId: string) => void;
+  onContextMenu: (tabId: string) => void;
   onTabClose: (tabId: string) => void;
   tab: EditorTab;
   tabIndex: number;
@@ -20,6 +21,7 @@ type TabButtonProps = {
 function TabButton({
   activeTabId,
   onActiveTabChange,
+  onContextMenu,
   onTabClose,
   tab,
   tabIndex
@@ -48,6 +50,11 @@ function TabButton({
           onTabClose(tab.id);
         }}
         onClick={() => onActiveTabChange(tab.id)}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          onActiveTabChange(tab.id);
+          onContextMenu(tab.id);
+        }}
         ref={sortable.handleRef}
         role="tab"
         type="button"
@@ -92,6 +99,7 @@ export function TabStrip() {
   const setActiveTabId = usePlumaStore((state) => state.setActiveTabId);
   const closeTab = usePlumaStore((state) => state.closeTab);
   const reorderTabs = usePlumaStore((state) => state.reorderTabs);
+  const showTabContextMenu = usePlumaStore((state) => state.showTabContextMenu);
   const [scrollIndicator, setScrollIndicator] = useState({
     isVisible: false,
     left: 0,
@@ -206,6 +214,7 @@ export function TabStrip() {
               activeTabId={activeTabId}
               key={tab.id}
               onActiveTabChange={setActiveTabId}
+              onContextMenu={showTabContextMenu}
               onTabClose={closeTab}
               tab={tab}
               tabIndex={tabIndex}

@@ -61,7 +61,16 @@ const baseSnapshot: PlumaShellSnapshot = {
       id: "welcome",
       isActive: true,
       kind: "file",
-      label: "Welcome.md"
+      label: "Welcome.md",
+      location: baseTabs[0].location
+    },
+    {
+      depth: 1,
+      id: "syntax",
+      isActive: false,
+      kind: "file",
+      label: "Syntax.md",
+      location: baseTabs[1].location
     }
   ],
   editorViewMode: "source",
@@ -94,7 +103,7 @@ describe("usePlumaStore", () => {
     expect(state.workspace.workspaceLabel).toBe("PLUMA DOCS");
     expect(state.workspace.hasWorkspace).toBe(true);
     expect(state.workspace.isDevelopment).toBe(false);
-    expect(state.workspace.explorerNodes).toHaveLength(2);
+    expect(state.workspace.explorerNodes).toHaveLength(3);
     expect(state.document.activeDocument?.id).toBe(baseDocuments[0]?.id);
     expect(state.document.documents).toHaveLength(2);
     expect(state.tabs.tabs).toEqual(baseTabs);
@@ -163,6 +172,16 @@ describe("usePlumaStore", () => {
     expect(usePlumaStore.getState().document.activeDocument?.id).toBe(
       baseDocuments[1]?.id
     );
+    expect(
+      usePlumaStore
+        .getState()
+        .workspace.explorerNodes.find((node) => node.id === "welcome")?.isActive
+    ).toBe(false);
+    expect(
+      usePlumaStore
+        .getState()
+        .workspace.explorerNodes.find((node) => node.id === "syntax")?.isActive
+    ).toBe(true);
     expect(setActiveTabId).toHaveBeenCalledWith(baseDocuments[1]?.id);
   });
 

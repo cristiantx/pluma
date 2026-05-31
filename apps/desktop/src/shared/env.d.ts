@@ -15,6 +15,11 @@ declare global {
       runCommand(command: CommandName): Promise<void>;
       setActiveDocument(documentId: string): Promise<void>;
       setEditorMode(mode: EditorViewMode): Promise<void>;
+      showTabContextMenu(tabId: string): Promise<void>;
+      showWorkspaceContextMenu(
+        path: string,
+        kind: "file" | "folder"
+      ): Promise<void>;
       updateDocumentText(documentId: string, rawText: string): Promise<void>;
       updatePaneSizes(paneSizes: number[]): Promise<void>;
       updateSettings(settings: Partial<AppSettings>): Promise<AppSettings>;

@@ -284,6 +284,13 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 ## Phase 9.1: Post-Foundation Feature Candidates
 
 - [ ] Evaluate fast workspace search with `@vscode/ripgrep`.
+- [ ] Evaluate multi-window desktop support:
+  - [ ] keep Pluma as a single Electron app instance with multiple `BrowserWindow`s.
+  - [ ] introduce a per-window session/controller for documents, active tab, workspace, pane sizes, autosave timers, and file watchers.
+  - [ ] route IPC commands by sender window instead of using one global active document/session.
+  - [ ] add `File > New Window` and define whether opened files reuse the active window or create a new window.
+  - [ ] protect unsaved changes per window and during app-wide quit across all open windows.
+  - [ ] decide whether session restore should restore one previous window or all previous windows.
 - [ ] Evaluate focus mode.
 - [ ] Evaluate typewriter mode.
 - [ ] Evaluate spellcheck using Electron's built-in spellchecker before adding native spellcheck dependencies.

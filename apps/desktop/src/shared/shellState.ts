@@ -26,6 +26,7 @@ export type RendererEvent =
   | { type: "status"; message: string };
 
 export type CommandName =
+  | "close-active-tab"
   | "compare-conflict"
   | "keep-editing"
   | "new-file"

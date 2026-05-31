@@ -14,6 +14,9 @@ export const Sidebar = memo(function Sidebar() {
   const triggerOpenWorkspaceFile = usePlumaStore(
     (state) => state.triggerOpenWorkspaceFile
   );
+  const showWorkspaceContextMenu = usePlumaStore(
+    (state) => state.showWorkspaceContextMenu
+  );
   const workspacePath = usePlumaStore((state) => state.workspace.workspacePath);
   const rootLabel =
     workspaceLabel === "No workspace open" ? "PLUMA DOCS" : workspaceLabel;
@@ -24,6 +27,7 @@ export const Sidebar = memo(function Sidebar() {
         key={workspacePath}
         nodes={nodes}
         onOpenWorkspaceFile={triggerOpenWorkspaceFile}
+        onShowContextMenu={showWorkspaceContextMenu}
         rootLabel={rootLabel}
       />
 
