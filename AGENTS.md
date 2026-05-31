@@ -11,12 +11,21 @@
   - Use lowercase feature folders such as `components/shell`.
   - Colocate feature-local components, helpers, and tests when they primarily serve one surface.
   - Avoid vague buckets and dead files.
+- Keep files small and responsibility-focused across the repo:
+  - Avoid adding unrelated behavior to already-large files.
+  - When any source file approaches roughly 300 lines, look for a clear split before adding more behavior.
+  - Prefer extracting by responsibility or feature surface over creating generic buckets such as `helpers`, `utils`, or `lib`.
+  - Entry points should stay thin and delegate to explicit modules.
 - Prefer semantic HTML and keyboard-safe controls:
   - Use real `button`, `nav`, `header`, `aside`, `section`, and `footer` elements.
   - Do not use clickable `div` elements for interactive controls.
 - Keep renderer boundaries clean:
   - Shared presentation and view logic belong in renderer modules.
   - Electron-only windowing, dialogs, menus, preload, and IPC glue stay out of presentational components.
+- Keep desktop main-process modules small and explicit:
+  - `apps/desktop/src/main.ts` should stay a thin entrypoint that wires runtime constants into main-process modules.
+  - Do not add feature logic directly to `main.ts`; place Electron app lifecycle, IPC registration, menus, dialogs, workspace operations, file watching, and session/save behavior in explicit files under `apps/desktop/src/main/*`.
+  - Avoid vague buckets such as `helpers` or `lib` for main-process code; prefer folders like `menus`, `dialogs`, `workspace`, `watching`, `persistence`, `ipc`, `windows`, or `session`.
 - Use typed shared state when renderer coordination starts crossing shell boundaries:
   - Prefer the shared Zustand store for shell-wide theme, tabs, workspace, and status state.
   - Define and export explicit slice, snapshot, and action types.
