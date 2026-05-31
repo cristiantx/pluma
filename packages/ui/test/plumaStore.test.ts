@@ -252,18 +252,22 @@ describe("usePlumaStore", () => {
   it("triggers registered commands through typed handlers", () => {
     const openDevTools = vi.fn();
     const openFile = vi.fn();
+    const newFile = vi.fn();
     const openWorkspaceFile = vi.fn();
 
     usePlumaStore.getState().setCommandHandlers({
+      newFile,
       openDevTools,
       openFile,
       openWorkspaceFile
     });
     usePlumaStore.getState().triggerOpenDevTools();
+    usePlumaStore.getState().triggerNewFile();
     usePlumaStore.getState().triggerOpenFile();
     usePlumaStore.getState().triggerOpenWorkspaceFile("/tmp/Notes.md");
 
     expect(openDevTools).toHaveBeenCalledTimes(1);
+    expect(newFile).toHaveBeenCalledTimes(1);
     expect(openFile).toHaveBeenCalledTimes(1);
     expect(openWorkspaceFile).toHaveBeenCalledWith("/tmp/Notes.md");
   });

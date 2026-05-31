@@ -61,6 +61,7 @@ declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
 let mainWindow: BrowserWindow | null = null;
+let autosaveEnabled = true;
 let currentMode: EditorViewMode = "source";
 let isQuitting = false;
 let pendingOpenTargets: string[] = [];
@@ -201,6 +202,26 @@ function getAllowedEditorMode(mode: EditorViewMode): EditorViewMode {
 
 function getNextEditorMode(): EditorViewMode {
   return getAllowedEditorMode(currentMode === "rich" ? "source" : "rich");
+}
+
+function getDefaultNewFilePath(): string {
+  return path.join(
+    shellData.workspacePath ?? app.getPath("documents"),
+    "Untitled.md"
+  );
+}
+
+function getDefaultSaveAsPath(document: DocumentSession): string {
+  if (document.location.kind === "desktop-path") {
+    const parsedPath = path.parse(document.location.path);
+
+    return path.join(
+      parsedPath.dir,
+      `${parsedPath.name} copy${parsedPath.ext}`
+    );
+  }
+
+  return getDefaultNewFilePath();
 }
 
 async function persistSessionState(): Promise<void> {
@@ -369,6 +390,33 @@ async function handleActiveFileExternalChange(filePath: string): Promise<void> {
   }
 
   autosaveScheduler.clear(activeDocument.id);
+
+  if (activeDocument.rawText === activeDocument.lastSavedText) {
+    const nextSession = await createSessionForFilePath(fileSystem, filePath);
+
+    if (!nextSession) {
+      updateShellData({
+        documents: shellData.documents.map((document) =>
+          document.id === activeDocument.id
+            ? markDocumentSessionConflict(document)
+            : document
+        ),
+        status: "Active file changed on disk but could not be reloaded."
+      });
+      emitShellSnapshot();
+      return;
+    }
+
+    updateShellData({
+      documents: shellData.documents.map((document) =>
+        document.id === activeDocument.id ? nextSession : document
+      ),
+      status: "Active file reloaded from disk."
+    });
+    emitShellSnapshot();
+    return;
+  }
+
   updateShellData({
     documents: shellData.documents.map((document) =>
       document.id === activeDocument.id
@@ -445,6 +493,91 @@ async function saveActiveDocument(): Promise<void> {
   }
 
   await saveDocument(activeDocument.id, "manual");
+}
+
+async function createNewMarkdownFile(): Promise<void> {
+  if (!mainWindow) {
+    return;
+  }
+
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: getDefaultNewFilePath(),
+    filters: [{ name: "Markdown", extensions: ["md", "markdown", "mdown"] }],
+    title: "New Markdown File"
+  });
+
+  if (result.canceled || !result.filePath) {
+    emitToRenderer({ type: "status", message: "New file cancelled." });
+    return;
+  }
+
+  const fileLocation = {
+    kind: "desktop-path" as const,
+    path: result.filePath
+  };
+  const writeResult = await fileSystem.writeTextAtomic(
+    fileLocation,
+    "# Untitled\n"
+  );
+
+  if (writeResult.kind !== "success") {
+    emitToRenderer({
+      type: "status",
+      message:
+        writeResult.kind === "conflict"
+          ? `New file conflict: file was ${writeResult.reason}.`
+          : `New file failed: ${writeResult.message}`
+    });
+    return;
+  }
+
+  await openFilePath(result.filePath);
+  await refreshWorkspaceEntries();
+}
+
+async function saveActiveDocumentAs(): Promise<void> {
+  if (!mainWindow) {
+    return;
+  }
+
+  const activeDocument = getActiveDocument();
+
+  if (!activeDocument) {
+    emitToRenderer({ type: "status", message: "No active document to save." });
+    return;
+  }
+
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: getDefaultSaveAsPath(activeDocument),
+    filters: [{ name: "Markdown", extensions: ["md", "markdown", "mdown"] }],
+    title: "Save Markdown File As"
+  });
+
+  if (result.canceled || !result.filePath) {
+    emitToRenderer({ type: "status", message: "Save As cancelled." });
+    return;
+  }
+
+  const textToSave = activeDocument.rawText;
+  const fileLocation = {
+    kind: "desktop-path" as const,
+    path: result.filePath
+  };
+  const saveResult = await fileSystem.writeTextAtomic(fileLocation, textToSave);
+
+  if (saveResult.kind !== "success") {
+    emitToRenderer({
+      type: "status",
+      message:
+        saveResult.kind === "conflict"
+          ? `Save As conflict: file was ${saveResult.reason}.`
+          : `Save As failed: ${saveResult.message}`
+    });
+    return;
+  }
+
+  await openFilePath(result.filePath);
+  await refreshWorkspaceEntries();
 }
 
 async function saveDocument(
@@ -784,6 +917,48 @@ function normalizeOpenTargets(argumentsList: string[]): string[] {
   });
 }
 
+async function setAutosaveEnabled(enabled: boolean): Promise<void> {
+  const currentSettings = await readAppSettings(getAppSettingsPath());
+  const nextSettings: AppSettings = {
+    ...currentSettings,
+    autosaveEnabled: enabled
+  };
+
+  await writeAppSettings(getAppSettingsPath(), nextSettings);
+  autosaveEnabled = enabled;
+
+  if (!autosaveEnabled) {
+    autosaveScheduler.clearAll();
+  }
+
+  Menu.setApplicationMenu(buildMenu());
+  emitToRenderer({
+    type: "status",
+    message: autosaveEnabled ? "Auto Save enabled." : "Auto Save disabled."
+  });
+}
+
+function getAppMenu(): MenuItemConstructorOptions[] {
+  return process.platform === "darwin"
+    ? [
+        {
+          label: app.name,
+          submenu: [
+            { role: "about" },
+            { type: "separator" },
+            { role: "services" },
+            { type: "separator" },
+            { role: "hide" },
+            { role: "hideOthers" },
+            { role: "unhide" },
+            { type: "separator" },
+            { role: "quit" }
+          ]
+        }
+      ]
+    : [];
+}
+
 async function handleCommand(command: CommandName): Promise<void> {
   if (!mainWindow) {
     return;
@@ -795,6 +970,9 @@ async function handleCommand(command: CommandName): Promise<void> {
       return;
     case "keep-editing":
       await keepEditingActiveDocument();
+      return;
+    case "new-file":
+      await createNewMarkdownFile();
       return;
     case "open-file": {
       const result = await dialog.showOpenDialog(mainWindow, {
@@ -848,10 +1026,7 @@ async function handleCommand(command: CommandName): Promise<void> {
       await saveActiveDocument();
       return;
     case "save-as":
-      emitToRenderer({
-        type: "status",
-        message: "Save As is not available yet."
-      });
+      await saveActiveDocumentAs();
       return;
     case "toggle-mode":
       currentMode = getNextEditorMode();
@@ -875,9 +1050,15 @@ function buildMenu(): Menu {
       : [{ role: "minimize" }, { role: "zoom" }, { role: "close" }];
 
   return Menu.buildFromTemplate([
+    ...getAppMenu(),
     {
       label: "File",
       submenu: [
+        {
+          label: "New File",
+          accelerator: "CmdOrCtrl+N",
+          click: () => void handleCommand("new-file")
+        },
         {
           label: "Open File",
           accelerator: "CmdOrCtrl+O",
@@ -897,8 +1078,16 @@ function buildMenu(): Menu {
         {
           label: "Save As",
           accelerator: "CmdOrCtrl+Shift+S",
-          enabled: false,
           click: () => void handleCommand("save-as")
+        },
+        { type: "separator" },
+        {
+          checked: autosaveEnabled,
+          click: (menuItem) => {
+            void setAutosaveEnabled(menuItem.checked);
+          },
+          label: "Auto Save",
+          type: "checkbox"
         },
         { type: "separator" },
         process.platform === "darwin" ? { role: "close" } : { role: "quit" }
@@ -1085,7 +1274,11 @@ ipcMain.handle(
       (document) => document.id === documentId
     );
     if (nextDocument?.saveState === "dirty") {
-      autosaveScheduler.schedule(documentId);
+      if (autosaveEnabled) {
+        autosaveScheduler.schedule(documentId);
+      } else {
+        autosaveScheduler.clear(documentId);
+      }
     } else {
       autosaveScheduler.clear(documentId);
     }
@@ -1094,7 +1287,10 @@ ipcMain.handle(
 );
 
 ipcMain.handle("pluma:get-settings", async () => {
-  return readAppSettings(getAppSettingsPath());
+  const settings = await readAppSettings(getAppSettingsPath());
+  autosaveEnabled = settings.autosaveEnabled;
+
+  return settings;
 });
 
 ipcMain.handle(
@@ -1103,12 +1299,20 @@ ipcMain.handle(
     const currentSettings = await readAppSettings(getAppSettingsPath());
     const nextSettings: AppSettings = {
       ...currentSettings,
+      ...(typeof settings.autosaveEnabled === "boolean"
+        ? { autosaveEnabled: settings.autosaveEnabled }
+        : {}),
       ...(isThemePreference(settings.themePreference)
         ? { themePreference: settings.themePreference }
         : {})
     };
 
     await writeAppSettings(getAppSettingsPath(), nextSettings);
+    autosaveEnabled = nextSettings.autosaveEnabled;
+
+    if (!autosaveEnabled) {
+      autosaveScheduler.clearAll();
+    }
 
     return nextSettings;
   }
@@ -1133,6 +1337,8 @@ async function installDevelopmentExtensions(): Promise<void> {
 app.whenReady().then(async () => {
   setApplicationIcon();
   await installDevelopmentExtensions();
+  autosaveEnabled = (await readAppSettings(getAppSettingsPath()))
+    .autosaveEnabled;
   Menu.setApplicationMenu(buildMenu());
   await restorePersistedSessionState();
   createWindow();

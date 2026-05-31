@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   createDocumentSession,
   markDocumentSessionExternalChange,
+  markDocumentSessionSaveError,
   markDocumentSessionSaving,
   shouldProtectDocumentSessionClose,
   updateDocumentSessionText
@@ -52,7 +53,7 @@ describe("document session save states", () => {
     });
   });
 
-  it("protects documents that are not cleanly saved", () => {
+  it("protects documents with in-memory save risk", () => {
     const session = createDocumentSession({
       location: {
         kind: "desktop-path",
@@ -78,6 +79,16 @@ describe("document session save states", () => {
     expect(
       shouldProtectDocumentSessionClose(
         markDocumentSessionExternalChange(session)
+      )
+    ).toBe(false);
+    expect(
+      shouldProtectDocumentSessionClose(markDocumentSessionSaveError(session))
+    ).toBe(true);
+    expect(
+      shouldProtectDocumentSessionClose(
+        markDocumentSessionExternalChange(
+          updateDocumentSessionText(session, "# Edited\n")
+        )
       )
     ).toBe(true);
   });

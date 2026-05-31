@@ -2,6 +2,7 @@ import type { CommandName, RendererEvent } from "./shellState";
 import type { EditorViewMode, ThemePreference } from "@pluma/ui";
 
 type AppSettings = {
+  autosaveEnabled: boolean;
   themePreference: ThemePreference;
 };
 

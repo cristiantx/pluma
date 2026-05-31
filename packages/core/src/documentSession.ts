@@ -116,5 +116,10 @@ export function markDocumentSessionExternalChange(
 export function shouldProtectDocumentSessionClose(
   session: DocumentSession
 ): boolean {
-  return session.saveState !== "idle";
+  return (
+    session.saveState === "conflict" ||
+    session.saveState === "dirty" ||
+    session.saveState === "error" ||
+    session.saveState === "saving"
+  );
 }

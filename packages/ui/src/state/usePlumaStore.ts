@@ -16,6 +16,7 @@ const defaultCommandHandlers: PlumaCommandHandlers = {
   closeTab: noop,
   compareConflict: noop,
   keepEditing: noop,
+  newFile: noop,
   openDevTools: noop,
   openFile: noop,
   openFolder: noop,
@@ -130,6 +131,10 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
 
   reloadFromDisk: () => {
     get().commands.commandHandlers.reloadFromDisk();
+  },
+
+  triggerNewFile: () => {
+    get().commands.commandHandlers.newFile();
   },
 
   setActiveTabId: (tabId) => {

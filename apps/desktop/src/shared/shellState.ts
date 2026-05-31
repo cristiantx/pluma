@@ -28,6 +28,7 @@ export type RendererEvent =
 export type CommandName =
   | "compare-conflict"
   | "keep-editing"
+  | "new-file"
   | "open-devtools"
   | "open-file"
   | "open-folder"

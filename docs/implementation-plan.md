@@ -255,19 +255,19 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [x] Protect dirty, saving, and conflicted documents before quitting the app.
 - [x] Confirm before reloading from disk when in-memory edits would be discarded.
 - [x] Decide whether `Save As` belongs in MVP:
-  - [ ] implement `Save As` for desktop files and untitled/new documents, or
-  - [x] remove or disable the visible `Save As` menu item until it is supported.
+  - [x] implement `Save As` for desktop files and untitled/new documents, or
+  - [ ] remove or disable the visible `Save As` menu item until it is supported.
 - [x] Replace the placeholder compare action:
   - [ ] implement a minimal manual compare flow, or
   - [x] rename/remove `Compare Manually` so it does not imply an unavailable feature.
-- [ ] Make autosave failures durable in document state instead of status-only messaging.
-- [ ] Validate folder watcher behavior on supported platforms:
-  - [ ] document macOS/Windows-only assumptions for recursive watching, or
+- [x] Make autosave failures durable in document state instead of status-only messaging.
+- [x] Validate folder watcher behavior on supported platforms:
+  - [x] document macOS-only assumptions for recursive watching, or
   - [ ] add a fallback for platforms where recursive `fs.watch` is unavailable.
-- [ ] Decide whether new file creation is part of MVP:
-  - [ ] wire sidebar new-file action and untitled document save flow, or
+- [x] Decide whether new file creation is part of MVP:
+  - [x] wire sidebar new-file action and untitled document save flow, or
   - [ ] remove or disable create controls until supported.
-- [ ] Confirm standalone-file behavior while a workspace is open.
+- [x] Confirm standalone-file behavior while a workspace is open.
 - [ ] Run a manual desktop smoke test for autosave, conflicts, reload, keep-editing, close protection, and workspace refresh.
 
 ## Phase 9: MVP UI Polish

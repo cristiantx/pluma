@@ -1,4 +1,4 @@
-import { FilePlus2, FolderPlus } from "lucide-react";
+import { FileText, FolderOpen } from "lucide-react";
 import { memo } from "react";
 
 import { usePlumaStore } from "../state/usePlumaStore.js";
@@ -9,7 +9,7 @@ export const Sidebar = memo(function Sidebar() {
   const workspaceLabel = usePlumaStore(
     (state) => state.workspace.workspaceLabel
   );
-  const triggerOpenFile = usePlumaStore((state) => state.triggerOpenFile);
+  const triggerNewFile = usePlumaStore((state) => state.triggerNewFile);
   const triggerOpenFolder = usePlumaStore((state) => state.triggerOpenFolder);
   const triggerOpenWorkspaceFile = usePlumaStore(
     (state) => state.triggerOpenWorkspaceFile
@@ -31,18 +31,20 @@ export const Sidebar = memo(function Sidebar() {
         <button
           aria-label="New file"
           className="sidebar-action"
-          onClick={triggerOpenFile}
+          onClick={triggerNewFile}
+          title="New file"
           type="button"
         >
-          <FilePlus2 aria-hidden="true" />
+          <FileText aria-hidden="true" />
         </button>
         <button
-          aria-label="New folder"
+          aria-label="Open folder"
           className="sidebar-action"
           onClick={triggerOpenFolder}
+          title="Open folder"
           type="button"
         >
-          <FolderPlus aria-hidden="true" />
+          <FolderOpen aria-hidden="true" />
         </button>
       </div>
     </aside>

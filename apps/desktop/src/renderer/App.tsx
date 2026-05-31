@@ -60,6 +60,7 @@ export function App() {
       closeTab: (tabId) => runCloseTabCommand(setShellState, tabId),
       compareConflict: () => runCommand(setShellState, "compare-conflict"),
       keepEditing: () => runCommand(setShellState, "keep-editing"),
+      newFile: () => runCommand(setShellState, "new-file"),
       openDevTools: () => runCommand(setShellState, "open-devtools"),
       openFile: () => runCommand(setShellState, "open-file"),
       openFolder: () => runCommand(setShellState, "open-folder"),
