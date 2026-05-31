@@ -70,7 +70,7 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
               Keep Editing
             </button>
             <button onClick={compareConflict} type="button">
-              Compare Manually
+              Show Path
             </button>
           </div>
         </div>

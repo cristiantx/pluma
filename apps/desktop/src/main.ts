@@ -1,22 +1,26 @@
 import {
   app,
   BrowserWindow,
+  clipboard,
   Menu,
   dialog,
   ipcMain,
   nativeImage,
+  shell,
   type MenuItemConstructorOptions
 } from "electron";
-import { stat } from "node:fs/promises";
+import { copyFile, cp, mkdir, rename, stat } from "node:fs/promises";
 import path from "node:path";
 
 import {
   formatMarkdownText,
   markDocumentSessionConflict,
   markDocumentSessionExternalChange,
+  markDocumentSessionSaveError,
   markDocumentSessionSaved,
   markDocumentSessionSaving,
   serializeMarkdownSession,
+  shouldProtectDocumentSessionClose,
   updateDocumentSessionText,
   type DocumentCapability,
   type DocumentSession,
@@ -59,7 +63,9 @@ declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
 let mainWindow: BrowserWindow | null = null;
+let autosaveEnabled = true;
 let currentMode: EditorViewMode = "source";
+let isQuitting = false;
 let pendingOpenTargets: string[] = [];
 const fileSystem = new DesktopFileSystemAdapter();
 const isDevelopment = Boolean(MAIN_WINDOW_VITE_DEV_SERVER_URL);
@@ -75,6 +81,11 @@ let shellData: DesktopShellSnapshot = {
 const sessionStateFileName = "session-state.json";
 const appSettingsFileName = "settings.json";
 const autosaveDelayMs = 900;
+let workspaceClipboard: {
+  operation: "copy" | "cut";
+  path: string;
+  kind: "file" | "folder";
+} | null = null;
 
 const autosaveScheduler = new AutosaveScheduler(
   autosaveDelayMs,
@@ -200,6 +211,26 @@ function getNextEditorMode(): EditorViewMode {
   return getAllowedEditorMode(currentMode === "rich" ? "source" : "rich");
 }
 
+function getDefaultNewFilePath(): string {
+  return path.join(
+    shellData.workspacePath ?? app.getPath("documents"),
+    "Untitled.md"
+  );
+}
+
+function getDefaultSaveAsPath(document: DocumentSession): string {
+  if (document.location.kind === "desktop-path") {
+    const parsedPath = path.parse(document.location.path);
+
+    return path.join(
+      parsedPath.dir,
+      `${parsedPath.name} copy${parsedPath.ext}`
+    );
+  }
+
+  return getDefaultNewFilePath();
+}
+
 async function persistSessionState(): Promise<void> {
   if (!app.isReady()) {
     return;
@@ -256,6 +287,140 @@ function closeDocumentSession(documentId: string): void {
         : "Closed document tab."
   });
   updateActiveFileWatcher();
+}
+
+function closeDocumentSessions(documentIds: string[], status: string): void {
+  const documentIdSet = new Set(documentIds);
+
+  for (const documentId of documentIdSet) {
+    autosaveScheduler.clear(documentId);
+  }
+
+  const nextDocuments = shellData.documents.filter(
+    (document) => !documentIdSet.has(document.id)
+  );
+  const activeDocumentId = documentIdSet.has(shellData.activeDocumentId ?? "")
+    ? (nextDocuments[0]?.id ?? null)
+    : shellData.activeDocumentId;
+
+  updateShellData({
+    activeDocumentId,
+    documents: nextDocuments,
+    status
+  });
+  updateActiveFileWatcher();
+}
+
+function getDocumentById(documentId: string): DocumentSession | null {
+  return (
+    shellData.documents.find((document) => document.id === documentId) ?? null
+  );
+}
+
+function getProtectedDocuments(): DocumentSession[] {
+  return shellData.documents.filter(shouldProtectDocumentSessionClose);
+}
+
+function getDocumentTargetDirectory(
+  targetPath: string,
+  kind: "file" | "folder"
+): string {
+  return kind === "folder" ? targetPath : path.dirname(targetPath);
+}
+
+function getDocumentsInPath(
+  targetPath: string,
+  kind: "file" | "folder"
+): DocumentSession[] {
+  return shellData.documents.filter((document) => {
+    if (document.location.kind !== "desktop-path") {
+      return false;
+    }
+
+    return kind === "folder"
+      ? document.location.path === targetPath ||
+          isPathInsideDirectory(targetPath, document.location.path)
+      : document.location.path === targetPath;
+  });
+}
+
+async function closeActiveDocumentSession(): Promise<void> {
+  const activeDocument = getActiveDocument();
+
+  if (!activeDocument) {
+    emitToRenderer({ type: "status", message: "No active document to close." });
+    return;
+  }
+
+  if (
+    shouldProtectDocumentSessionClose(activeDocument) &&
+    !(await confirmDiscardProtectedDocuments([activeDocument], "close-tab"))
+  ) {
+    emitToRenderer({ type: "status", message: "Close tab cancelled." });
+    emitShellSnapshot();
+    return;
+  }
+
+  closeDocumentSession(activeDocument.id);
+  persistSessionStateSoon();
+  emitShellSnapshot();
+}
+
+async function closeDocumentsWithProtection(
+  documents: DocumentSession[],
+  status: string
+): Promise<void> {
+  if (documents.length === 0) {
+    emitToRenderer({ type: "status", message: "No tabs to close." });
+    return;
+  }
+
+  const protectedDocuments = documents.filter(
+    shouldProtectDocumentSessionClose
+  );
+
+  if (
+    protectedDocuments.length > 0 &&
+    !(await confirmDiscardProtectedDocuments(protectedDocuments, "close-tab"))
+  ) {
+    emitToRenderer({ type: "status", message: "Close tab cancelled." });
+    emitShellSnapshot();
+    return;
+  }
+
+  closeDocumentSessions(
+    documents.map((document) => document.id),
+    status
+  );
+  persistSessionStateSoon();
+  emitShellSnapshot();
+}
+
+async function confirmDiscardProtectedDocuments(
+  documents: DocumentSession[],
+  action: "close-tab" | "quit" | "reload"
+): Promise<boolean> {
+  if (!mainWindow || documents.length === 0) {
+    return true;
+  }
+
+  const detail =
+    documents.length === 1
+      ? "This document has unsaved, saving, or conflicted changes."
+      : `${documents.length} documents have unsaved, saving, or conflicted changes.`;
+  const actionLabel =
+    action === "quit" ? "Quit" : action === "reload" ? "Reload" : "Close";
+  const result = await dialog.showMessageBox(mainWindow, {
+    buttons: [actionLabel, "Cancel"],
+    cancelId: 1,
+    defaultId: 1,
+    detail,
+    message: `${actionLabel} anyway?`,
+    noLink: true,
+    type: "warning"
+  });
+
+  return result.response === 0;
 }
 
 function updateActiveFileWatcher(): void {
@@ -329,6 +494,33 @@ async function handleActiveFileExternalChange(filePath: string): Promise<void> {
   }
 
   autosaveScheduler.clear(activeDocument.id);
+
+  if (activeDocument.rawText === activeDocument.lastSavedText) {
+    const nextSession = await createSessionForFilePath(fileSystem, filePath);
+
+    if (!nextSession) {
+      updateShellData({
+        documents: shellData.documents.map((document) =>
+          document.id === activeDocument.id
+            ? markDocumentSessionConflict(document)
+            : document
+        ),
+        status: "Active file changed on disk but could not be reloaded."
+      });
+      emitShellSnapshot();
+      return;
+    }
+
+    updateShellData({
+      documents: shellData.documents.map((document) =>
+        document.id === activeDocument.id ? nextSession : document
+      ),
+      status: "Active file reloaded from disk."
+    });
+    emitShellSnapshot();
+    return;
+  }
+
   updateShellData({
     documents: shellData.documents.map((document) =>
       document.id === activeDocument.id
@@ -405,6 +597,195 @@ async function saveActiveDocument(): Promise<void> {
   }
 
   await saveDocument(activeDocument.id, "manual");
+}
+
+async function createNewMarkdownFile(): Promise<void> {
+  if (!mainWindow) {
+    return;
+  }
+
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: getDefaultNewFilePath(),
+    filters: [{ name: "Markdown", extensions: ["md", "markdown", "mdown"] }],
+    title: "New Markdown File"
+  });
+
+  if (result.canceled || !result.filePath) {
+    emitToRenderer({ type: "status", message: "New file cancelled." });
+    return;
+  }
+
+  const fileLocation = {
+    kind: "desktop-path" as const,
+    path: result.filePath
+  };
+  const writeResult = await fileSystem.writeTextAtomic(
+    fileLocation,
+    "# Untitled\n"
+  );
+
+  if (writeResult.kind !== "success") {
+    emitToRenderer({
+      type: "status",
+      message:
+        writeResult.kind === "conflict"
+          ? `New file conflict: file was ${writeResult.reason}.`
+          : `New file failed: ${writeResult.message}`
+    });
+    return;
+  }
+
+  await openFilePath(result.filePath);
+  await refreshWorkspaceEntries();
+}
+
+async function saveActiveDocumentAs(): Promise<void> {
+  if (!mainWindow) {
+    return;
+  }
+
+  const activeDocument = getActiveDocument();
+
+  if (!activeDocument) {
+    emitToRenderer({ type: "status", message: "No active document to save." });
+    return;
+  }
+
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: getDefaultSaveAsPath(activeDocument),
+    filters: [{ name: "Markdown", extensions: ["md", "markdown", "mdown"] }],
+    title: "Save Markdown File As"
+  });
+
+  if (result.canceled || !result.filePath) {
+    emitToRenderer({ type: "status", message: "Save As cancelled." });
+    return;
+  }
+
+  const textToSave = activeDocument.rawText;
+  const fileLocation = {
+    kind: "desktop-path" as const,
+    path: result.filePath
+  };
+  const saveResult = await fileSystem.writeTextAtomic(fileLocation, textToSave);
+
+  if (saveResult.kind !== "success") {
+    emitToRenderer({
+      type: "status",
+      message:
+        saveResult.kind === "conflict"
+          ? `Save As conflict: file was ${saveResult.reason}.`
+          : `Save As failed: ${saveResult.message}`
+    });
+    return;
+  }
+
+  await openFilePath(result.filePath);
+  await refreshWorkspaceEntries();
+}
+
+async function renameDocument(documentId: string): Promise<void> {
+  if (!mainWindow) {
+    return;
+  }
+
+  const document = getDocumentById(documentId);
+
+  if (!document || document.location.kind !== "desktop-path") {
+    emitToRenderer({
+      type: "status",
+      message: "Only desktop files can be renamed."
+    });
+    return;
+  }
+
+  const result = await dialog.showSaveDialog(mainWindow, {
+    buttonLabel: "Rename",
+    defaultPath: document.location.path,
+    filters: [{ name: "Markdown", extensions: ["md", "markdown", "mdown"] }],
+    title: "Rename Markdown File"
+  });
+
+  if (result.canceled || !result.filePath) {
+    emitToRenderer({ type: "status", message: "Rename cancelled." });
+    return;
+  }
+
+  const targetPath = result.filePath;
+
+  if (targetPath === document.location.path) {
+    emitToRenderer({ type: "status", message: "Rename kept the same path." });
+    return;
+  }
+
+  try {
+    const existingTarget = await stat(targetPath).catch(() => null);
+
+    if (existingTarget) {
+      emitToRenderer({
+        type: "status",
+        message: "Rename cancelled: target file already exists."
+      });
+      return;
+    }
+
+    selfWritePaths.add(document.location.path);
+    selfWritePaths.add(targetPath);
+    await rename(document.location.path, targetPath);
+  } catch (error) {
+    emitToRenderer({
+      type: "status",
+      message:
+        error instanceof Error
+          ? `Rename failed: ${error.message}`
+          : "Rename failed."
+    });
+    return;
+  } finally {
+    selfWritePaths.delete(document.location.path);
+    selfWritePaths.delete(targetPath);
+  }
+
+  const nextSession = await createSessionForFilePath(fileSystem, targetPath);
+
+  if (!nextSession) {
+    emitToRenderer({
+      type: "status",
+      message: "Rename completed, but the renamed file could not be reopened."
+    });
+    closeDocumentSession(document.id);
+    await refreshWorkspaceEntries();
+    persistSessionStateSoon();
+    emitShellSnapshot();
+    return;
+  }
+
+  const renamedDocument: DocumentSession = {
+    ...document,
+    id: nextSession.id,
+    lastSavedMetadata: nextSession.lastSavedMetadata,
+    location: nextSession.location
+  };
+
+  autosaveScheduler.clear(document.id);
+  if (autosaveEnabled && renamedDocument.saveState === "dirty") {
+    autosaveScheduler.schedule(renamedDocument.id);
+  }
+
+  updateShellData({
+    activeDocumentId:
+      shellData.activeDocumentId === document.id
+        ? renamedDocument.id
+        : shellData.activeDocumentId,
+    documents: shellData.documents.map((candidate) =>
+      candidate.id === document.id ? renamedDocument : candidate
+    ),
+    status: `Renamed ${path.basename(document.location.path)} to ${path.basename(targetPath)}.`
+  });
+  updateActiveFileWatcher();
+  await refreshWorkspaceEntries();
+  persistSessionStateSoon();
+  emitShellSnapshot();
 }
 
 async function saveDocument(
@@ -536,7 +917,10 @@ async function saveDocument(
   updateShellData({
     documents: shellData.documents.map((document) =>
       document.id === activeDocument.id
-        ? updateDocumentSessionText(document, textToSave)
+        ? markDocumentSessionSaveError({
+            ...document,
+            rawText: textToSave
+          })
         : document
     ),
     status: `Save failed: ${saveResult.message}`
@@ -549,6 +933,14 @@ async function reloadActiveDocumentFromDisk(): Promise<void> {
 
   if (!activeDocument || activeDocument.location.kind !== "desktop-path") {
     emitToRenderer({ type: "status", message: "No desktop file to reload." });
+    return;
+  }
+
+  if (
+    shouldProtectDocumentSessionClose(activeDocument) &&
+    !(await confirmDiscardProtectedDocuments([activeDocument], "reload"))
+  ) {
+    emitToRenderer({ type: "status", message: "Reload cancelled." });
     return;
   }
 
@@ -608,9 +1000,455 @@ function showManualCompareStatus(): void {
     type: "status",
     message:
       activeDocument?.location.kind === "desktop-path"
-        ? `Compare manually: ${activeDocument.location.path}`
-        : "No desktop file to compare."
+        ? `File path: ${activeDocument.location.path}`
+        : "No desktop file path to show."
   });
+}
+
+function copyDocumentPath(documentId: string): void {
+  const document = getDocumentById(documentId);
+
+  if (!document || document.location.kind !== "desktop-path") {
+    emitToRenderer({ type: "status", message: "No file path to copy." });
+    return;
+  }
+
+  clipboard.writeText(document.location.path);
+  emitToRenderer({ type: "status", message: "Copied file path." });
+}
+
+function showDocumentInFolder(documentId: string): void {
+  const document = getDocumentById(documentId);
+
+  if (!document || document.location.kind !== "desktop-path") {
+    emitToRenderer({ type: "status", message: "No file to show in folder." });
+    return;
+  }
+
+  shell.showItemInFolder(document.location.path);
+  emitToRenderer({ type: "status", message: "Showing file in folder." });
+}
+
+function showTabContextMenu(documentId: string): void {
+  const document = getDocumentById(documentId);
+
+  if (!document || !mainWindow) {
+    return;
+  }
+
+  const otherDocuments = shellData.documents.filter(
+    (candidate) => candidate.id !== document.id
+  );
+  const savedDocuments = shellData.documents.filter(
+    (candidate) => candidate.saveState === "idle"
+  );
+  const hasDesktopPath = document.location.kind === "desktop-path";
+  const menu = Menu.buildFromTemplate([
+    {
+      label: "Close",
+      click: () =>
+        void closeDocumentsWithProtection([document], "Closed document tab.")
+    },
+    {
+      enabled: otherDocuments.length > 0,
+      label: "Close others",
+      click: () =>
+        void closeDocumentsWithProtection(
+          otherDocuments,
+          "Closed other document tabs."
+        )
+    },
+    {
+      enabled: savedDocuments.length > 0,
+      label: "Close saved tabs",
+      click: () =>
+        void closeDocumentsWithProtection(
+          savedDocuments,
+          "Closed saved document tabs."
+        )
+    },
+    {
+      enabled: shellData.documents.length > 0,
+      label: "Close all tabs",
+      click: () =>
+        void closeDocumentsWithProtection(
+          shellData.documents,
+          "Closed all document tabs."
+        )
+    },
+    { type: "separator" },
+    {
+      enabled: hasDesktopPath,
+      label: "Rename",
+      click: () => void renameDocument(document.id)
+    },
+    {
+      enabled: hasDesktopPath,
+      label: "Copy path",
+      click: () => copyDocumentPath(document.id)
+    },
+    {
+      enabled: hasDesktopPath,
+      label: "Show in folder",
+      click: () => showDocumentInFolder(document.id)
+    }
+  ]);
+
+  menu.popup({ window: mainWindow });
+}
+
+async function createWorkspaceFile(
+  targetPath: string,
+  kind: "file" | "folder"
+): Promise<void> {
+  if (!mainWindow) {
+    return;
+  }
+
+  const targetDirectory = getDocumentTargetDirectory(targetPath, kind);
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: path.join(targetDirectory, "Untitled.md"),
+    filters: [{ name: "Markdown", extensions: ["md", "markdown", "mdown"] }],
+    title: "New Markdown File"
+  });
+
+  if (result.canceled || !result.filePath) {
+    emitToRenderer({ type: "status", message: "New file cancelled." });
+    return;
+  }
+
+  const writeResult = await fileSystem.writeTextAtomic(
+    { kind: "desktop-path", path: result.filePath },
+    "# Untitled\n"
+  );
+
+  if (writeResult.kind !== "success") {
+    emitToRenderer({
+      type: "status",
+      message:
+        writeResult.kind === "conflict"
+          ? `New file conflict: file was ${writeResult.reason}.`
+          : `New file failed: ${writeResult.message}`
+    });
+    return;
+  }
+
+  await openFilePath(result.filePath, {
+    workspacePath: shellData.workspacePath
+  });
+  await refreshWorkspaceEntries();
+}
+
+async function createWorkspaceDirectory(
+  targetPath: string,
+  kind: "file" | "folder"
+): Promise<void> {
+  if (!mainWindow) {
+    return;
+  }
+
+  const targetDirectory = getDocumentTargetDirectory(targetPath, kind);
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: path.join(targetDirectory, "New Folder"),
+    title: "New Directory"
+  });
+
+  if (result.canceled || !result.filePath) {
+    emitToRenderer({ type: "status", message: "New directory cancelled." });
+    return;
+  }
+
+  try {
+    await mkdir(result.filePath);
+  } catch (error) {
+    emitToRenderer({
+      type: "status",
+      message:
+        error instanceof Error
+          ? `New directory failed: ${error.message}`
+          : "New directory failed."
+    });
+    return;
+  }
+
+  await refreshWorkspaceEntries();
+  emitToRenderer({
+    type: "status",
+    message: `Created directory ${path.basename(result.filePath)}.`
+  });
+}
+
+async function renameWorkspaceItem(
+  targetPath: string,
+  kind: "file" | "folder"
+): Promise<void> {
+  if (!mainWindow) {
+    return;
+  }
+
+  const openDocuments = getDocumentsInPath(targetPath, kind);
+  const protectedDocuments = openDocuments.filter(
+    shouldProtectDocumentSessionClose
+  );
+
+  if (
+    protectedDocuments.length > 0 &&
+    !(await confirmDiscardProtectedDocuments(protectedDocuments, "close-tab"))
+  ) {
+    emitToRenderer({ type: "status", message: "Rename cancelled." });
+    emitShellSnapshot();
+    return;
+  }
+
+  const result = await dialog.showSaveDialog(mainWindow, {
+    buttonLabel: "Rename",
+    defaultPath: targetPath,
+    title: kind === "folder" ? "Rename Directory" : "Rename File"
+  });
+
+  if (result.canceled || !result.filePath) {
+    emitToRenderer({ type: "status", message: "Rename cancelled." });
+    return;
+  }
+
+  if (result.filePath === targetPath) {
+    emitToRenderer({ type: "status", message: "Rename kept the same path." });
+    return;
+  }
+
+  try {
+    const existingTarget = await stat(result.filePath).catch(() => null);
+
+    if (existingTarget) {
+      emitToRenderer({
+        type: "status",
+        message: "Rename cancelled: target already exists."
+      });
+      return;
+    }
+
+    selfWritePaths.add(targetPath);
+    selfWritePaths.add(result.filePath);
+    await rename(targetPath, result.filePath);
+  } catch (error) {
+    emitToRenderer({
+      type: "status",
+      message:
+        error instanceof Error
+          ? `Rename failed: ${error.message}`
+          : "Rename failed."
+    });
+    return;
+  } finally {
+    selfWritePaths.delete(targetPath);
+    selfWritePaths.delete(result.filePath);
+  }
+
+  if (openDocuments.length > 0) {
+    closeDocumentSessions(
+      openDocuments.map((document) => document.id),
+      "Closed renamed document tabs."
+    );
+  }
+
+  await refreshWorkspaceEntries();
+  persistSessionStateSoon();
+  emitShellSnapshot();
+}
+
+async function pasteWorkspaceItem(
+  targetPath: string,
+  kind: "file" | "folder"
+): Promise<void> {
+  if (!workspaceClipboard) {
+    emitToRenderer({ type: "status", message: "Nothing to paste." });
+    return;
+  }
+
+  const source = workspaceClipboard;
+  const targetDirectory = getDocumentTargetDirectory(targetPath, kind);
+  const destinationPath = path.join(
+    targetDirectory,
+    path.basename(source.path)
+  );
+
+  if (destinationPath === source.path) {
+    emitToRenderer({
+      type: "status",
+      message: "Paste cancelled: source and destination are the same."
+    });
+    return;
+  }
+
+  try {
+    const existingTarget = await stat(destinationPath).catch(() => null);
+
+    if (existingTarget) {
+      emitToRenderer({
+        type: "status",
+        message: "Paste cancelled: target already exists."
+      });
+      return;
+    }
+
+    if (source.operation === "copy") {
+      if (source.kind === "folder") {
+        await cp(source.path, destinationPath, { recursive: true });
+      } else {
+        await copyFile(source.path, destinationPath);
+      }
+    } else {
+      const openDocuments = getDocumentsInPath(source.path, source.kind);
+      const protectedDocuments = openDocuments.filter(
+        shouldProtectDocumentSessionClose
+      );
+
+      if (
+        protectedDocuments.length > 0 &&
+        !(await confirmDiscardProtectedDocuments(
+          protectedDocuments,
+          "close-tab"
+        ))
+      ) {
+        emitToRenderer({ type: "status", message: "Paste cancelled." });
+        emitShellSnapshot();
+        return;
+      }
+
+      selfWritePaths.add(source.path);
+      selfWritePaths.add(destinationPath);
+      await rename(source.path, destinationPath);
+      workspaceClipboard = null;
+
+      if (openDocuments.length > 0) {
+        closeDocumentSessions(
+          openDocuments.map((document) => document.id),
+          "Closed moved document tabs."
+        );
+      }
+    }
+  } catch (error) {
+    emitToRenderer({
+      type: "status",
+      message:
+        error instanceof Error
+          ? `Paste failed: ${error.message}`
+          : "Paste failed."
+    });
+    return;
+  } finally {
+    selfWritePaths.delete(source.path);
+    selfWritePaths.delete(destinationPath);
+  }
+
+  await refreshWorkspaceEntries();
+  persistSessionStateSoon();
+  emitShellSnapshot();
+}
+
+async function moveWorkspaceItemToTrash(
+  targetPath: string,
+  kind: "file" | "folder"
+): Promise<void> {
+  const openDocuments = getDocumentsInPath(targetPath, kind);
+  const protectedDocuments = openDocuments.filter(
+    shouldProtectDocumentSessionClose
+  );
+
+  if (
+    protectedDocuments.length > 0 &&
+    !(await confirmDiscardProtectedDocuments(protectedDocuments, "close-tab"))
+  ) {
+    emitToRenderer({ type: "status", message: "Move to Trash cancelled." });
+    emitShellSnapshot();
+    return;
+  }
+
+  try {
+    selfWritePaths.add(targetPath);
+    await shell.trashItem(targetPath);
+  } catch (error) {
+    emitToRenderer({
+      type: "status",
+      message:
+        error instanceof Error
+          ? `Move to Trash failed: ${error.message}`
+          : "Move to Trash failed."
+    });
+    return;
+  } finally {
+    selfWritePaths.delete(targetPath);
+  }
+
+  if (openDocuments.length > 0) {
+    closeDocumentSessions(
+      openDocuments.map((document) => document.id),
+      "Closed trashed document tabs."
+    );
+  }
+
+  await refreshWorkspaceEntries();
+  persistSessionStateSoon();
+  emitShellSnapshot();
+}
+
+function showWorkspaceContextMenu(
+  targetPath: string,
+  kind: "file" | "folder"
+): void {
+  if (!mainWindow) {
+    return;
+  }
+
+  const menu = Menu.buildFromTemplate([
+    {
+      label: "New File",
+      click: () => void createWorkspaceFile(targetPath, kind)
+    },
+    {
+      label: "New Directory",
+      click: () => void createWorkspaceDirectory(targetPath, kind)
+    },
+    { type: "separator" },
+    {
+      label: "Copy",
+      click: () => {
+        workspaceClipboard = { operation: "copy", path: targetPath, kind };
+        emitToRenderer({ type: "status", message: "Copied workspace item." });
+      }
+    },
+    {
+      label: "Cut",
+      click: () => {
+        workspaceClipboard = { operation: "cut", path: targetPath, kind };
+        emitToRenderer({ type: "status", message: "Cut workspace item." });
+      }
+    },
+    {
+      enabled: workspaceClipboard !== null,
+      label: "Paste",
+      click: () => void pasteWorkspaceItem(targetPath, kind)
+    },
+    { type: "separator" },
+    {
+      label: "Rename",
+      click: () => void renameWorkspaceItem(targetPath, kind)
+    },
+    {
+      label: "Move To Trash",
+      click: () => void moveWorkspaceItemToTrash(targetPath, kind)
+    },
+    { type: "separator" },
+    {
+      label: "Show In Folder",
+      click: () => {
+        shell.showItemInFolder(targetPath);
+        emitToRenderer({ type: "status", message: "Showing item in folder." });
+      }
+    }
+  ]);
+
+  menu.popup({ window: mainWindow });
 }
 
 function markDocumentAfterSuccessfulWrite(
@@ -733,17 +1571,65 @@ function normalizeOpenTargets(argumentsList: string[]): string[] {
   });
 }
 
+async function setAutosaveEnabled(enabled: boolean): Promise<void> {
+  const currentSettings = await readAppSettings(getAppSettingsPath());
+  const nextSettings: AppSettings = {
+    ...currentSettings,
+    autosaveEnabled: enabled
+  };
+
+  await writeAppSettings(getAppSettingsPath(), nextSettings);
+  autosaveEnabled = enabled;
+
+  if (!autosaveEnabled) {
+    autosaveScheduler.clearAll();
+  }
+
+  Menu.setApplicationMenu(buildMenu());
+  emitToRenderer({
+    type: "status",
+    message: autosaveEnabled ? "Auto Save enabled." : "Auto Save disabled."
+  });
+}
+
+function getAppMenu(): MenuItemConstructorOptions[] {
+  return process.platform === "darwin"
+    ? [
+        {
+          label: app.name,
+          submenu: [
+            { role: "about" },
+            { type: "separator" },
+            { role: "services" },
+            { type: "separator" },
+            { role: "hide" },
+            { role: "hideOthers" },
+            { role: "unhide" },
+            { type: "separator" },
+            { role: "quit" }
+          ]
+        }
+      ]
+    : [];
+}
+
 async function handleCommand(command: CommandName): Promise<void> {
   if (!mainWindow) {
     return;
   }
 
   switch (command) {
+    case "close-active-tab":
+      await closeActiveDocumentSession();
+      return;
     case "compare-conflict":
       showManualCompareStatus();
       return;
     case "keep-editing":
       await keepEditingActiveDocument();
+      return;
+    case "new-file":
+      await createNewMarkdownFile();
       return;
     case "open-file": {
       const result = await dialog.showOpenDialog(mainWindow, {
@@ -797,10 +1683,7 @@ async function handleCommand(command: CommandName): Promise<void> {
       await saveActiveDocument();
       return;
     case "save-as":
-      emitToRenderer({
-        type: "status",
-        message: "Save As wiring lands after workspace and editor integration."
-      });
+      await saveActiveDocumentAs();
       return;
     case "toggle-mode":
       currentMode = getNextEditorMode();
@@ -824,9 +1707,15 @@ function buildMenu(): Menu {
       : [{ role: "minimize" }, { role: "zoom" }, { role: "close" }];
 
   return Menu.buildFromTemplate([
+    ...getAppMenu(),
     {
       label: "File",
       submenu: [
+        {
+          label: "New File",
+          accelerator: "CmdOrCtrl+N",
+          click: () => void handleCommand("new-file")
+        },
         {
           label: "Open File",
           accelerator: "CmdOrCtrl+O",
@@ -849,7 +1738,28 @@ function buildMenu(): Menu {
           click: () => void handleCommand("save-as")
         },
         { type: "separator" },
-        process.platform === "darwin" ? { role: "close" } : { role: "quit" }
+        {
+          checked: autosaveEnabled,
+          click: (menuItem) => {
+            void setAutosaveEnabled(menuItem.checked);
+          },
+          label: "Auto Save",
+          type: "checkbox"
+        },
+        { type: "separator" },
+        {
+          label: "Close Tab",
+          accelerator: "CmdOrCtrl+W",
+          click: () => void handleCommand("close-active-tab")
+        },
+        ...(process.platform === "darwin"
+          ? []
+          : [
+              {
+                label: "Quit",
+                role: "quit"
+              } satisfies MenuItemConstructorOptions
+            ])
       ]
     },
     {
@@ -914,6 +1824,26 @@ function createWindow(): void {
     mainWindow = null;
   });
 
+  mainWindow.on("close", (event) => {
+    if (isQuitting || getProtectedDocuments().length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+
+    void confirmDiscardProtectedDocuments(getProtectedDocuments(), "quit").then(
+      (canQuit) => {
+        if (!canQuit) {
+          emitToRenderer({ type: "status", message: "Quit cancelled." });
+          return;
+        }
+
+        isQuitting = true;
+        app.quit();
+      }
+    );
+  });
+
   mainWindow.webContents.on("did-finish-load", () => {
     emitToRenderer({ type: "mode-changed", mode: currentMode });
     updateShellData({
@@ -962,11 +1892,41 @@ ipcMain.handle(
   }
 );
 
-ipcMain.handle("pluma:close-tab", (_event, tabId: string) => {
+ipcMain.handle("pluma:close-tab", async (_event, tabId: string) => {
+  const document = getDocumentById(tabId);
+
+  if (
+    document &&
+    shouldProtectDocumentSessionClose(document) &&
+    !(await confirmDiscardProtectedDocuments([document], "close-tab"))
+  ) {
+    emitToRenderer({ type: "status", message: "Close tab cancelled." });
+    emitShellSnapshot();
+    return;
+  }
+
   closeDocumentSession(tabId);
   persistSessionStateSoon();
   emitShellSnapshot();
 });
+
+ipcMain.handle("pluma:show-tab-context-menu", (_event, tabId: string) => {
+  showTabContextMenu(tabId);
+});
+
+ipcMain.handle(
+  "pluma:show-workspace-context-menu",
+  (_event, targetPath: unknown, kind: unknown) => {
+    if (
+      typeof targetPath !== "string" ||
+      (kind !== "file" && kind !== "folder")
+    ) {
+      return;
+    }
+
+    showWorkspaceContextMenu(targetPath, kind);
+  }
+);
 
 ipcMain.handle("pluma:update-pane-sizes", (_event, paneSizes: unknown) => {
   if (
@@ -1001,7 +1961,11 @@ ipcMain.handle(
       (document) => document.id === documentId
     );
     if (nextDocument?.saveState === "dirty") {
-      autosaveScheduler.schedule(documentId);
+      if (autosaveEnabled) {
+        autosaveScheduler.schedule(documentId);
+      } else {
+        autosaveScheduler.clear(documentId);
+      }
     } else {
       autosaveScheduler.clear(documentId);
     }
@@ -1010,7 +1974,10 @@ ipcMain.handle(
 );
 
 ipcMain.handle("pluma:get-settings", async () => {
-  return readAppSettings(getAppSettingsPath());
+  const settings = await readAppSettings(getAppSettingsPath());
+  autosaveEnabled = settings.autosaveEnabled;
+
+  return settings;
 });
 
 ipcMain.handle(
@@ -1019,12 +1986,20 @@ ipcMain.handle(
     const currentSettings = await readAppSettings(getAppSettingsPath());
     const nextSettings: AppSettings = {
       ...currentSettings,
+      ...(typeof settings.autosaveEnabled === "boolean"
+        ? { autosaveEnabled: settings.autosaveEnabled }
+        : {}),
       ...(isThemePreference(settings.themePreference)
         ? { themePreference: settings.themePreference }
         : {})
     };
 
     await writeAppSettings(getAppSettingsPath(), nextSettings);
+    autosaveEnabled = nextSettings.autosaveEnabled;
+
+    if (!autosaveEnabled) {
+      autosaveScheduler.clearAll();
+    }
 
     return nextSettings;
   }
@@ -1049,6 +2024,8 @@ async function installDevelopmentExtensions(): Promise<void> {
 app.whenReady().then(async () => {
   setApplicationIcon();
   await installDevelopmentExtensions();
+  autosaveEnabled = (await readAppSettings(getAppSettingsPath()))
+    .autosaveEnabled;
   Menu.setApplicationMenu(buildMenu());
   await restorePersistedSessionState();
   createWindow();
@@ -1079,6 +2056,27 @@ app.on("second-instance", (_event, argv) => {
 
   queueOpenTargets(normalizeOpenTargets(argv));
   void flushPendingOpenTargets();
+});
+
+app.on("before-quit", (event) => {
+  if (isQuitting || getProtectedDocuments().length === 0 || !mainWindow) {
+    isQuitting = true;
+    return;
+  }
+
+  event.preventDefault();
+
+  void confirmDiscardProtectedDocuments(getProtectedDocuments(), "quit").then(
+    (canQuit) => {
+      if (!canQuit) {
+        emitToRenderer({ type: "status", message: "Quit cancelled." });
+        return;
+      }
+
+      isQuitting = true;
+      app.quit();
+    }
+  );
 });
 
 app.on("window-all-closed", () => {

@@ -15,6 +15,7 @@ type SidebarTreeProps = {
   nodes: ExplorerNode[];
   rootLabel: string;
   onOpenWorkspaceFile: (path: string) => void;
+  onShowContextMenu: (path: string, kind: ExplorerNode["kind"]) => void;
 };
 
 function getTreeItemStyle(depth: number): CSSProperties {
@@ -24,7 +25,8 @@ function getTreeItemStyle(depth: number): CSSProperties {
 export function SidebarTree({
   nodes,
   rootLabel,
-  onOpenWorkspaceFile
+  onOpenWorkspaceFile,
+  onShowContextMenu
 }: SidebarTreeProps) {
   const treeData = buildSidebarTreeData(rootLabel, nodes);
   const fallbackNode = treeData.tree[treeData.rootItemId];
@@ -47,7 +49,9 @@ export function SidebarTree({
       getChildren: (itemId) => treeData.tree[itemId]?.children ?? []
     },
     initialState: {
-      expandedItems: treeData.expandedItems,
+      expandedItems: treeData.expandedItems
+    },
+    state: {
       selectedItems: treeData.selectedItems
     },
     features: [syncDataLoaderFeature, selectionFeature, hotkeysCoreFeature]
@@ -72,6 +76,17 @@ export function SidebarTree({
             style={getTreeItemStyle(item.getItemMeta().level)}
             type="button"
             {...itemProps}
+            onContextMenu={(event) => {
+              itemProps.onContextMenu?.(event);
+
+              if (itemData.location?.kind !== "desktop-path") {
+                return;
+              }
+
+              event.preventDefault();
+              item.select();
+              onShowContextMenu(itemData.location.path, itemData.kind);
+            }}
             onClick={(event) => {
               itemProps.onClick?.(event);
 

@@ -249,6 +249,27 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
   - [x] compare manually
 - [x] Add tests for autosave, atomic save, and external modification detection.
 
+## Phase 8.5: Functional Hardening Before Polish
+
+- [x] Protect dirty, saving, and conflicted documents before closing tabs.
+- [x] Protect dirty, saving, and conflicted documents before quitting the app.
+- [x] Confirm before reloading from disk when in-memory edits would be discarded.
+- [x] Decide whether `Save As` belongs in MVP:
+  - [x] implement `Save As` for desktop files and untitled/new documents, or
+  - [ ] remove or disable the visible `Save As` menu item until it is supported.
+- [x] Replace the placeholder compare action:
+  - [ ] implement a minimal manual compare flow, or
+  - [x] rename/remove `Compare Manually` so it does not imply an unavailable feature.
+- [x] Make autosave failures durable in document state instead of status-only messaging.
+- [x] Validate folder watcher behavior on supported platforms:
+  - [x] document macOS-only assumptions for recursive watching, or
+  - [ ] add a fallback for platforms where recursive `fs.watch` is unavailable.
+- [x] Decide whether new file creation is part of MVP:
+  - [x] wire sidebar new-file action and untitled document save flow, or
+  - [ ] remove or disable create controls until supported.
+- [x] Confirm standalone-file behavior while a workspace is open.
+- [ ] Run a manual desktop smoke test for autosave, conflicts, reload, keep-editing, close protection, and workspace refresh.
+
 ## Phase 9: MVP UI Polish
 
 - [ ] Finalize light and dark theme polish across shell, sidebar, editor chrome, and status surfaces.
@@ -263,6 +284,13 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 ## Phase 9.1: Post-Foundation Feature Candidates
 
 - [ ] Evaluate fast workspace search with `@vscode/ripgrep`.
+- [ ] Evaluate multi-window desktop support:
+  - [ ] keep Pluma as a single Electron app instance with multiple `BrowserWindow`s.
+  - [ ] introduce a per-window session/controller for documents, active tab, workspace, pane sizes, autosave timers, and file watchers.
+  - [ ] route IPC commands by sender window instead of using one global active document/session.
+  - [ ] add `File > New Window` and define whether opened files reuse the active window or create a new window.
+  - [ ] protect unsaved changes per window and during app-wide quit across all open windows.
+  - [ ] decide whether session restore should restore one previous window or all previous windows.
 - [ ] Evaluate focus mode.
 - [ ] Evaluate typewriter mode.
 - [ ] Evaluate spellcheck using Electron's built-in spellchecker before adding native spellcheck dependencies.

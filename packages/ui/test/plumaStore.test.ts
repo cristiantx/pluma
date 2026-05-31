@@ -61,7 +61,16 @@ const baseSnapshot: PlumaShellSnapshot = {
       id: "welcome",
       isActive: true,
       kind: "file",
-      label: "Welcome.md"
+      label: "Welcome.md",
+      location: baseTabs[0].location
+    },
+    {
+      depth: 1,
+      id: "syntax",
+      isActive: false,
+      kind: "file",
+      label: "Syntax.md",
+      location: baseTabs[1].location
     }
   ],
   editorViewMode: "source",
@@ -94,7 +103,7 @@ describe("usePlumaStore", () => {
     expect(state.workspace.workspaceLabel).toBe("PLUMA DOCS");
     expect(state.workspace.hasWorkspace).toBe(true);
     expect(state.workspace.isDevelopment).toBe(false);
-    expect(state.workspace.explorerNodes).toHaveLength(2);
+    expect(state.workspace.explorerNodes).toHaveLength(3);
     expect(state.document.activeDocument?.id).toBe(baseDocuments[0]?.id);
     expect(state.document.documents).toHaveLength(2);
     expect(state.tabs.tabs).toEqual(baseTabs);
@@ -132,19 +141,22 @@ describe("usePlumaStore", () => {
     expect(usePlumaStore.getState().theme.resolvedTheme).toBe("light");
   });
 
-  it("closes tabs and reassigns the active tab", () => {
+  it("keeps tab state stable until the shell confirms close", () => {
+    const closeTab = vi.fn();
+    usePlumaStore.getState().setCommandHandlers({ closeTab });
     usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
     usePlumaStore.getState().setActiveTabId(baseDocuments[1]?.id ?? "");
 
     usePlumaStore.getState().closeTab(baseDocuments[1]?.id ?? "");
 
     expect(usePlumaStore.getState().tabs.activeTabId).toBe(
-      baseDocuments[0]?.id
+      baseDocuments[1]?.id
     );
-    expect(usePlumaStore.getState().tabs.tabs).toHaveLength(1);
+    expect(usePlumaStore.getState().tabs.tabs).toHaveLength(2);
     expect(usePlumaStore.getState().document.activeDocument?.id).toBe(
-      baseDocuments[0]?.id
+      baseDocuments[1]?.id
     );
+    expect(closeTab).toHaveBeenCalledWith(baseDocuments[1]?.id);
   });
 
   it("notifies the shell when the active tab changes", () => {
@@ -160,6 +172,16 @@ describe("usePlumaStore", () => {
     expect(usePlumaStore.getState().document.activeDocument?.id).toBe(
       baseDocuments[1]?.id
     );
+    expect(
+      usePlumaStore
+        .getState()
+        .workspace.explorerNodes.find((node) => node.id === "welcome")?.isActive
+    ).toBe(false);
+    expect(
+      usePlumaStore
+        .getState()
+        .workspace.explorerNodes.find((node) => node.id === "syntax")?.isActive
+    ).toBe(true);
     expect(setActiveTabId).toHaveBeenCalledWith(baseDocuments[1]?.id);
   });
 
@@ -249,18 +271,22 @@ describe("usePlumaStore", () => {
   it("triggers registered commands through typed handlers", () => {
     const openDevTools = vi.fn();
     const openFile = vi.fn();
+    const newFile = vi.fn();
     const openWorkspaceFile = vi.fn();
 
     usePlumaStore.getState().setCommandHandlers({
+      newFile,
       openDevTools,
       openFile,
       openWorkspaceFile
     });
     usePlumaStore.getState().triggerOpenDevTools();
+    usePlumaStore.getState().triggerNewFile();
     usePlumaStore.getState().triggerOpenFile();
     usePlumaStore.getState().triggerOpenWorkspaceFile("/tmp/Notes.md");
 
     expect(openDevTools).toHaveBeenCalledTimes(1);
+    expect(newFile).toHaveBeenCalledTimes(1);
     expect(openFile).toHaveBeenCalledTimes(1);
     expect(openWorkspaceFile).toHaveBeenCalledWith("/tmp/Notes.md");
   });

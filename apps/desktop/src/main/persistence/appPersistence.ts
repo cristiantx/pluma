@@ -14,10 +14,12 @@ export type PersistedSessionState = {
 };
 
 export type AppSettings = {
+  autosaveEnabled: boolean;
   themePreference: ThemePreference;
 };
 
 export const defaultAppSettings: AppSettings = {
+  autosaveEnabled: true,
   themePreference: "system"
 };
 
@@ -36,7 +38,10 @@ export async function readAppSettings(filePath: string): Promise<AppSettings> {
     return defaultAppSettings;
   }
 
-  return parsedSettings;
+  return {
+    ...defaultAppSettings,
+    ...parsedSettings
+  };
 }
 
 export async function writeAppSettings(
@@ -85,7 +90,11 @@ function isAppSettings(value: unknown): value is AppSettings {
 
   const candidate = value as Partial<AppSettings>;
 
-  return isThemePreference(candidate.themePreference);
+  return (
+    (candidate.autosaveEnabled === undefined ||
+      typeof candidate.autosaveEnabled === "boolean") &&
+    isThemePreference(candidate.themePreference)
+  );
 }
 
 function isPersistedSessionState(

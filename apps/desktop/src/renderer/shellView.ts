@@ -138,6 +138,8 @@ function toSaveMetricValue(document: DocumentSession): string {
       return "Saved";
     case "dirty":
       return "Dirty";
+    case "error":
+      return "Save error";
     case "external-change":
       return "Changed on disk";
     case "saving":

@@ -91,10 +91,6 @@ export async function collectWorkspaceEntries(
         depth + 1
       );
 
-      if (childEntries.length === 0) {
-        continue;
-      }
-
       workspaceEntries.push({
         depth,
         kind: "folder",

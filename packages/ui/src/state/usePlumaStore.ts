@@ -16,6 +16,7 @@ const defaultCommandHandlers: PlumaCommandHandlers = {
   closeTab: noop,
   compareConflict: noop,
   keepEditing: noop,
+  newFile: noop,
   openDevTools: noop,
   openFile: noop,
   openFolder: noop,
@@ -23,6 +24,8 @@ const defaultCommandHandlers: PlumaCommandHandlers = {
   reloadFromDisk: noop,
   setActiveTabId: noop,
   setEditorViewMode: noop,
+  showTabContextMenu: noop,
+  showWorkspaceContextMenu: noop,
   updateDocumentText: noop,
   updatePaneSizes: noop,
   toggleMode: noop
@@ -68,32 +71,6 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
 
   closeTab: (tabId) => {
     const closeTabHandler = get().commands.commandHandlers.closeTab;
-
-    set((state) => {
-      const nextTabs = state.tabs.tabs.filter((tab) => tab.id !== tabId);
-      const nextDocuments = state.document.documents.filter(
-        (document) => document.id !== tabId
-      );
-      const nextActiveTabId =
-        state.tabs.activeTabId === tabId
-          ? (nextTabs[0]?.id ?? "")
-          : state.tabs.activeTabId;
-      const nextActiveDocument =
-        nextDocuments.find((document) => document.id === nextActiveTabId) ??
-        null;
-
-      return {
-        document: {
-          activeDocument: nextActiveDocument,
-          documents: nextDocuments
-        },
-        tabs: {
-          activeTabId: nextActiveTabId,
-          tabs: nextTabs
-        }
-      };
-    });
-
     closeTabHandler(tabId);
   },
 
@@ -158,6 +135,10 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     get().commands.commandHandlers.reloadFromDisk();
   },
 
+  triggerNewFile: () => {
+    get().commands.commandHandlers.newFile();
+  },
+
   setActiveTabId: (tabId) => {
     set((state) => ({
       document: {
@@ -169,6 +150,21 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
       tabs: {
         ...state.tabs,
         activeTabId: tabId
+      },
+      workspace: {
+        ...state.workspace,
+        explorerNodes: state.workspace.explorerNodes.map((node) => ({
+          ...node,
+          isActive:
+            node.kind === "file" &&
+            state.document.documents.some(
+              (document) =>
+                document.id === tabId &&
+                document.location.kind === "desktop-path" &&
+                node.location?.kind === "desktop-path" &&
+                document.location.path === node.location.path
+            )
+        }))
       }
     }));
     get().commands.commandHandlers.setActiveTabId(tabId);
@@ -193,6 +189,14 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
       }
     }));
     get().commands.commandHandlers.setEditorViewMode(mode);
+  },
+
+  showTabContextMenu: (tabId) => {
+    get().commands.commandHandlers.showTabContextMenu(tabId);
+  },
+
+  showWorkspaceContextMenu: (path, kind) => {
+    get().commands.commandHandlers.showWorkspaceContextMenu(path, kind);
   },
 
   setSystemPrefersDark: (matches) => {
