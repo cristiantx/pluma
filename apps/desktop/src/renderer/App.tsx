@@ -12,7 +12,7 @@ import {
   initialShellState,
   reduceShellEvent,
   type CommandName
-} from "./shellState";
+} from "../shared/shellState";
 import { getShellSnapshot } from "./shellView";
 
 export function App() {
@@ -58,10 +58,13 @@ export function App() {
   useEffect(() => {
     const commandHandlers: PlumaCommandHandlers = {
       closeTab: (tabId) => runCloseTabCommand(setShellState, tabId),
+      compareConflict: () => runCommand(setShellState, "compare-conflict"),
+      keepEditing: () => runCommand(setShellState, "keep-editing"),
       openDevTools: () => runCommand(setShellState, "open-devtools"),
       openFile: () => runCommand(setShellState, "open-file"),
       openFolder: () => runCommand(setShellState, "open-folder"),
       openWorkspaceFile: (path) => runWorkspaceFileCommand(setShellState, path),
+      reloadFromDisk: () => runCommand(setShellState, "reload-from-disk"),
       setActiveTabId: (tabId) => runSetActiveTabCommand(setShellState, tabId),
       setEditorViewMode: (mode) => runSetEditorViewMode(setShellState, mode),
       updateDocumentText: (documentId, rawText) =>

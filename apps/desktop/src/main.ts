@@ -7,20 +7,19 @@ import {
   nativeImage,
   type MenuItemConstructorOptions
 } from "electron";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { stat } from "node:fs/promises";
 import path from "node:path";
 
 import {
-  createDocumentSession,
   formatMarkdownText,
-  getMarkdownDocumentCapability,
   markDocumentSessionConflict,
+  markDocumentSessionExternalChange,
   markDocumentSessionSaved,
   markDocumentSessionSaving,
-  markdownPipeline,
   serializeMarkdownSession,
   updateDocumentSessionText,
-  type DesktopFileLocation,
+  type DocumentCapability,
+  type DocumentSession,
   type FileMetadata
 } from "@pluma/core";
 import { DesktopFileSystemAdapter } from "@pluma/core-desktop";
@@ -32,9 +31,29 @@ import type {
   CommandName,
   DesktopShellSnapshot,
   EditorViewMode,
-  RendererEvent,
-  WorkspaceTreeEntry
-} from "./shellState";
+  RendererEvent
+} from "./shared/shellState";
+import {
+  isEditorViewMode,
+  isThemePreference,
+  readAppSettings,
+  readPersistedSessionState,
+  writeAppSettings,
+  writePersistedSessionState,
+  type AppSettings,
+  type PersistedSessionState
+} from "./main/persistence/appPersistence";
+import { AutosaveScheduler } from "./main/autosave/autosaveScheduler";
+import { ActiveFileWatcher } from "./main/watching/activeFileWatcher";
+import {
+  collectWorkspaceEntries,
+  createSessionForFilePath,
+  isMarkdownFilePath,
+  isPathInsideDirectory,
+  tryCollectWorkspaceEntries,
+  tryCreateSessionForFilePath
+} from "./main/workspace/desktopWorkspace";
+import { WorkspaceWatcher } from "./main/watching/workspaceWatcher";
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -53,27 +72,29 @@ let shellData: DesktopShellSnapshot = {
   workspaceEntries: [],
   workspacePath: null
 };
-const markdownExtensions = new Set([".md", ".markdown", ".mdown"]);
 const sessionStateFileName = "session-state.json";
 const appSettingsFileName = "settings.json";
+const autosaveDelayMs = 900;
 
-type PersistedSessionState = {
-  activeDocumentPath: string | null;
-  documentPaths: string[];
-  editorMode: EditorViewMode;
-  paneSizes?: number[];
-  workspacePath: string | null;
-};
-
-type ThemePreference = "system" | "light" | "dark";
-
-type AppSettings = {
-  themePreference: ThemePreference;
-};
-
-const defaultAppSettings: AppSettings = {
-  themePreference: "system"
-};
+const autosaveScheduler = new AutosaveScheduler(
+  autosaveDelayMs,
+  (documentId) => {
+    void saveDocument(documentId, "autosave");
+  }
+);
+const selfWritePaths = new Set<string>();
+const activeFileWatcher = new ActiveFileWatcher(
+  (filePath) => {
+    void handleActiveFileExternalChange(filePath);
+  },
+  (message) => emitToRenderer({ type: "status", message })
+);
+const workspaceWatcher = new WorkspaceWatcher(
+  () => {
+    void refreshWorkspaceEntries();
+  },
+  (message) => emitToRenderer({ type: "status", message })
+);
 
 if (started) {
   app.quit();
@@ -129,51 +150,6 @@ function getAppSettingsPath(): string {
   return path.join(app.getPath("userData"), appSettingsFileName);
 }
 
-function isThemePreference(value: unknown): value is ThemePreference {
-  return value === "system" || value === "light" || value === "dark";
-}
-
-function isAppSettings(value: unknown): value is AppSettings {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const candidate = value as Partial<AppSettings>;
-
-  return isThemePreference(candidate.themePreference);
-}
-
-async function readJsonFile(filePath: string): Promise<unknown | null> {
-  try {
-    return JSON.parse(await readFile(filePath, "utf8")) as unknown;
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      return null;
-    }
-
-    throw error;
-  }
-}
-
-async function writeJsonFile(filePath: string, value: unknown): Promise<void> {
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
-}
-
-async function readAppSettings(): Promise<AppSettings> {
-  const parsedSettings = await readJsonFile(getAppSettingsPath());
-
-  if (!isAppSettings(parsedSettings)) {
-    return defaultAppSettings;
-  }
-
-  return parsedSettings;
-}
-
-async function writeAppSettings(settings: AppSettings): Promise<void> {
-  await writeJsonFile(getAppSettingsPath(), settings);
-}
-
 function getDocumentPath(documentId: string | null): string | null {
   const document = shellData.documents.find(
     (candidate) => candidate.id === documentId
@@ -198,45 +174,20 @@ function getPersistedSessionState(): PersistedSessionState {
   };
 }
 
-function isPersistedSessionState(
-  value: unknown
-): value is PersistedSessionState {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const candidate = value as Partial<PersistedSessionState>;
-
-  return (
-    (candidate.activeDocumentPath === null ||
-      typeof candidate.activeDocumentPath === "string") &&
-    Array.isArray(candidate.documentPaths) &&
-    candidate.documentPaths.every(
-      (documentPath) => typeof documentPath === "string"
-    ) &&
-    isEditorViewMode(candidate.editorMode) &&
-    (candidate.paneSizes === undefined ||
-      (Array.isArray(candidate.paneSizes) &&
-        candidate.paneSizes.every(
-          (paneSize) => typeof paneSize === "number"
-        ))) &&
-    (candidate.workspacePath === null ||
-      typeof candidate.workspacePath === "string")
-  );
-}
-
-function isEditorViewMode(value: unknown): value is EditorViewMode {
-  return value === "source" || value === "rich" || value === "split";
-}
-
-function getActiveDocumentCapability(): ReturnType<
-  typeof getMarkdownDocumentCapability
-> | null {
+function getActiveDocumentCapability(): DocumentCapability | null {
   const activeDocument = shellData.documents.find(
     (document) => document.id === shellData.activeDocumentId
   );
 
   return activeDocument?.capability ?? null;
+}
+
+function getActiveDocument(): DocumentSession | null {
+  return (
+    shellData.documents.find(
+      (document) => document.id === shellData.activeDocumentId
+    ) ?? null
+  );
 }
 
 function getAllowedEditorMode(mode: EditorViewMode): EditorViewMode {
@@ -256,7 +207,10 @@ async function persistSessionState(): Promise<void> {
 
   const sessionStatePath = getSessionStatePath();
 
-  await writeJsonFile(sessionStatePath, getPersistedSessionState());
+  await writePersistedSessionState(
+    sessionStatePath,
+    getPersistedSessionState()
+  );
 }
 
 function persistSessionStateSoon(): void {
@@ -271,40 +225,7 @@ function persistSessionStateSoon(): void {
   });
 }
 
-async function readPersistedSessionState(): Promise<PersistedSessionState | null> {
-  const parsedState = await readJsonFile(getSessionStatePath());
-
-  return isPersistedSessionState(parsedState) ? parsedState : null;
-}
-
-function isMarkdownFilePath(filePath: string): boolean {
-  return markdownExtensions.has(path.extname(filePath).toLowerCase());
-}
-
-function isPathInsideDirectory(
-  directoryPath: string,
-  targetPath: string
-): boolean {
-  const relativePath = path.relative(directoryPath, targetPath);
-
-  return (
-    relativePath !== "" &&
-    relativePath !== "." &&
-    !relativePath.startsWith("..") &&
-    !path.isAbsolute(relativePath)
-  );
-}
-
-function toDesktopFileLocation(filePath: string): DesktopFileLocation {
-  return {
-    kind: "desktop-path",
-    path: filePath
-  };
-}
-
-function mergeDocumentSession(
-  nextSession: ReturnType<typeof createDocumentSession>
-): void {
+function mergeDocumentSession(nextSession: DocumentSession): void {
   const remainingDocuments = shellData.documents.filter(
     (document) => document.id !== nextSession.id
   );
@@ -313,56 +234,11 @@ function mergeDocumentSession(
     activeDocumentId: nextSession.id,
     documents: [nextSession, ...remainingDocuments]
   });
-}
-
-async function createSessionForFilePath(
-  filePath: string
-): Promise<ReturnType<typeof createDocumentSession> | null> {
-  const fileLocation = toDesktopFileLocation(filePath);
-  const metadata = await fileSystem.getMetadata(fileLocation);
-
-  if (!metadata) {
-    return null;
-  }
-
-  const rawText = await fileSystem.readText(fileLocation);
-  const analysis = markdownPipeline.analyze(markdownPipeline.parse(rawText));
-  const capability = getMarkdownDocumentCapability(analysis);
-
-  return createDocumentSession({
-    capability,
-    location: fileLocation,
-    metadata,
-    mode: capability === "rich-safe" ? "rich" : "source",
-    rawText
-  });
-}
-
-async function tryCreateSessionForFilePath(
-  filePath: string
-): Promise<ReturnType<typeof createDocumentSession> | null> {
-  try {
-    return await createSessionForFilePath(filePath);
-  } catch {
-    return null;
-  }
-}
-
-async function tryCollectWorkspaceEntries(
-  directoryPath: string | null
-): Promise<WorkspaceTreeEntry[]> {
-  if (!directoryPath) {
-    return [];
-  }
-
-  try {
-    return await collectWorkspaceEntries(directoryPath);
-  } catch {
-    return [];
-  }
+  updateActiveFileWatcher();
 }
 
 function closeDocumentSession(documentId: string): void {
+  autosaveScheduler.clear(documentId);
   const nextDocuments = shellData.documents.filter(
     (document) => document.id !== documentId
   );
@@ -379,51 +255,89 @@ function closeDocumentSession(documentId: string): void {
         ? "All documents closed."
         : "Closed document tab."
   });
+  updateActiveFileWatcher();
 }
 
-async function collectWorkspaceEntries(
-  directoryPath: string,
-  depth = 0
-): Promise<WorkspaceTreeEntry[]> {
-  const directoryEntries = await fileSystem.listDirectory(
-    toDesktopFileLocation(directoryPath)
-  );
-  const workspaceEntries: WorkspaceTreeEntry[] = [];
+function updateActiveFileWatcher(): void {
+  const activeDocument = getActiveDocument();
+  const activePath =
+    activeDocument?.location.kind === "desktop-path"
+      ? activeDocument.location.path
+      : null;
 
-  for (const directoryEntry of directoryEntries) {
-    if (directoryEntry.kind === "directory") {
-      const childEntries = await collectWorkspaceEntries(
-        directoryEntry.location.path,
-        depth + 1
-      );
+  activeFileWatcher.update(activePath);
+}
 
-      if (childEntries.length === 0) {
-        continue;
-      }
+function updateWorkspaceWatcher(): void {
+  workspaceWatcher.update(shellData.workspacePath);
+}
 
-      workspaceEntries.push({
-        depth,
-        kind: "folder",
-        name: directoryEntry.name,
-        path: directoryEntry.location.path
-      });
-      workspaceEntries.push(...childEntries);
-      continue;
-    }
-
-    if (!isMarkdownFilePath(directoryEntry.location.path)) {
-      continue;
-    }
-
-    workspaceEntries.push({
-      depth,
-      kind: "file",
-      name: directoryEntry.name,
-      path: directoryEntry.location.path
-    });
+async function refreshWorkspaceEntries(): Promise<void> {
+  if (!shellData.workspacePath) {
+    return;
   }
 
-  return workspaceEntries;
+  const workspaceEntries = await tryCollectWorkspaceEntries(
+    fileSystem,
+    shellData.workspacePath
+  );
+
+  updateShellData({
+    workspaceEntries,
+    status: "Workspace file tree updated."
+  });
+  emitShellSnapshot();
+}
+
+async function handleActiveFileExternalChange(filePath: string): Promise<void> {
+  if (selfWritePaths.has(filePath)) {
+    return;
+  }
+
+  const activeDocument = getActiveDocument();
+
+  if (
+    !activeDocument ||
+    activeDocument.location.kind !== "desktop-path" ||
+    activeDocument.location.path !== filePath
+  ) {
+    return;
+  }
+
+  const currentMetadata = await fileSystem.getMetadata(activeDocument.location);
+
+  if (!currentMetadata) {
+    updateShellData({
+      documents: shellData.documents.map((document) =>
+        document.id === activeDocument.id
+          ? markDocumentSessionConflict(document)
+          : document
+      ),
+      status: "Active file was deleted on disk."
+    });
+    emitShellSnapshot();
+    return;
+  }
+
+  if (
+    activeDocument.lastSavedMetadata &&
+    currentMetadata.mtimeMs === activeDocument.lastSavedMetadata.mtimeMs &&
+    currentMetadata.size === activeDocument.lastSavedMetadata.size &&
+    currentMetadata.fileId === activeDocument.lastSavedMetadata.fileId
+  ) {
+    return;
+  }
+
+  autosaveScheduler.clear(activeDocument.id);
+  updateShellData({
+    documents: shellData.documents.map((document) =>
+      document.id === activeDocument.id
+        ? markDocumentSessionExternalChange(document)
+        : document
+    ),
+    status: "Active file changed on disk."
+  });
+  emitShellSnapshot();
 }
 
 async function openFilePath(
@@ -432,7 +346,7 @@ async function openFilePath(
     workspacePath?: string | null;
   } = {}
 ): Promise<void> {
-  const session = await createSessionForFilePath(filePath);
+  const session = await createSessionForFilePath(fileSystem, filePath);
 
   if (!session) {
     emitToRenderer({
@@ -456,13 +370,17 @@ async function openFilePath(
     workspaceEntries: workspacePath ? shellData.workspaceEntries : [],
     workspacePath
   });
+  updateWorkspaceWatcher();
   emitToRenderer({ type: "mode-changed", mode: currentMode });
   persistSessionStateSoon();
   emitShellSnapshot();
 }
 
 async function openFolderPath(directoryPath: string): Promise<void> {
-  const workspaceEntries = await collectWorkspaceEntries(directoryPath);
+  const workspaceEntries = await collectWorkspaceEntries(
+    fileSystem,
+    directoryPath
+  );
 
   updateShellData({
     activeDocumentId: null,
@@ -471,17 +389,44 @@ async function openFolderPath(directoryPath: string): Promise<void> {
     workspaceEntries,
     workspacePath: directoryPath
   });
+  autosaveScheduler.clearAll();
+  updateActiveFileWatcher();
+  updateWorkspaceWatcher();
   persistSessionStateSoon();
   emitShellSnapshot();
 }
 
 async function saveActiveDocument(): Promise<void> {
-  const activeDocument = shellData.documents.find(
-    (document) => document.id === shellData.activeDocumentId
-  );
+  const activeDocument = getActiveDocument();
 
   if (!activeDocument) {
     emitToRenderer({ type: "status", message: "No active document to save." });
+    return;
+  }
+
+  await saveDocument(activeDocument.id, "manual");
+}
+
+async function saveDocument(
+  documentId: string,
+  trigger: "autosave" | "manual"
+): Promise<void> {
+  const activeDocument = shellData.documents.find(
+    (document) => document.id === documentId
+  );
+
+  if (!activeDocument || activeDocument.saveState === "idle") {
+    return;
+  }
+
+  if (
+    activeDocument.saveState === "conflict" ||
+    activeDocument.saveState === "external-change"
+  ) {
+    emitToRenderer({
+      type: "status",
+      message: "Resolve the disk conflict before saving."
+    });
     return;
   }
 
@@ -493,12 +438,14 @@ async function saveActiveDocument(): Promise<void> {
     return;
   }
 
-  const textToSave =
-    currentMode === "rich"
-      ? (await formatMarkdownText(activeDocument.rawText)).markdown
-      : activeDocument.rawText;
+  autosaveScheduler.clear(activeDocument.id);
 
-  if (currentMode === "rich") {
+  const shouldFormatRichSave = trigger === "manual" && currentMode === "rich";
+  const textToSave = shouldFormatRichSave
+    ? (await formatMarkdownText(activeDocument.rawText)).markdown
+    : activeDocument.rawText;
+
+  if (shouldFormatRichSave) {
     const serialized = serializeMarkdownSession({
       ...activeDocument,
       rawText: textToSave
@@ -530,10 +477,16 @@ async function saveActiveDocument(): Promise<void> {
         ? markDocumentSessionSaving(document)
         : document
     ),
-    status: `Saving ${path.basename(activeDocument.location.path)}.`
+    status:
+      trigger === "autosave"
+        ? `Autosaving ${path.basename(activeDocument.location.path)}.`
+        : `Saving ${path.basename(activeDocument.location.path)}.`
   });
   emitShellSnapshot();
 
+  const activeDocumentPath = activeDocument.location.path;
+
+  selfWritePaths.add(activeDocumentPath);
   const saveResult = await fileSystem.writeTextAtomic(
     activeDocument.location,
     textToSave,
@@ -541,6 +494,9 @@ async function saveActiveDocument(): Promise<void> {
       expectedMetadata: activeDocument.lastSavedMetadata
     }
   );
+  setTimeout(() => {
+    selfWritePaths.delete(activeDocumentPath);
+  }, 150);
 
   if (saveResult.kind === "success") {
     updateShellData({
@@ -554,7 +510,10 @@ async function saveActiveDocument(): Promise<void> {
             )
           : document
       ),
-      status: `Saved ${path.basename(activeDocument.location.path)}.`
+      status:
+        trigger === "autosave"
+          ? `Autosaved ${path.basename(activeDocument.location.path)}.`
+          : `Saved ${path.basename(activeDocument.location.path)}.`
     });
     persistSessionStateSoon();
     emitShellSnapshot();
@@ -585,12 +544,81 @@ async function saveActiveDocument(): Promise<void> {
   emitShellSnapshot();
 }
 
+async function reloadActiveDocumentFromDisk(): Promise<void> {
+  const activeDocument = getActiveDocument();
+
+  if (!activeDocument || activeDocument.location.kind !== "desktop-path") {
+    emitToRenderer({ type: "status", message: "No desktop file to reload." });
+    return;
+  }
+
+  const nextSession = await createSessionForFilePath(
+    fileSystem,
+    activeDocument.location.path
+  );
+
+  if (!nextSession) {
+    emitToRenderer({
+      type: "status",
+      message: "Could not reload file from disk."
+    });
+    return;
+  }
+
+  updateShellData({
+    documents: shellData.documents.map((document) =>
+      document.id === activeDocument.id ? nextSession : document
+    ),
+    status: `Reloaded ${path.basename(activeDocument.location.path)} from disk.`
+  });
+  emitShellSnapshot();
+}
+
+async function keepEditingActiveDocument(): Promise<void> {
+  const activeDocument = getActiveDocument();
+
+  if (!activeDocument) {
+    return;
+  }
+
+  const metadata =
+    activeDocument.location.kind === "desktop-path"
+      ? await fileSystem.getMetadata(activeDocument.location)
+      : activeDocument.lastSavedMetadata;
+
+  updateShellData({
+    documents: shellData.documents.map((document) =>
+      document.id === activeDocument.id
+        ? {
+            ...document,
+            lastSavedMetadata: metadata,
+            saveState: "dirty"
+          }
+        : document
+    ),
+    status: "Kept in-memory edits. The next save will write over disk."
+  });
+  emitShellSnapshot();
+}
+
+function showManualCompareStatus(): void {
+  const activeDocument = getActiveDocument();
+
+  emitToRenderer({
+    type: "status",
+    message:
+      activeDocument?.location.kind === "desktop-path"
+        ? `Compare manually: ${activeDocument.location.path}`
+        : "No desktop file to compare."
+  });
+}
+
 function markDocumentAfterSuccessfulWrite(
-  document: ReturnType<typeof createDocumentSession>,
+  document: DocumentSession,
   savedText: string,
   metadata: FileMetadata,
   originalText: string
-): ReturnType<typeof createDocumentSession> {
+): DocumentSession {
   if (document.rawText === originalText || document.rawText === savedText) {
     return markDocumentSessionSaved(
       {
@@ -605,13 +633,12 @@ function markDocumentAfterSuccessfulWrite(
     ...document,
     lastSavedMetadata: metadata,
     lastSavedText: savedText,
-    rawText: savedText,
-    saveState: "idle"
+    saveState: document.rawText === savedText ? "idle" : "dirty"
   };
 }
 
 async function restorePersistedSessionState(): Promise<void> {
-  const persistedState = await readPersistedSessionState();
+  const persistedState = await readPersistedSessionState(getSessionStatePath());
 
   if (!persistedState) {
     return;
@@ -620,12 +647,13 @@ async function restorePersistedSessionState(): Promise<void> {
   currentMode = persistedState.editorMode;
 
   const workspaceEntries = await tryCollectWorkspaceEntries(
+    fileSystem,
     persistedState.workspacePath
   );
   const documents = (
     await Promise.all(
       persistedState.documentPaths.map((documentPath) =>
-        tryCreateSessionForFilePath(documentPath)
+        tryCreateSessionForFilePath(fileSystem, documentPath)
       )
     )
   ).filter((session) => session !== null);
@@ -647,6 +675,8 @@ async function restorePersistedSessionState(): Promise<void> {
     workspaceEntries,
     workspacePath: persistedState.workspacePath
   });
+  updateActiveFileWatcher();
+  updateWorkspaceWatcher();
 }
 
 async function handleOpenTarget(targetPath: string): Promise<void> {
@@ -709,6 +739,12 @@ async function handleCommand(command: CommandName): Promise<void> {
   }
 
   switch (command) {
+    case "compare-conflict":
+      showManualCompareStatus();
+      return;
+    case "keep-editing":
+      await keepEditingActiveDocument();
+      return;
     case "open-file": {
       const result = await dialog.showOpenDialog(mainWindow, {
         properties: ["openFile"],
@@ -754,6 +790,9 @@ async function handleCommand(command: CommandName): Promise<void> {
       await openFolderPath(selectedPath);
       return;
     }
+    case "reload-from-disk":
+      await reloadActiveDocumentFromDisk();
+      return;
     case "save":
       await saveActiveDocument();
       return;
@@ -911,6 +950,7 @@ ipcMain.handle("pluma:set-active-document", (_event, documentId: unknown) => {
   updateShellData({
     activeDocumentId: documentId
   });
+  updateActiveFileWatcher();
   persistSessionStateSoon();
   emitShellSnapshot();
 });
@@ -957,18 +997,26 @@ ipcMain.handle(
       documents: nextDocuments,
       status: "Document edited."
     });
+    const nextDocument = nextDocuments.find(
+      (document) => document.id === documentId
+    );
+    if (nextDocument?.saveState === "dirty") {
+      autosaveScheduler.schedule(documentId);
+    } else {
+      autosaveScheduler.clear(documentId);
+    }
     emitShellSnapshot();
   }
 );
 
 ipcMain.handle("pluma:get-settings", async () => {
-  return readAppSettings();
+  return readAppSettings(getAppSettingsPath());
 });
 
 ipcMain.handle(
   "pluma:update-settings",
   async (_event, settings: Partial<AppSettings>) => {
-    const currentSettings = await readAppSettings();
+    const currentSettings = await readAppSettings(getAppSettingsPath());
     const nextSettings: AppSettings = {
       ...currentSettings,
       ...(isThemePreference(settings.themePreference)
@@ -976,7 +1024,7 @@ ipcMain.handle(
         : {})
     };
 
-    await writeAppSettings(nextSettings);
+    await writeAppSettings(getAppSettingsPath(), nextSettings);
 
     return nextSettings;
   }
@@ -1034,6 +1082,10 @@ app.on("second-instance", (_event, argv) => {
 });
 
 app.on("window-all-closed", () => {
+  autosaveScheduler.clearAll();
+  activeFileWatcher.close();
+  workspaceWatcher.close();
+
   if (process.platform !== "darwin") {
     app.quit();
   }

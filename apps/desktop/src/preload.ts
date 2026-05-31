@@ -1,5 +1,9 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { CommandName, EditorViewMode, RendererEvent } from "./shellState";
+import type {
+  CommandName,
+  EditorViewMode,
+  RendererEvent
+} from "./shared/shellState";
 
 const api = {
   closeTab(tabId: string) {

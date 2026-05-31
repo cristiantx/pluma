@@ -6,10 +6,13 @@ import type { ResolvedTheme, ThemePreference } from "../theme.js";
 
 export type PlumaCommandHandlers = {
   closeTab: (tabId: string) => void;
+  compareConflict: () => void;
+  keepEditing: () => void;
   openDevTools: () => void;
   openFile: () => void;
   openFolder: () => void;
   openWorkspaceFile: (path: string) => void;
+  reloadFromDisk: () => void;
   setActiveTabId: (tabId: string) => void;
   setEditorViewMode: (mode: EditorViewMode) => void;
   updateDocumentText: (documentId: string, rawText: string) => void;
@@ -86,8 +89,11 @@ export type PlumaStoreState = {
 
 export type PlumaStoreActions = {
   closeTab: (tabId: string) => void;
+  compareConflict: () => void;
   hydrateShellSnapshot: (snapshot: PlumaShellSnapshot) => void;
   reorderTabs: (tabs: EditorTab[]) => void;
+  keepEditing: () => void;
+  reloadFromDisk: () => void;
   setActiveTabId: (tabId: string) => void;
   setCommandHandlers: (handlers: Partial<PlumaCommandHandlers>) => void;
   setEditorViewMode: (mode: EditorViewMode) => void;

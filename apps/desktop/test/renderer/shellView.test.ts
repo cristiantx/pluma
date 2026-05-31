@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createDocumentSession } from "@pluma/core";
 
-import { initialShellState } from "../src/shellState";
+import { initialShellState } from "../../src/shared/shellState";
 import {
   getActiveDocument,
   extractLeafName,
@@ -10,7 +10,7 @@ import {
   getShellSnapshot,
   getStatusMetrics,
   getWorkspaceLabel
-} from "../src/shellView";
+} from "../../src/renderer/shellView";
 
 describe("extractLeafName", () => {
   it("returns the last path segment for unix and windows paths", () => {

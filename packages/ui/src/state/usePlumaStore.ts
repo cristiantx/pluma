@@ -14,10 +14,13 @@ const noop = () => {};
 
 const defaultCommandHandlers: PlumaCommandHandlers = {
   closeTab: noop,
+  compareConflict: noop,
+  keepEditing: noop,
   openDevTools: noop,
   openFile: noop,
   openFolder: noop,
   openWorkspaceFile: noop,
+  reloadFromDisk: noop,
   setActiveTabId: noop,
   setEditorViewMode: noop,
   updateDocumentText: noop,
@@ -94,6 +97,10 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     closeTabHandler(tabId);
   },
 
+  compareConflict: () => {
+    get().commands.commandHandlers.compareConflict();
+  },
+
   hydrateShellSnapshot: (snapshot: PlumaShellSnapshot) => {
     set((state) => {
       const isNewWorkspace =
@@ -141,6 +148,14 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
         tabs
       }
     }));
+  },
+
+  keepEditing: () => {
+    get().commands.commandHandlers.keepEditing();
+  },
+
+  reloadFromDisk: () => {
+    get().commands.commandHandlers.reloadFromDisk();
   },
 
   setActiveTabId: (tabId) => {

@@ -234,20 +234,20 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
   - [x] sidebar/editor pane sizes
 - [x] Persist desktop settings in `settings.json`:
   - [x] theme preference
-- [ ] Implement autosave debounce.
-- [ ] Persist changes through `writeTextAtomic`.
-- [ ] Show save state in the UI.
-- [ ] Apply the Pluma design system to save, autosave, conflict, external-change, and status-bar metric states.
-- [ ] Evaluate `chokidar` for active-file and folder watching.
-- [ ] Watch active files for external changes.
-- [ ] Watch opened folders for file tree changes.
-- [ ] Detect external modification before saving.
-- [ ] Preserve in-memory edits when a conflict occurs.
-- [ ] Add conflict UI with actions:
-  - [ ] reload from disk
-  - [ ] keep editing
-  - [ ] compare manually
-- [ ] Add tests for autosave, atomic save, and external modification detection.
+- [x] Implement autosave debounce.
+- [x] Persist changes through `writeTextAtomic`.
+- [x] Show save state in the UI.
+- [x] Apply the Pluma design system to save, autosave, conflict, external-change, and status-bar metric states.
+- [x] Evaluate `chokidar` for active-file and folder watching.
+- [x] Watch active files for external changes.
+- [x] Watch opened folders for file tree changes.
+- [x] Detect external modification before saving.
+- [x] Preserve in-memory edits when a conflict occurs.
+- [x] Add conflict UI with actions:
+  - [x] reload from disk
+  - [x] keep editing
+  - [x] compare manually
+- [x] Add tests for autosave, atomic save, and external modification detection.
 
 ## Phase 9: MVP UI Polish
 

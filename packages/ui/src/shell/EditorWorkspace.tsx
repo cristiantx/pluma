@@ -11,6 +11,9 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   );
   const editorViewMode = usePlumaStore((state) => state.layout.editorViewMode);
   const hasWorkspace = usePlumaStore((state) => state.workspace.hasWorkspace);
+  const compareConflict = usePlumaStore((state) => state.compareConflict);
+  const keepEditing = usePlumaStore((state) => state.keepEditing);
+  const reloadFromDisk = usePlumaStore((state) => state.reloadFromDisk);
   const updateDocumentText = usePlumaStore((state) => state.updateDocumentText);
 
   if (!activeDocument) {
@@ -46,6 +49,32 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   return (
     <section className="editor-workspace">
       <TabStrip />
+
+      {activeDocument.saveState === "conflict" ||
+      activeDocument.saveState === "external-change" ? (
+        <div
+          className="save-conflict-banner"
+          role="status"
+          data-save-state={activeDocument.saveState}
+        >
+          <span>
+            {activeDocument.saveState === "external-change"
+              ? "This file changed on disk."
+              : "This file has a save conflict."}
+          </span>
+          <div className="save-conflict-actions">
+            <button onClick={reloadFromDisk} type="button">
+              Reload
+            </button>
+            <button onClick={keepEditing} type="button">
+              Keep Editing
+            </button>
+            <button onClick={compareConflict} type="button">
+              Compare Manually
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="editor-panes" data-view-mode={editorViewMode}>
         {showRichEditor ? (
