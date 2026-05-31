@@ -9,6 +9,8 @@ export type SidebarTreeNode = {
 
 export type SidebarTreeData = {
   expandedItems: string[];
+  revealExpandedItems: string[];
+  revealItemId: string | null;
   rootItemId: string;
   selectedItems: string[];
   tree: Record<string, SidebarTreeNode>;
@@ -28,7 +30,8 @@ export function buildSidebarTreeData(
     kind: "folder" | "file";
     label: string;
     location?: FileLocation;
-  }>
+  }>,
+  revealPath?: string | null
 ): SidebarTreeData {
   const rootItemId = "workspace-root";
   const tree: Record<string, SidebarTreeNode> = {
@@ -39,6 +42,8 @@ export function buildSidebarTreeData(
     }
   };
   const expandedItems = [rootItemId];
+  let revealExpandedItems: string[] = [];
+  let revealItemId: string | null = null;
   const selectedItems: string[] = [];
   const ancestors = [rootItemId];
   const siblingCounts = new Map<string, number>();
@@ -66,6 +71,15 @@ export function buildSidebarTreeData(
       }
     }
 
+    if (
+      revealPath &&
+      node.location?.kind === "desktop-path" &&
+      node.location.path === revealPath
+    ) {
+      revealItemId = nodeId;
+      revealExpandedItems = ancestors.slice(0, node.depth + 1);
+    }
+
     if (node.isActive) {
       selectedItems.push(nodeId);
     }
@@ -73,6 +87,8 @@ export function buildSidebarTreeData(
 
   return {
     expandedItems,
+    revealExpandedItems,
+    revealItemId,
     rootItemId,
     selectedItems,
     tree

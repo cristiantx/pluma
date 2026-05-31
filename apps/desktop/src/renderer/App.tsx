@@ -89,6 +89,10 @@ export function App() {
     }
 
     return window.pluma.onEvent((event) => {
+      if (event.type === "reveal-workspace-file") {
+        usePlumaStore.getState().revealWorkspaceFile(event.path);
+      }
+
       setShellState((current) => reduceShellEvent(current, event));
     });
   }, [schedulePaneSizesSave, setCommandHandlers]);

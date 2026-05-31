@@ -195,6 +195,19 @@ describe("usePlumaStore", () => {
     expect(closeTab).toHaveBeenCalledWith(baseDocuments[0]?.id);
   });
 
+  it("records reveal workspace file requests", () => {
+    usePlumaStore.getState().revealWorkspaceFile(baseTabs[1].location.path);
+
+    expect(usePlumaStore.getState().workspace.revealWorkspacePath).toBe(
+      baseTabs[1].location.path
+    );
+    expect(usePlumaStore.getState().workspace.revealRequestId).toBe(1);
+
+    usePlumaStore.getState().revealWorkspaceFile(baseTabs[1].location.path);
+
+    expect(usePlumaStore.getState().workspace.revealRequestId).toBe(2);
+  });
+
   it("notifies the shell when pane sizes change", () => {
     const updatePaneSizes = vi.fn();
     usePlumaStore.getState().setCommandHandlers({ updatePaneSizes });

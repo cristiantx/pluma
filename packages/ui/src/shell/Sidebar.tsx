@@ -6,6 +6,12 @@ import { SidebarTree } from "./SidebarTree.js";
 
 export const Sidebar = memo(function Sidebar() {
   const nodes = usePlumaStore((state) => state.workspace.explorerNodes);
+  const revealRequestId = usePlumaStore(
+    (state) => state.workspace.revealRequestId
+  );
+  const revealWorkspacePath = usePlumaStore(
+    (state) => state.workspace.revealWorkspacePath
+  );
   const workspaceLabel = usePlumaStore(
     (state) => state.workspace.workspaceLabel
   );
@@ -28,6 +34,8 @@ export const Sidebar = memo(function Sidebar() {
         nodes={nodes}
         onOpenWorkspaceFile={triggerOpenWorkspaceFile}
         onShowContextMenu={showWorkspaceContextMenu}
+        revealRequestId={revealRequestId}
+        revealWorkspacePath={revealWorkspacePath}
         rootLabel={rootLabel}
       />
 

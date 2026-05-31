@@ -36,6 +36,8 @@ export type WorkspaceSlice = {
   hasWorkspace: boolean;
   isBridgeAvailable: boolean;
   isDevelopment: boolean;
+  revealRequestId: number;
+  revealWorkspacePath: string | null;
   workspaceLabel: string;
   workspacePath: string;
 };
@@ -97,6 +99,7 @@ export type PlumaStoreActions = {
   reorderTabs: (tabs: EditorTab[]) => void;
   keepEditing: () => void;
   reloadFromDisk: () => void;
+  revealWorkspaceFile: (path: string) => void;
   setActiveTabId: (tabId: string) => void;
   setCommandHandlers: (handlers: Partial<PlumaCommandHandlers>) => void;
   setEditorViewMode: (mode: EditorViewMode) => void;

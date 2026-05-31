@@ -61,6 +61,8 @@ export const initialPlumaStoreState: PlumaStoreInitializer = {
     hasWorkspace: false,
     isBridgeAvailable: false,
     isDevelopment: false,
+    revealRequestId: 0,
+    revealWorkspacePath: null,
     workspaceLabel: "No workspace open",
     workspacePath: "~/Documents/Pluma Docs"
   }
@@ -109,6 +111,8 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
           hasWorkspace: snapshot.hasWorkspace,
           isBridgeAvailable: snapshot.isBridgeAvailable,
           isDevelopment: snapshot.isDevelopment,
+          revealRequestId: state.workspace.revealRequestId,
+          revealWorkspacePath: state.workspace.revealWorkspacePath,
           workspaceLabel: snapshot.workspaceLabel,
           workspacePath: snapshot.workspacePath
         }
@@ -133,6 +137,16 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
 
   reloadFromDisk: () => {
     get().commands.commandHandlers.reloadFromDisk();
+  },
+
+  revealWorkspaceFile: (path) => {
+    set((state) => ({
+      workspace: {
+        ...state.workspace,
+        revealRequestId: state.workspace.revealRequestId + 1,
+        revealWorkspacePath: path
+      }
+    }));
   },
 
   triggerNewFile: () => {

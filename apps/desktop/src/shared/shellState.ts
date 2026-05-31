@@ -22,6 +22,7 @@ export type DesktopShellSnapshot = {
 
 export type RendererEvent =
   | { type: "mode-changed"; mode: EditorViewMode }
+  | { type: "reveal-workspace-file"; path: string }
   | { type: "shell-snapshot"; snapshot: DesktopShellSnapshot }
   | { type: "status"; message: string };
 
@@ -85,6 +86,8 @@ export function reduceShellEvent(
         status: `Editor mode switched to ${event.mode}.`,
         activity: appendActivity(current.activity, `Mode: ${event.mode}`)
       };
+    case "reveal-workspace-file":
+      return current;
     case "shell-snapshot": {
       const normalizedSnapshot = normalizeDesktopShellSnapshot(
         event.snapshot as Partial<DesktopShellSnapshot>

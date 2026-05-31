@@ -58,6 +58,23 @@ import {
   tryCreateSessionForFilePath
 } from "./main/workspace/desktopWorkspace";
 import { WorkspaceWatcher } from "./main/watching/workspaceWatcher";
+import {
+  confirmDiscardDocumentsSequentially as confirmDiscardDocumentsSequentiallyDialog,
+  confirmDiscardProtectedDocuments as confirmDiscardProtectedDocumentsDialog
+} from "./main/dialogs/documentProtection";
+import { buildTabContextMenu } from "./main/menus/tabContextMenu";
+import { buildWorkspaceContextMenu } from "./main/menus/workspaceContextMenu";
+import {
+  clearWorkspaceClipboard,
+  getWorkspaceClipboard,
+  hasWorkspaceClipboard,
+  setWorkspaceClipboard,
+  type WorkspaceItemKind
+} from "./main/workspace/workspaceClipboard";
+import {
+  getDocumentsInWorkspacePath,
+  getWorkspaceTargetDirectory
+} from "./main/workspace/workspacePathHelpers";
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -81,11 +98,6 @@ let shellData: DesktopShellSnapshot = {
 const sessionStateFileName = "session-state.json";
 const appSettingsFileName = "settings.json";
 const autosaveDelayMs = 900;
-let workspaceClipboard: {
-  operation: "copy" | "cut";
-  path: string;
-  kind: "file" | "folder";
-} | null = null;
 
 const autosaveScheduler = new AutosaveScheduler(
   autosaveDelayMs,
@@ -321,29 +333,6 @@ function getProtectedDocuments(): DocumentSession[] {
   return shellData.documents.filter(shouldProtectDocumentSessionClose);
 }
 
-function getDocumentTargetDirectory(
-  targetPath: string,
-  kind: "file" | "folder"
-): string {
-  return kind === "folder" ? targetPath : path.dirname(targetPath);
-}
-
-function getDocumentsInPath(
-  targetPath: string,
-  kind: "file" | "folder"
-): DocumentSession[] {
-  return shellData.documents.filter((document) => {
-    if (document.location.kind !== "desktop-path") {
-      return false;
-    }
-
-    return kind === "folder"
-      ? document.location.path === targetPath ||
-          isPathInsideDirectory(targetPath, document.location.path)
-      : document.location.path === targetPath;
-  });
-}
-
 async function closeActiveDocumentSession(): Promise<void> {
   const activeDocument = getActiveDocument();
 
@@ -379,10 +368,7 @@ async function closeDocumentsWithProtection(
     shouldProtectDocumentSessionClose
   );
 
-  if (
-    protectedDocuments.length > 0 &&
-    !(await confirmDiscardProtectedDocuments(protectedDocuments, "close-tab"))
-  ) {
+  if (!(await confirmDiscardDocumentsSequentially(protectedDocuments))) {
     emitToRenderer({ type: "status", message: "Close tab cancelled." });
     emitShellSnapshot();
     return;
@@ -400,27 +386,13 @@ async function confirmDiscardProtectedDocuments(
   documents: DocumentSession[],
   action: "close-tab" | "quit" | "reload"
 ): Promise<boolean> {
-  if (!mainWindow || documents.length === 0) {
-    return true;
-  }
+  return confirmDiscardProtectedDocumentsDialog(mainWindow, documents, action);
+}
 
-  const detail =
-    documents.length === 1
-      ? "This document has unsaved, saving, or conflicted changes."
-      : `${documents.length} documents have unsaved, saving, or conflicted changes.`;
-  const actionLabel =
-    action === "quit" ? "Quit" : action === "reload" ? "Reload" : "Close";
-  const result = await dialog.showMessageBox(mainWindow, {
-    buttons: [actionLabel, "Cancel"],
-    cancelId: 1,
-    defaultId: 1,
-    detail,
-    message: `${actionLabel} anyway?`,
-    noLink: true,
-    type: "warning"
-  });
-
-  return result.response === 0;
+async function confirmDiscardDocumentsSequentially(
+  documents: DocumentSession[]
+): Promise<boolean> {
+  return confirmDiscardDocumentsSequentiallyDialog(mainWindow, documents);
 }
 
 function updateActiveFileWatcher(): void {
@@ -1029,6 +1001,32 @@ function showDocumentInFolder(documentId: string): void {
   emitToRenderer({ type: "status", message: "Showing file in folder." });
 }
 
+function revealDocumentInWorkspace(document: DocumentSession): void {
+  if (
+    !shellData.workspacePath ||
+    document.location.kind !== "desktop-path" ||
+    !isPathInsideDirectory(shellData.workspacePath, document.location.path)
+  ) {
+    emitToRenderer({
+      type: "status",
+      message: "This file is not in the active workspace."
+    });
+    return;
+  }
+
+  updateShellData({
+    activeDocumentId: document.id,
+    status: `Revealed ${path.basename(document.location.path)} in workspace.`
+  });
+  updateActiveFileWatcher();
+  persistSessionStateSoon();
+  emitShellSnapshot();
+  emitToRenderer({
+    type: "reveal-workspace-file",
+    path: document.location.path
+  });
+}
+
 function showTabContextMenu(documentId: string): void {
   const document = getDocumentById(documentId);
 
@@ -1043,69 +1041,53 @@ function showTabContextMenu(documentId: string): void {
     (candidate) => candidate.saveState === "idle"
   );
   const hasDesktopPath = document.location.kind === "desktop-path";
-  const menu = Menu.buildFromTemplate([
-    {
-      label: "Close",
-      click: () =>
-        void closeDocumentsWithProtection([document], "Closed document tab.")
-    },
-    {
-      enabled: otherDocuments.length > 0,
-      label: "Close others",
-      click: () =>
-        void closeDocumentsWithProtection(
-          otherDocuments,
-          "Closed other document tabs."
-        )
-    },
-    {
-      enabled: savedDocuments.length > 0,
-      label: "Close saved tabs",
-      click: () =>
-        void closeDocumentsWithProtection(
-          savedDocuments,
-          "Closed saved document tabs."
-        )
-    },
-    {
-      enabled: shellData.documents.length > 0,
-      label: "Close all tabs",
-      click: () =>
-        void closeDocumentsWithProtection(
-          shellData.documents,
-          "Closed all document tabs."
-        )
-    },
-    { type: "separator" },
-    {
-      enabled: hasDesktopPath,
-      label: "Rename",
-      click: () => void renameDocument(document.id)
-    },
-    {
-      enabled: hasDesktopPath,
-      label: "Copy path",
-      click: () => copyDocumentPath(document.id)
-    },
-    {
-      enabled: hasDesktopPath,
-      label: "Show in folder",
-      click: () => showDocumentInFolder(document.id)
-    }
-  ]);
+  const canRevealInWorkspace =
+    shellData.workspacePath !== null &&
+    document.location.kind === "desktop-path" &&
+    isPathInsideDirectory(shellData.workspacePath, document.location.path);
+  const menu = buildTabContextMenu({
+    canCloseAll: shellData.documents.length > 0,
+    canCloseOthers: otherDocuments.length > 0,
+    canCloseSavedTabs: savedDocuments.length > 0,
+    canCopyPath: hasDesktopPath,
+    canRename: hasDesktopPath,
+    canRevealInWorkspace,
+    canShowInFolder: hasDesktopPath,
+    onClose: () =>
+      void closeDocumentsWithProtection([document], "Closed document tab."),
+    onCloseOthers: () =>
+      void closeDocumentsWithProtection(
+        otherDocuments,
+        "Closed other document tabs."
+      ),
+    onCloseSavedTabs: () =>
+      void closeDocumentsWithProtection(
+        savedDocuments,
+        "Closed saved document tabs."
+      ),
+    onCloseAll: () =>
+      void closeDocumentsWithProtection(
+        shellData.documents,
+        "Closed all document tabs."
+      ),
+    onRename: () => void renameDocument(document.id),
+    onCopyPath: () => copyDocumentPath(document.id),
+    onShowInFolder: () => showDocumentInFolder(document.id),
+    onRevealInWorkspace: () => revealDocumentInWorkspace(document)
+  });
 
   menu.popup({ window: mainWindow });
 }
 
 async function createWorkspaceFile(
   targetPath: string,
-  kind: "file" | "folder"
+  kind: WorkspaceItemKind
 ): Promise<void> {
   if (!mainWindow) {
     return;
   }
 
-  const targetDirectory = getDocumentTargetDirectory(targetPath, kind);
+  const targetDirectory = getWorkspaceTargetDirectory(targetPath, kind);
   const result = await dialog.showSaveDialog(mainWindow, {
     defaultPath: path.join(targetDirectory, "Untitled.md"),
     filters: [{ name: "Markdown", extensions: ["md", "markdown", "mdown"] }],
@@ -1141,13 +1123,13 @@ async function createWorkspaceFile(
 
 async function createWorkspaceDirectory(
   targetPath: string,
-  kind: "file" | "folder"
+  kind: WorkspaceItemKind
 ): Promise<void> {
   if (!mainWindow) {
     return;
   }
 
-  const targetDirectory = getDocumentTargetDirectory(targetPath, kind);
+  const targetDirectory = getWorkspaceTargetDirectory(targetPath, kind);
   const result = await dialog.showSaveDialog(mainWindow, {
     defaultPath: path.join(targetDirectory, "New Folder"),
     title: "New Directory"
@@ -1180,20 +1162,24 @@ async function createWorkspaceDirectory(
 
 async function renameWorkspaceItem(
   targetPath: string,
-  kind: "file" | "folder"
+  kind: WorkspaceItemKind
 ): Promise<void> {
   if (!mainWindow) {
     return;
   }
 
-  const openDocuments = getDocumentsInPath(targetPath, kind);
+  const openDocuments = getDocumentsInWorkspacePath(
+    shellData.documents,
+    targetPath,
+    kind
+  );
   const protectedDocuments = openDocuments.filter(
     shouldProtectDocumentSessionClose
   );
 
   if (
     protectedDocuments.length > 0 &&
-    !(await confirmDiscardProtectedDocuments(protectedDocuments, "close-tab"))
+    !(await confirmDiscardDocumentsSequentially(protectedDocuments))
   ) {
     emitToRenderer({ type: "status", message: "Rename cancelled." });
     emitShellSnapshot();
@@ -1258,15 +1244,16 @@ async function renameWorkspaceItem(
 
 async function pasteWorkspaceItem(
   targetPath: string,
-  kind: "file" | "folder"
+  kind: WorkspaceItemKind
 ): Promise<void> {
-  if (!workspaceClipboard) {
+  const source = getWorkspaceClipboard();
+
+  if (!source) {
     emitToRenderer({ type: "status", message: "Nothing to paste." });
     return;
   }
 
-  const source = workspaceClipboard;
-  const targetDirectory = getDocumentTargetDirectory(targetPath, kind);
+  const targetDirectory = getWorkspaceTargetDirectory(targetPath, kind);
   const destinationPath = path.join(
     targetDirectory,
     path.basename(source.path)
@@ -1298,17 +1285,18 @@ async function pasteWorkspaceItem(
         await copyFile(source.path, destinationPath);
       }
     } else {
-      const openDocuments = getDocumentsInPath(source.path, source.kind);
+      const openDocuments = getDocumentsInWorkspacePath(
+        shellData.documents,
+        source.path,
+        source.kind
+      );
       const protectedDocuments = openDocuments.filter(
         shouldProtectDocumentSessionClose
       );
 
       if (
         protectedDocuments.length > 0 &&
-        !(await confirmDiscardProtectedDocuments(
-          protectedDocuments,
-          "close-tab"
-        ))
+        !(await confirmDiscardDocumentsSequentially(protectedDocuments))
       ) {
         emitToRenderer({ type: "status", message: "Paste cancelled." });
         emitShellSnapshot();
@@ -1318,7 +1306,7 @@ async function pasteWorkspaceItem(
       selfWritePaths.add(source.path);
       selfWritePaths.add(destinationPath);
       await rename(source.path, destinationPath);
-      workspaceClipboard = null;
+      clearWorkspaceClipboard();
 
       if (openDocuments.length > 0) {
         closeDocumentSessions(
@@ -1348,16 +1336,20 @@ async function pasteWorkspaceItem(
 
 async function moveWorkspaceItemToTrash(
   targetPath: string,
-  kind: "file" | "folder"
+  kind: WorkspaceItemKind
 ): Promise<void> {
-  const openDocuments = getDocumentsInPath(targetPath, kind);
+  const openDocuments = getDocumentsInWorkspacePath(
+    shellData.documents,
+    targetPath,
+    kind
+  );
   const protectedDocuments = openDocuments.filter(
     shouldProtectDocumentSessionClose
   );
 
   if (
     protectedDocuments.length > 0 &&
-    !(await confirmDiscardProtectedDocuments(protectedDocuments, "close-tab"))
+    !(await confirmDiscardDocumentsSequentially(protectedDocuments))
   ) {
     emitToRenderer({ type: "status", message: "Move to Trash cancelled." });
     emitShellSnapshot();
@@ -1394,59 +1386,32 @@ async function moveWorkspaceItemToTrash(
 
 function showWorkspaceContextMenu(
   targetPath: string,
-  kind: "file" | "folder"
+  kind: WorkspaceItemKind
 ): void {
   if (!mainWindow) {
     return;
   }
 
-  const menu = Menu.buildFromTemplate([
-    {
-      label: "New File",
-      click: () => void createWorkspaceFile(targetPath, kind)
+  const menu = buildWorkspaceContextMenu({
+    canPaste: hasWorkspaceClipboard(),
+    onNewFile: () => void createWorkspaceFile(targetPath, kind),
+    onNewDirectory: () => void createWorkspaceDirectory(targetPath, kind),
+    onCopy: () => {
+      setWorkspaceClipboard({ operation: "copy", path: targetPath, kind });
+      emitToRenderer({ type: "status", message: "Copied workspace item." });
     },
-    {
-      label: "New Directory",
-      click: () => void createWorkspaceDirectory(targetPath, kind)
+    onCut: () => {
+      setWorkspaceClipboard({ operation: "cut", path: targetPath, kind });
+      emitToRenderer({ type: "status", message: "Cut workspace item." });
     },
-    { type: "separator" },
-    {
-      label: "Copy",
-      click: () => {
-        workspaceClipboard = { operation: "copy", path: targetPath, kind };
-        emitToRenderer({ type: "status", message: "Copied workspace item." });
-      }
-    },
-    {
-      label: "Cut",
-      click: () => {
-        workspaceClipboard = { operation: "cut", path: targetPath, kind };
-        emitToRenderer({ type: "status", message: "Cut workspace item." });
-      }
-    },
-    {
-      enabled: workspaceClipboard !== null,
-      label: "Paste",
-      click: () => void pasteWorkspaceItem(targetPath, kind)
-    },
-    { type: "separator" },
-    {
-      label: "Rename",
-      click: () => void renameWorkspaceItem(targetPath, kind)
-    },
-    {
-      label: "Move To Trash",
-      click: () => void moveWorkspaceItemToTrash(targetPath, kind)
-    },
-    { type: "separator" },
-    {
-      label: "Show In Folder",
-      click: () => {
-        shell.showItemInFolder(targetPath);
-        emitToRenderer({ type: "status", message: "Showing item in folder." });
-      }
+    onPaste: () => void pasteWorkspaceItem(targetPath, kind),
+    onRename: () => void renameWorkspaceItem(targetPath, kind),
+    onMoveToTrash: () => void moveWorkspaceItemToTrash(targetPath, kind),
+    onShowInFolder: () => {
+      shell.showItemInFolder(targetPath);
+      emitToRenderer({ type: "status", message: "Showing item in folder." });
     }
-  ]);
+  });
 
   menu.popup({ window: mainWindow });
 }
