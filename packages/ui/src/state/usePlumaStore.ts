@@ -68,32 +68,6 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
 
   closeTab: (tabId) => {
     const closeTabHandler = get().commands.commandHandlers.closeTab;
-
-    set((state) => {
-      const nextTabs = state.tabs.tabs.filter((tab) => tab.id !== tabId);
-      const nextDocuments = state.document.documents.filter(
-        (document) => document.id !== tabId
-      );
-      const nextActiveTabId =
-        state.tabs.activeTabId === tabId
-          ? (nextTabs[0]?.id ?? "")
-          : state.tabs.activeTabId;
-      const nextActiveDocument =
-        nextDocuments.find((document) => document.id === nextActiveTabId) ??
-        null;
-
-      return {
-        document: {
-          activeDocument: nextActiveDocument,
-          documents: nextDocuments
-        },
-        tabs: {
-          activeTabId: nextActiveTabId,
-          tabs: nextTabs
-        }
-      };
-    });
-
     closeTabHandler(tabId);
   },
 

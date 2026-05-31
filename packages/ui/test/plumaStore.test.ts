@@ -132,19 +132,22 @@ describe("usePlumaStore", () => {
     expect(usePlumaStore.getState().theme.resolvedTheme).toBe("light");
   });
 
-  it("closes tabs and reassigns the active tab", () => {
+  it("keeps tab state stable until the shell confirms close", () => {
+    const closeTab = vi.fn();
+    usePlumaStore.getState().setCommandHandlers({ closeTab });
     usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
     usePlumaStore.getState().setActiveTabId(baseDocuments[1]?.id ?? "");
 
     usePlumaStore.getState().closeTab(baseDocuments[1]?.id ?? "");
 
     expect(usePlumaStore.getState().tabs.activeTabId).toBe(
-      baseDocuments[0]?.id
+      baseDocuments[1]?.id
     );
-    expect(usePlumaStore.getState().tabs.tabs).toHaveLength(1);
+    expect(usePlumaStore.getState().tabs.tabs).toHaveLength(2);
     expect(usePlumaStore.getState().document.activeDocument?.id).toBe(
-      baseDocuments[0]?.id
+      baseDocuments[1]?.id
     );
+    expect(closeTab).toHaveBeenCalledWith(baseDocuments[1]?.id);
   });
 
   it("notifies the shell when the active tab changes", () => {

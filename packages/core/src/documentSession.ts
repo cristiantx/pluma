@@ -6,6 +6,7 @@ export type DocumentMode = "rich" | "source";
 export type DocumentSaveState =
   | "conflict"
   | "dirty"
+  | "error"
   | "external-change"
   | "idle"
   | "saving";
@@ -93,6 +94,15 @@ export function markDocumentSessionConflict(
   };
 }
 
+export function markDocumentSessionSaveError(
+  session: DocumentSession
+): DocumentSession {
+  return {
+    ...session,
+    saveState: "error"
+  };
+}
+
 export function markDocumentSessionExternalChange(
   session: DocumentSession
 ): DocumentSession {
@@ -101,4 +111,10 @@ export function markDocumentSessionExternalChange(
     saveState:
       session.rawText === session.lastSavedText ? "external-change" : "conflict"
   };
+}
+
+export function shouldProtectDocumentSessionClose(
+  session: DocumentSession
+): boolean {
+  return session.saveState !== "idle";
 }

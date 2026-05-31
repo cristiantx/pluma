@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   createDocumentSession,
   markDocumentSessionExternalChange,
+  markDocumentSessionSaving,
+  shouldProtectDocumentSessionClose,
   updateDocumentSessionText
 } from "../src/documentSession.js";
 
@@ -48,5 +50,35 @@ describe("document session save states", () => {
       rawText: "# Mine\n",
       saveState: "conflict"
     });
+  });
+
+  it("protects documents that are not cleanly saved", () => {
+    const session = createDocumentSession({
+      location: {
+        kind: "desktop-path",
+        path: "/tmp/Notes.md"
+      },
+      metadata: {
+        fileId: "1",
+        mtimeMs: 10,
+        size: 8
+      },
+      rawText: "# Notes\n"
+    });
+
+    expect(shouldProtectDocumentSessionClose(session)).toBe(false);
+    expect(
+      shouldProtectDocumentSessionClose(
+        updateDocumentSessionText(session, "# Edited\n")
+      )
+    ).toBe(true);
+    expect(
+      shouldProtectDocumentSessionClose(markDocumentSessionSaving(session))
+    ).toBe(true);
+    expect(
+      shouldProtectDocumentSessionClose(
+        markDocumentSessionExternalChange(session)
+      )
+    ).toBe(true);
   });
 });

@@ -10,8 +10,10 @@ export {
   getDocumentSessionId,
   markDocumentSessionConflict,
   markDocumentSessionExternalChange,
+  markDocumentSessionSaveError,
   markDocumentSessionSaved,
   markDocumentSessionSaving,
+  shouldProtectDocumentSessionClose,
   updateDocumentSessionText
 } from "./documentSession.js";
 export { resolveFileLocationReference } from "./fileLocation.js";

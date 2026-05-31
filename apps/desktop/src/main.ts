@@ -14,9 +14,11 @@ import {
   formatMarkdownText,
   markDocumentSessionConflict,
   markDocumentSessionExternalChange,
+  markDocumentSessionSaveError,
   markDocumentSessionSaved,
   markDocumentSessionSaving,
   serializeMarkdownSession,
+  shouldProtectDocumentSessionClose,
   updateDocumentSessionText,
   type DocumentCapability,
   type DocumentSession,
@@ -60,6 +62,7 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 
 let mainWindow: BrowserWindow | null = null;
 let currentMode: EditorViewMode = "source";
+let isQuitting = false;
 let pendingOpenTargets: string[] = [];
 const fileSystem = new DesktopFileSystemAdapter();
 const isDevelopment = Boolean(MAIN_WINDOW_VITE_DEV_SERVER_URL);
@@ -256,6 +259,43 @@ function closeDocumentSession(documentId: string): void {
         : "Closed document tab."
   });
   updateActiveFileWatcher();
+}
+
+function getDocumentById(documentId: string): DocumentSession | null {
+  return (
+    shellData.documents.find((document) => document.id === documentId) ?? null
+  );
+}
+
+function getProtectedDocuments(): DocumentSession[] {
+  return shellData.documents.filter(shouldProtectDocumentSessionClose);
+}
+
+async function confirmDiscardProtectedDocuments(
+  documents: DocumentSession[],
+  action: "close-tab" | "quit" | "reload"
+): Promise<boolean> {
+  if (!mainWindow || documents.length === 0) {
+    return true;
+  }
+
+  const detail =
+    documents.length === 1
+      ? "This document has unsaved, saving, or conflicted changes."
+      : `${documents.length} documents have unsaved, saving, or conflicted changes.`;
+  const actionLabel =
+    action === "quit" ? "Quit" : action === "reload" ? "Reload" : "Close";
+  const result = await dialog.showMessageBox(mainWindow, {
+    buttons: [actionLabel, "Cancel"],
+    cancelId: 1,
+    defaultId: 1,
+    detail,
+    message: `${actionLabel} anyway?`,
+    noLink: true,
+    type: "warning"
+  });
+
+  return result.response === 0;
 }
 
 function updateActiveFileWatcher(): void {
@@ -536,7 +576,10 @@ async function saveDocument(
   updateShellData({
     documents: shellData.documents.map((document) =>
       document.id === activeDocument.id
-        ? updateDocumentSessionText(document, textToSave)
+        ? markDocumentSessionSaveError({
+            ...document,
+            rawText: textToSave
+          })
         : document
     ),
     status: `Save failed: ${saveResult.message}`
@@ -549,6 +592,14 @@ async function reloadActiveDocumentFromDisk(): Promise<void> {
 
   if (!activeDocument || activeDocument.location.kind !== "desktop-path") {
     emitToRenderer({ type: "status", message: "No desktop file to reload." });
+    return;
+  }
+
+  if (
+    shouldProtectDocumentSessionClose(activeDocument) &&
+    !(await confirmDiscardProtectedDocuments([activeDocument], "reload"))
+  ) {
+    emitToRenderer({ type: "status", message: "Reload cancelled." });
     return;
   }
 
@@ -608,8 +659,8 @@ function showManualCompareStatus(): void {
     type: "status",
     message:
       activeDocument?.location.kind === "desktop-path"
-        ? `Compare manually: ${activeDocument.location.path}`
-        : "No desktop file to compare."
+        ? `File path: ${activeDocument.location.path}`
+        : "No desktop file path to show."
   });
 }
 
@@ -799,7 +850,7 @@ async function handleCommand(command: CommandName): Promise<void> {
     case "save-as":
       emitToRenderer({
         type: "status",
-        message: "Save As wiring lands after workspace and editor integration."
+        message: "Save As is not available yet."
       });
       return;
     case "toggle-mode":
@@ -846,6 +897,7 @@ function buildMenu(): Menu {
         {
           label: "Save As",
           accelerator: "CmdOrCtrl+Shift+S",
+          enabled: false,
           click: () => void handleCommand("save-as")
         },
         { type: "separator" },
@@ -914,6 +966,26 @@ function createWindow(): void {
     mainWindow = null;
   });
 
+  mainWindow.on("close", (event) => {
+    if (isQuitting || getProtectedDocuments().length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+
+    void confirmDiscardProtectedDocuments(getProtectedDocuments(), "quit").then(
+      (canQuit) => {
+        if (!canQuit) {
+          emitToRenderer({ type: "status", message: "Quit cancelled." });
+          return;
+        }
+
+        isQuitting = true;
+        app.quit();
+      }
+    );
+  });
+
   mainWindow.webContents.on("did-finish-load", () => {
     emitToRenderer({ type: "mode-changed", mode: currentMode });
     updateShellData({
@@ -962,7 +1034,19 @@ ipcMain.handle(
   }
 );
 
-ipcMain.handle("pluma:close-tab", (_event, tabId: string) => {
+ipcMain.handle("pluma:close-tab", async (_event, tabId: string) => {
+  const document = getDocumentById(tabId);
+
+  if (
+    document &&
+    shouldProtectDocumentSessionClose(document) &&
+    !(await confirmDiscardProtectedDocuments([document], "close-tab"))
+  ) {
+    emitToRenderer({ type: "status", message: "Close tab cancelled." });
+    emitShellSnapshot();
+    return;
+  }
+
   closeDocumentSession(tabId);
   persistSessionStateSoon();
   emitShellSnapshot();
@@ -1079,6 +1163,27 @@ app.on("second-instance", (_event, argv) => {
 
   queueOpenTargets(normalizeOpenTargets(argv));
   void flushPendingOpenTargets();
+});
+
+app.on("before-quit", (event) => {
+  if (isQuitting || getProtectedDocuments().length === 0 || !mainWindow) {
+    isQuitting = true;
+    return;
+  }
+
+  event.preventDefault();
+
+  void confirmDiscardProtectedDocuments(getProtectedDocuments(), "quit").then(
+    (canQuit) => {
+      if (!canQuit) {
+        emitToRenderer({ type: "status", message: "Quit cancelled." });
+        return;
+      }
+
+      isQuitting = true;
+      app.quit();
+    }
+  );
 });
 
 app.on("window-all-closed", () => {
