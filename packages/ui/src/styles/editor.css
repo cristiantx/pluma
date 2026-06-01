@@ -19,7 +19,15 @@
   font-size: var(--font-size-status);
 }
 
+.save-conflict-banner > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .save-conflict-actions {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -32,9 +40,14 @@
   border-radius: var(--radius-control);
   background: var(--surface-bg);
   color: var(--text-primary);
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
 }
 
-.save-conflict-actions button:hover {
+.save-conflict-actions button:hover,
+.save-conflict-actions button:focus-visible {
   border-color: var(--border-strong);
   background: var(--active-control);
 }
@@ -53,7 +66,10 @@
 
 .editor-empty-copy h1 {
   margin: 0 0 12px;
-  font-size: 1.5rem;
+  color: var(--text-primary);
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .editor-empty-copy p {
@@ -289,6 +305,7 @@
   color: var(--text-secondary);
   font-family: var(--font-ui);
   font-size: 12px;
+  line-height: 1.35;
 }
 
 .pluma-source-editor {

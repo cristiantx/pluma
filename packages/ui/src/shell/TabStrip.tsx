@@ -61,7 +61,7 @@ function TabButton({
       >
         <FileText className="tree-icon" aria-hidden="true" />
         <span className="tab-label">
-          {tab.title}
+          <span className="tab-title">{tab.title}</span>
           {tab.isDirty ? <span className="tab-dirty-indicator">•</span> : null}
         </span>
       </button>

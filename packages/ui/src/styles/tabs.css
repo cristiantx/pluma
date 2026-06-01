@@ -57,6 +57,7 @@
   height: var(--tabbar-height);
   flex: 0 0 auto;
   min-width: 172px;
+  max-width: 280px;
   display: inline-flex;
   align-items: center;
   gap: 0;
@@ -65,11 +66,19 @@
   color: var(--text-secondary);
   background: color-mix(in srgb, var(--surface-bg) 78%, transparent);
   font-size: inherit;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
 }
 
 .tab.is-active {
   color: var(--text-primary);
   background: var(--editor-bg);
+}
+
+.tab:hover:not(.is-active) {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--surface-bg) 92%, var(--active-row));
 }
 
 .tab-activate {
@@ -85,6 +94,11 @@
   cursor: pointer;
 }
 
+.tab-activate:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
 .tab-close {
   width: 26px;
   height: 26px;
@@ -94,22 +108,40 @@
   color: var(--text-muted);
   align-self: center;
   margin-right: 6px;
+  opacity: 0.78;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    opacity 120ms ease;
 }
 
-.tab-close:hover {
+.tab:hover .tab-close,
+.tab-close:hover,
+.tab-close:focus-visible {
+  opacity: 1;
+}
+
+.tab-close:hover,
+.tab-close:focus-visible {
   background: var(--active-control);
   color: var(--text-primary);
 }
 
 .tab-label {
   min-width: 0;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   display: inline-flex;
   align-items: center;
   gap: 5px;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.tab-title {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tab-dirty-indicator {

@@ -274,12 +274,12 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 - [ ] Finalize light and dark theme polish across shell, sidebar, editor chrome, and status surfaces.
 - [ ] Verify consistency of the implemented design system across all major UI surfaces.
-- [ ] Refine the custom title bar, sidebar layout, top-right utility actions, and status bar for dense desktop use.
-- [ ] Refine layout, spacing, and alignment details across the app.
-- [ ] Refine motion and interaction polish where it improves usability.
+- [x] Refine the custom title bar, sidebar layout, top-right utility actions, and status bar for dense desktop use.
+- [x] Refine layout, spacing, and alignment details across the app.
+- [x] Refine motion and interaction polish where it improves usability.
 - [ ] Verify keyboard navigation for core flows.
-- [ ] Verify text does not overflow controls across common window sizes.
-- [ ] Keep the UI quiet, dense, and document-focused.
+- [x] Verify text does not overflow controls across common window sizes.
+- [x] Keep the UI quiet, dense, and document-focused.
 
 ## Phase 9.1: Post-Foundation Feature Candidates
 
@@ -300,6 +300,15 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Evaluate HTML export.
 - [ ] Evaluate PDF export.
 - [ ] Evaluate HTML-to-Markdown import or paste cleanup with `turndown` or a GFM-compatible alternative.
+- [ ] Evaluate Edit menu additions once the editor supports them:
+  - [ ] copy as rich text
+  - [ ] copy as HTML
+  - [ ] duplicate selection or block
+  - [ ] create/delete paragraph commands
+  - [ ] find, find next, find previous, replace, and find in folder
+  - [ ] screenshot capture
+  - [ ] line ending selection
+  - [ ] Emoji & Symbols native menu support
 
 ## Phase 10: Packaging And Distribution
 

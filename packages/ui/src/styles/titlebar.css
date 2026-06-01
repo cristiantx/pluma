@@ -24,7 +24,7 @@ button {
 .titlebar-path,
 .titlebar-brand {
   flex: 1 1 auto;
-  max-width: min(312px, 100%);
+  max-width: min(420px, max(0px, calc(100% - 310px)));
   min-width: 0;
   display: inline-flex;
   align-items: center;
@@ -38,6 +38,7 @@ button {
 }
 
 .titlebar-path span:nth-child(2) {
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -77,6 +78,10 @@ button {
   border-radius: var(--radius-control);
   color: var(--text-secondary);
   font-size: inherit;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
 }
 
 .titlebar-button:hover,
@@ -85,6 +90,10 @@ button {
   border-color: var(--border-default);
   background: var(--active-control);
   color: var(--text-primary);
+}
+
+.titlebar-button:active {
+  background: color-mix(in srgb, var(--active-control) 72%, var(--accent) 8%);
 }
 
 .titlebar-button-tooltip {
@@ -120,8 +129,12 @@ button {
 }
 
 .bridge-warning {
+  max-width: 84px;
+  overflow: hidden;
   color: var(--warning);
   font-size: 12px;
+  text-overflow: ellipsis;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  white-space: nowrap;
 }

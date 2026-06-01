@@ -8,14 +8,15 @@ export const StatusBar = memo(function StatusBar() {
   return (
     <footer className="statusbar">
       <div className="statusbar-group">
-        {metrics.slice(0, 3).map((metric) => (
+        {metrics.map((metric) => (
           <span className="status-metric" key={metric.label}>
-            {metric.label}: {metric.value}
+            <span className="status-metric-label">{metric.label}</span>
+            <span className="status-metric-value">{metric.value}</span>
           </span>
         ))}
       </div>
       <div className="statusbar-group">
-        <span>Markdown</span>
+        <span className="statusbar-filetype">Markdown</span>
       </div>
     </footer>
   );

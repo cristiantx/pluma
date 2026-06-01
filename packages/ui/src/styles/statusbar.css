@@ -3,8 +3,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 11px;
-  padding: 0 20px;
+  gap: 14px;
+  padding: 0 14px;
   border-top: 1px solid var(--border-default);
   background: var(--chrome-bg);
   color: var(--text-secondary);
@@ -15,5 +15,34 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 23px;
+  gap: 16px;
+}
+
+.statusbar-group:first-child {
+  flex: 1 1 auto;
+}
+
+.status-metric {
+  min-width: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.status-metric-label {
+  color: var(--text-muted);
+}
+
+.status-metric-value,
+.statusbar-filetype {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+}
+
+.statusbar-filetype {
+  max-width: 120px;
+  white-space: nowrap;
 }
