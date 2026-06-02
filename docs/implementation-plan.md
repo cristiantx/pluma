@@ -281,34 +281,108 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [x] Verify text does not overflow controls across common window sizes.
 - [x] Keep the UI quiet, dense, and document-focused.
 
-## Phase 9.1: Post-Foundation Feature Candidates
+## Phase 9.1: Editor Navigation And Search
 
-- [ ] Evaluate fast workspace search with `@vscode/ripgrep`.
-- [ ] Evaluate multi-window desktop support:
-  - [ ] keep Pluma as a single Electron app instance with multiple `BrowserWindow`s.
-  - [ ] introduce a per-window session/controller for documents, active tab, workspace, pane sizes, autosave timers, and file watchers.
-  - [ ] route IPC commands by sender window instead of using one global active document/session.
-  - [ ] add `File > New Window` and define whether opened files reuse the active window or create a new window.
-  - [ ] protect unsaved changes per window and during app-wide quit across all open windows.
-  - [ ] decide whether session restore should restore one previous window or all previous windows.
-- [ ] Evaluate focus mode.
-- [ ] Evaluate typewriter mode.
-- [ ] Evaluate spellcheck using Electron's built-in spellchecker before adding native spellcheck dependencies.
+### Search Decisions
+
+- [x] `Cmd+F` searches only the focused editor pane in split mode.
+- [x] Ship replace together with active-file search.
+- [x] Scope workspace search to Markdown files for the MVP.
+- [x] Use `@vscode/ripgrep` for workspace search.
+
+### Search Candidate Work
+
+- [ ] Add find, find next, and find previous for the active editor.
+- [ ] Add replace for the active editor.
+- [ ] Add Markdown-only workspace search with `@vscode/ripgrep`.
+- [ ] Add `Find in Folder` on top of the workspace-search implementation.
+
+## Phase 9.2: Writing Ergonomics
+
+### Ergonomics Decisions
+
+- [x] Enable spellcheck by default and add a setting to disable it.
+- [x] Defer focus mode.
+- [x] Defer typewriter mode.
+- [x] Defer duplicate, paragraph, and Emoji & Symbols edit-menu additions.
+
+### Ergonomics Candidate Work
+
+- [ ] Add spellcheck using Electron's built-in spellchecker.
+- [ ] Add a setting to disable spellcheck.
+- [ ] Keep focus mode deferred beyond the current post-MVP sequence.
+- [ ] Keep typewriter mode deferred beyond the current post-MVP sequence.
+- [ ] Keep duplicate, paragraph, and Emoji & Symbols edit-menu additions deferred.
+
+## Phase 9.3: Clipboard And Import
+
+### Clipboard Decisions
+
+- [x] Copy as rich text uses neutral portable styling.
+- [x] Copy as HTML exports a fragment, not a full document.
+- [x] Convert pasted HTML automatically in rich mode.
+
+### Clipboard Candidate Work
+
+- [ ] Evaluate copy as rich text.
+- [ ] Evaluate copy as HTML.
+- [ ] Add automatic HTML-to-Markdown paste cleanup with `turndown` or a GFM-compatible alternative.
+
+## Phase 9.4: Markdown Rendering Extensions
+
+### Rendering Decisions
+
+- [x] Target KaTeX, Mermaid, and emoji shortcodes as the initial extension set.
+- [x] Keep unsupported extensions source-only until round-trip safety is proven.
+- [x] Keep math and diagrams editable as source blocks only.
+
+### Rendering Candidate Work
+
 - [ ] Evaluate KaTeX math rendering.
 - [ ] Evaluate Mermaid diagram rendering.
 - [ ] Evaluate emoji support.
+
+## Phase 9.5: Export
+
+### Export Decisions
+
+- [x] Export is document-only for the MVP path.
+- [x] Export uses a neutral print stylesheet.
+- [x] Keep screenshot capture as a future export candidate.
+
+### Export Candidate Work
+
 - [ ] Evaluate HTML export.
 - [ ] Evaluate PDF export.
-- [ ] Evaluate HTML-to-Markdown import or paste cleanup with `turndown` or a GFM-compatible alternative.
-- [ ] Evaluate Edit menu additions once the editor supports them:
-  - [ ] copy as rich text
-  - [ ] copy as HTML
-  - [ ] duplicate selection or block
-  - [ ] create/delete paragraph commands
-  - [ ] find, find next, find previous, replace, and find in folder
-  - [ ] screenshot capture
-  - [ ] line ending selection
-  - [ ] Emoji & Symbols native menu support
+- [ ] Evaluate screenshot capture.
+
+## Phase 9.6: Desktop Window Architecture
+
+### Windowing Decisions
+
+- [x] Keep Pluma as a single Electron app instance with multiple `BrowserWindow`s.
+- [x] `File > New Window` opens an empty window.
+- [x] Opening a file while Pluma is already running reuses the most recently active window.
+- [x] Session restore reopens all previously open windows.
+
+### Windowing Candidate Work
+
+- [ ] Introduce a per-window session/controller for documents, active tab, workspace, pane sizes, autosave timers, and file watchers.
+- [ ] Route IPC commands by sender window instead of using one global active document/session.
+- [ ] Add `File > New Window`.
+- [ ] Protect unsaved changes per window and during app-wide quit across all open windows.
+- [ ] Define session restore behavior for multiple windows.
+
+## Phase 9.7: Advanced File Controls
+
+### File-Control Decisions
+
+- [x] Defer line-ending selection to a later advanced-files pass.
+- [x] When added later, line-ending changes apply on save.
+
+### File-Control Candidate Work
+
+- [ ] Keep line-ending selection deferred beyond the MVP and early post-MVP passes.
 
 ## Phase 10: Packaging And Distribution
 
