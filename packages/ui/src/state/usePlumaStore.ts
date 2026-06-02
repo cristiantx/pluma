@@ -42,7 +42,8 @@ export const initialPlumaStoreState: PlumaStoreInitializer = {
   layout: {
     editorViewMode: "source",
     isSidebarVisible: true,
-    paneSizes: []
+    paneSizes: [],
+    splitPaneSizesByDocumentId: {}
   },
   status: {
     statusMetrics: []
@@ -86,6 +87,14 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
         snapshot.hasWorkspace &&
         (!state.workspace.hasWorkspace ||
           state.workspace.workspacePath !== snapshot.workspacePath);
+      const openDocumentIds = new Set(
+        snapshot.documents.map((document) => document.id)
+      );
+      const splitPaneSizesByDocumentId = Object.fromEntries(
+        Object.entries(state.layout.splitPaneSizesByDocumentId).filter(
+          ([documentId]) => openDocumentIds.has(documentId)
+        )
+      );
 
       return {
         document: {
@@ -97,7 +106,8 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
           isSidebarVisible: snapshot.hasWorkspace
             ? isNewWorkspace || state.layout.isSidebarVisible
             : false,
-          paneSizes: snapshot.paneSizes
+          paneSizes: snapshot.paneSizes,
+          splitPaneSizesByDocumentId
         },
         status: {
           statusMetrics: snapshot.statusMetrics
@@ -324,6 +334,18 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
       }
     }));
     get().commands.commandHandlers.updatePaneSizes(paneSizes);
+  },
+
+  updateSplitPaneSizes: (documentId, paneSizes) => {
+    set((state) => ({
+      layout: {
+        ...state.layout,
+        splitPaneSizesByDocumentId: {
+          ...state.layout.splitPaneSizesByDocumentId,
+          [documentId]: paneSizes
+        }
+      }
+    }));
   },
 
   triggerToggleMode: () => {

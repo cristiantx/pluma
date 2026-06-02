@@ -272,8 +272,8 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ## Phase 9: MVP UI Polish
 
-- [ ] Finalize light and dark theme polish across shell, sidebar, editor chrome, and status surfaces.
-- [ ] Verify consistency of the implemented design system across all major UI surfaces.
+- [x] Finalize light and dark theme polish across shell, sidebar, editor chrome, and status surfaces.
+- [x] Verify consistency of the implemented design system across all major UI surfaces.
 - [x] Refine the custom title bar, sidebar layout, top-right utility actions, and status bar for dense desktop use.
 - [x] Refine layout, spacing, and alignment details across the app.
 - [x] Refine motion and interaction polish where it improves usability.

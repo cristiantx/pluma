@@ -218,6 +218,44 @@ describe("usePlumaStore", () => {
     expect(updatePaneSizes).toHaveBeenCalledWith([240, 760]);
   });
 
+  it("keeps split pane sizes scoped to each open document", () => {
+    usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
+
+    usePlumaStore
+      .getState()
+      .updateSplitPaneSizes(baseDocuments[0]?.id ?? "", [420, 580]);
+    usePlumaStore
+      .getState()
+      .updateSplitPaneSizes(baseDocuments[1]?.id ?? "", [620, 380]);
+
+    expect(usePlumaStore.getState().layout.splitPaneSizesByDocumentId).toEqual({
+      [baseDocuments[0]?.id ?? ""]: [420, 580],
+      [baseDocuments[1]?.id ?? ""]: [620, 380]
+    });
+  });
+
+  it("clears split pane sizes after the shell confirms a tab closed", () => {
+    usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
+    usePlumaStore
+      .getState()
+      .updateSplitPaneSizes(baseDocuments[0]?.id ?? "", [420, 580]);
+    usePlumaStore
+      .getState()
+      .updateSplitPaneSizes(baseDocuments[1]?.id ?? "", [620, 380]);
+
+    usePlumaStore.getState().hydrateShellSnapshot({
+      ...baseSnapshot,
+      activeDocument: baseDocuments[1] ?? null,
+      activeDocumentId: baseDocuments[1]?.id ?? null,
+      documents: [baseDocuments[1]].filter(Boolean) as DocumentSession[],
+      tabs: [baseTabs[1]]
+    });
+
+    expect(usePlumaStore.getState().layout.splitPaneSizesByDocumentId).toEqual({
+      [baseDocuments[1]?.id ?? ""]: [620, 380]
+    });
+  });
+
   it("sets the editor view mode through shared state", () => {
     const setEditorViewMode = vi.fn();
     usePlumaStore.getState().setCommandHandlers({ setEditorViewMode });

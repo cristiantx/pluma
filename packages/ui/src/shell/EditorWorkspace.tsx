@@ -2,6 +2,7 @@ import { memo } from "react";
 
 import { RichEditor, SourceEditor } from "@pluma/editor";
 
+import { EditorPaneLayout } from "../panes/EditorPaneLayout.js";
 import { usePlumaStore } from "../state/usePlumaStore.js";
 import { TabStrip } from "./TabStrip.js";
 
@@ -14,7 +15,14 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   const compareConflict = usePlumaStore((state) => state.compareConflict);
   const keepEditing = usePlumaStore((state) => state.keepEditing);
   const reloadFromDisk = usePlumaStore((state) => state.reloadFromDisk);
+  const splitPaneSizes = usePlumaStore(
+    (state) =>
+      state.layout.splitPaneSizesByDocumentId[state.tabs.activeTabId] ?? null
+  );
   const updateDocumentText = usePlumaStore((state) => state.updateDocumentText);
+  const updateSplitPaneSizes = usePlumaStore(
+    (state) => state.updateSplitPaneSizes
+  );
 
   if (!activeDocument) {
     return (
@@ -45,6 +53,31 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
     activeDocument.capability === "source-only" ||
     !showRichEditor;
   const isSourceOnly = activeDocument.capability === "source-only";
+  const richPane = showRichEditor ? (
+    <article className="rich-pane" aria-label="Rich Markdown editor">
+      <div className="rich-document">
+        <RichEditor
+          documentId={activeDocument.id}
+          onChange={(rawText) => updateDocumentText(activeDocument.id, rawText)}
+          rawText={activeDocument.rawText}
+        />
+      </div>
+    </article>
+  ) : null;
+  const sourcePane = showSource ? (
+    <article className="source-pane" aria-label="Markdown source">
+      {isSourceOnly ? (
+        <div className="source-only-notice" role="status">
+          Source mode is preserving unsupported Markdown constructs.
+        </div>
+      ) : null}
+      <SourceEditor
+        documentId={activeDocument.id}
+        onChange={(rawText) => updateDocumentText(activeDocument.id, rawText)}
+        rawText={activeDocument.rawText}
+      />
+    </article>
+  ) : null;
 
   return (
     <section className="editor-workspace">
@@ -77,36 +110,19 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
       ) : null}
 
       <div className="editor-panes" data-view-mode={editorViewMode}>
-        {showRichEditor ? (
-          <article className="rich-pane" aria-label="Rich Markdown editor">
-            <div className="rich-document">
-              <RichEditor
-                documentId={activeDocument.id}
-                onChange={(rawText) =>
-                  updateDocumentText(activeDocument.id, rawText)
-                }
-                rawText={activeDocument.rawText}
-              />
-            </div>
-          </article>
-        ) : null}
-
-        {showSource ? (
-          <article className="source-pane" aria-label="Markdown source">
-            {isSourceOnly ? (
-              <div className="source-only-notice" role="status">
-                Source mode is preserving unsupported Markdown constructs.
-              </div>
-            ) : null}
-            <SourceEditor
-              documentId={activeDocument.id}
-              onChange={(rawText) =>
-                updateDocumentText(activeDocument.id, rawText)
-              }
-              rawText={activeDocument.rawText}
-            />
-          </article>
-        ) : null}
+        {richPane && sourcePane ? (
+          <EditorPaneLayout
+            key={activeDocument.id}
+            onPaneSizesChange={(paneSizes) =>
+              updateSplitPaneSizes(activeDocument.id, paneSizes)
+            }
+            {...(splitPaneSizes ? { paneSizes: splitPaneSizes } : {})}
+            rich={richPane}
+            source={sourcePane}
+          />
+        ) : (
+          (richPane ?? sourcePane)
+        )}
       </div>
     </section>
   );

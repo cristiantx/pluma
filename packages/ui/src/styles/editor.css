@@ -5,6 +5,30 @@
   align-items: stretch;
 }
 
+.editor-pane-layout,
+.editor-pane-layout > * {
+  min-height: 0;
+  height: 100%;
+}
+
+.editor-pane-layout {
+  flex: 1 1 auto;
+}
+
+.editor-pane-layout .sash {
+  background: transparent;
+  transition: background-color 120ms ease;
+}
+
+.editor-pane-layout .sash:hover,
+.editor-pane-layout .sash:focus-visible {
+  background: color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.editor-pane-layout .rich-pane {
+  border-right: 0;
+}
+
 .save-conflict-banner {
   flex: 0 0 auto;
   min-height: 34px;
