@@ -1,28 +1,63 @@
 import type { ForgeConfig } from "@electron-forge/shared-types";
-import { MakerDeb } from "@electron-forge/maker-deb";
-import { MakerRpm } from "@electron-forge/maker-rpm";
-import { MakerSquirrel } from "@electron-forge/maker-squirrel";
+import { MakerDMG } from "@electron-forge/maker-dmg";
 import { MakerZIP } from "@electron-forge/maker-zip";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
 import { VitePlugin } from "@electron-forge/plugin-vite";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import path from "node:path";
 
+const appBundleId = "com.pluma.app";
+const appCopyright = "Copyright (c) 2026 Pluma contributors";
+const appleIdentity = process.env.PLUMA_APPLE_IDENTITY;
+const appleId = process.env.PLUMA_APPLE_ID;
+const appleIdPassword = process.env.PLUMA_APPLE_ID_PASSWORD;
+const appleTeamId = process.env.PLUMA_APPLE_TEAM_ID;
+const shouldSign = Boolean(appleIdentity);
+const shouldNotarize = Boolean(
+  appleIdentity && appleId && appleIdPassword && appleTeamId
+);
+
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    appBundleId,
+    appCategoryType: "public.app-category.productivity",
+    appCopyright,
+    executableName: "Pluma",
+    helperBundleId: `${appBundleId}.helper`,
     icon: [
       `${path.resolve(__dirname, "assets/icon")}.icns`,
       `${path.resolve(__dirname, "assets/icon")}.icon`
-    ]
+    ],
+    ...(shouldSign
+      ? {
+          osxSign: {
+            identity: appleIdentity!
+          }
+        }
+      : {}),
+    ...(shouldNotarize
+      ? {
+          osxNotarize: {
+            appleId: appleId!,
+            appleIdPassword: appleIdPassword!,
+            teamId: appleTeamId!
+          }
+        }
+      : {}),
+    extendInfo: {
+      CFBundleDocumentTypes: [
+        {
+          CFBundleTypeExtensions: ["md"],
+          CFBundleTypeName: "Markdown Document",
+          CFBundleTypeRole: "Editor",
+          LSHandlerRank: "Owner"
+        }
+      ]
+    }
   },
   rebuildConfig: {},
-  makers: [
-    new MakerSquirrel({}),
-    new MakerZIP({}, ["darwin"]),
-    new MakerRpm({}),
-    new MakerDeb({})
-  ],
+  makers: [new MakerDMG({}), new MakerZIP({}, ["darwin"])],
   plugins: [
     new VitePlugin({
       build: [

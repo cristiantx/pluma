@@ -283,17 +283,17 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ## Phase 10: Packaging And Distribution
 
-- [ ] Configure app metadata:
-  - [ ] app name
-  - [ ] bundle identifiers
-  - [ ] icons
-  - [ ] copyright/license metadata
-- [ ] Configure Electron Forge makers for macOS DMG/ZIP.
-- [ ] Defer Windows installer and Linux DEB packaging to post-MVP.
-- [ ] Register macOS `.md` file association.
-- [ ] Add signing/notarization placeholders and documentation.
-- [ ] Configure GitHub Releases publishing path.
-- [ ] Add manual release checklist.
+- [x] Configure app metadata:
+  - [x] app name
+  - [x] bundle identifiers
+  - [x] icons
+  - [x] copyright/license metadata
+- [x] Configure Electron Forge makers for macOS DMG/ZIP.
+- [x] Defer Windows installer and Linux DEB packaging to post-MVP.
+- [x] Register macOS `.md` file association.
+- [x] Add signing/notarization placeholders and documentation.
+- [x] Configure GitHub Releases publishing path.
+- [x] Add manual release checklist.
 - [ ] Verify packaged app launch on macOS.
 - [ ] Verify double-clicking `.md` opens the file in Pluma.
 
