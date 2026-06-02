@@ -281,109 +281,6 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [x] Verify text does not overflow controls across common window sizes.
 - [x] Keep the UI quiet, dense, and document-focused.
 
-## Phase 9.1: Editor Navigation And Search
-
-### Search Decisions
-
-- [x] `Cmd+F` searches only the focused editor pane in split mode.
-- [x] Ship replace together with active-file search.
-- [x] Scope workspace search to Markdown files for the MVP.
-- [x] Use `@vscode/ripgrep` for workspace search.
-
-### Search Candidate Work
-
-- [ ] Add find, find next, and find previous for the active editor.
-- [ ] Add replace for the active editor.
-- [ ] Add Markdown-only workspace search with `@vscode/ripgrep`.
-- [ ] Add `Find in Folder` on top of the workspace-search implementation.
-
-## Phase 9.2: Writing Ergonomics
-
-### Ergonomics Decisions
-
-- [x] Enable spellcheck by default and add a setting to disable it.
-- [x] Defer focus mode.
-- [x] Defer typewriter mode.
-- [x] Defer duplicate, paragraph, and Emoji & Symbols edit-menu additions.
-
-### Ergonomics Candidate Work
-
-- [ ] Add spellcheck using Electron's built-in spellchecker.
-- [ ] Add a setting to disable spellcheck.
-- [ ] Keep focus mode deferred beyond the current post-MVP sequence.
-- [ ] Keep typewriter mode deferred beyond the current post-MVP sequence.
-- [ ] Keep duplicate, paragraph, and Emoji & Symbols edit-menu additions deferred.
-
-## Phase 9.3: Clipboard And Import
-
-### Clipboard Decisions
-
-- [x] Copy as rich text uses neutral portable styling.
-- [x] Copy as HTML exports a fragment, not a full document.
-- [x] Convert pasted HTML automatically in rich mode.
-
-### Clipboard Candidate Work
-
-- [ ] Evaluate copy as rich text.
-- [ ] Evaluate copy as HTML.
-- [ ] Add automatic HTML-to-Markdown paste cleanup with `turndown` or a GFM-compatible alternative.
-
-## Phase 9.4: Markdown Rendering Extensions
-
-### Rendering Decisions
-
-- [x] Target KaTeX, Mermaid, and emoji shortcodes as the initial extension set.
-- [x] Keep unsupported extensions source-only until round-trip safety is proven.
-- [x] Keep math and diagrams editable as source blocks only.
-
-### Rendering Candidate Work
-
-- [ ] Evaluate KaTeX math rendering.
-- [ ] Evaluate Mermaid diagram rendering.
-- [ ] Evaluate emoji support.
-
-## Phase 9.5: Export
-
-### Export Decisions
-
-- [x] Export is document-only for the MVP path.
-- [x] Export uses a neutral print stylesheet.
-- [x] Keep screenshot capture as a future export candidate.
-
-### Export Candidate Work
-
-- [ ] Evaluate HTML export.
-- [ ] Evaluate PDF export.
-- [ ] Evaluate screenshot capture.
-
-## Phase 9.6: Desktop Window Architecture
-
-### Windowing Decisions
-
-- [x] Keep Pluma as a single Electron app instance with multiple `BrowserWindow`s.
-- [x] `File > New Window` opens an empty window.
-- [x] Opening a file while Pluma is already running reuses the most recently active window.
-- [x] Session restore reopens all previously open windows.
-
-### Windowing Candidate Work
-
-- [ ] Introduce a per-window session/controller for documents, active tab, workspace, pane sizes, autosave timers, and file watchers.
-- [ ] Route IPC commands by sender window instead of using one global active document/session.
-- [ ] Add `File > New Window`.
-- [ ] Protect unsaved changes per window and during app-wide quit across all open windows.
-- [ ] Define session restore behavior for multiple windows.
-
-## Phase 9.7: Advanced File Controls
-
-### File-Control Decisions
-
-- [x] Defer line-ending selection to a later advanced-files pass.
-- [x] When added later, line-ending changes apply on save.
-
-### File-Control Candidate Work
-
-- [ ] Keep line-ending selection deferred beyond the MVP and early post-MVP passes.
-
 ## Phase 10: Packaging And Distribution
 
 - [ ] Configure app metadata:
@@ -400,7 +297,112 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Verify packaged app launch on macOS.
 - [ ] Verify double-clicking `.md` opens the file in Pluma.
 
-## Phase 11: Future Browser Path
+## Phase 11: Post-Packaging Follow-Up Work
+
+## Phase 11.1: Editor Navigation And Search
+
+### Search Decisions
+
+- [x] `Cmd+F` searches only the focused editor pane in split mode.
+- [x] Ship replace together with active-file search.
+- [x] Scope workspace search to Markdown files for the MVP.
+- [x] Use `@vscode/ripgrep` for workspace search.
+
+### Search Candidate Work
+
+- [ ] Add find, find next, and find previous for the active editor.
+- [ ] Add replace for the active editor.
+- [ ] Add Markdown-only workspace search with `@vscode/ripgrep`.
+- [ ] Add `Find in Folder` on top of the workspace-search implementation.
+
+## Phase 11.2: Writing Ergonomics
+
+### Ergonomics Decisions
+
+- [x] Enable spellcheck by default and add a setting to disable it.
+- [x] Defer focus mode.
+- [x] Defer typewriter mode.
+- [x] Defer duplicate, paragraph, and Emoji & Symbols edit-menu additions.
+
+### Ergonomics Candidate Work
+
+- [ ] Add spellcheck using Electron's built-in spellchecker.
+- [ ] Add a setting to disable spellcheck.
+- [ ] Keep focus mode deferred beyond the current post-MVP sequence.
+- [ ] Keep typewriter mode deferred beyond the current post-MVP sequence.
+- [ ] Keep duplicate, paragraph, and Emoji & Symbols edit-menu additions deferred.
+
+## Phase 11.3: Clipboard And Import
+
+### Clipboard Decisions
+
+- [x] Copy as rich text uses neutral portable styling.
+- [x] Copy as HTML exports a fragment, not a full document.
+- [x] Convert pasted HTML automatically in rich mode.
+
+### Clipboard Candidate Work
+
+- [ ] Evaluate copy as rich text.
+- [ ] Evaluate copy as HTML.
+- [ ] Add automatic HTML-to-Markdown paste cleanup with `turndown` or a GFM-compatible alternative.
+
+## Phase 11.4: Markdown Rendering Extensions
+
+### Rendering Decisions
+
+- [x] Target KaTeX, Mermaid, and emoji shortcodes as the initial extension set.
+- [x] Keep unsupported extensions source-only until round-trip safety is proven.
+- [x] Keep math and diagrams editable as source blocks only.
+
+### Rendering Candidate Work
+
+- [ ] Evaluate KaTeX math rendering.
+- [ ] Evaluate Mermaid diagram rendering.
+- [ ] Evaluate emoji support.
+
+## Phase 11.5: Export
+
+### Export Decisions
+
+- [x] Export is document-only for the MVP path.
+- [x] Export uses a neutral print stylesheet.
+- [x] Keep screenshot capture as a future export candidate.
+
+### Export Candidate Work
+
+- [ ] Evaluate HTML export.
+- [ ] Evaluate PDF export.
+- [ ] Evaluate screenshot capture.
+
+## Phase 11.6: Desktop Window Architecture
+
+### Windowing Decisions
+
+- [x] Keep Pluma as a single Electron app instance with multiple `BrowserWindow`s.
+- [x] `File > New Window` opens an empty window.
+- [x] Opening a file while Pluma is already running reuses the most recently active window.
+- [x] Session restore reopens all previously open windows.
+
+### Windowing Candidate Work
+
+- [ ] Introduce a per-window session/controller for documents, active tab, workspace, pane sizes, autosave timers, and file watchers.
+- [ ] Route IPC commands by sender window instead of using one global active document/session.
+- [ ] Add `File > New Window`.
+- [ ] Protect unsaved changes per window and during app-wide quit across all open windows.
+- [ ] Define session restore behavior for multiple windows.
+
+## Phase 11.7: Advanced File Controls
+
+### File-Control Decisions
+
+- [x] Defer line-ending selection to a later advanced-files pass.
+- [x] When added later, line-ending changes apply on save.
+
+### File-Control Candidate Work
+
+- [ ] Keep line-ending selection deferred beyond the MVP and early post-MVP passes.
+
+## Phase 12: Future Browser Path
 
 - [ ] Keep browser-specific work out of the MVP runtime.
 - [ ] Document the planned `BrowserFileSystemAdapter`.
