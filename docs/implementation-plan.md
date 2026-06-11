@@ -385,11 +385,11 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ### Windowing Candidate Work
 
-- [ ] Introduce a per-window session/controller for documents, active tab, workspace, pane sizes, autosave timers, and file watchers.
-- [ ] Route IPC commands by sender window instead of using one global active document/session.
-- [ ] Add `File > New Window`.
-- [ ] Protect unsaved changes per window and during app-wide quit across all open windows.
-- [ ] Define session restore behavior for multiple windows.
+- [x] Introduce a per-window session/controller for documents, active tab, workspace, pane sizes, autosave timers, and file watchers.
+- [x] Route IPC commands by sender window instead of using one global active document/session.
+- [x] Add `File > New Window`.
+- [x] Protect unsaved changes per window and during app-wide quit across all open windows.
+- [x] Define session restore behavior for multiple windows.
 
 ## Phase 11.7: Advanced File Controls
 

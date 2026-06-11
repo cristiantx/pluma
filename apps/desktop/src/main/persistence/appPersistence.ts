@@ -13,6 +13,13 @@ export type PersistedSessionState = {
   workspacePath: string | null;
 };
 
+export type PersistedWindowSessionState = PersistedSessionState;
+
+export type PersistedMultiWindowSessionState = {
+  activeWindowIndex: number;
+  windows: PersistedWindowSessionState[];
+};
+
 export type AppSettings = {
   autosaveEnabled: boolean;
   themePreference: ThemePreference;
@@ -53,17 +60,61 @@ export async function writeAppSettings(
 
 export async function readPersistedSessionState(
   filePath: string
-): Promise<PersistedSessionState | null> {
+): Promise<PersistedMultiWindowSessionState | null> {
   const parsedState = await readJsonFile(filePath);
 
-  return isPersistedSessionState(parsedState) ? parsedState : null;
+  return normalizePersistedSessionState(parsedState);
 }
 
 export async function writePersistedSessionState(
   filePath: string,
-  state: PersistedSessionState
+  state: PersistedMultiWindowSessionState
 ): Promise<void> {
   await writeJsonFile(filePath, state);
+}
+
+export function normalizePersistedSessionState(
+  value: unknown
+): PersistedMultiWindowSessionState | null {
+  if (isPersistedMultiWindowSessionState(value)) {
+    const activeWindow = value.windows[value.activeWindowIndex] ?? null;
+    const windows = value.windows.filter(isMeaningfulPersistedWindowState);
+    const activeWindowIndex = activeWindow
+      ? windows.indexOf(activeWindow)
+      : value.activeWindowIndex;
+
+    return {
+      activeWindowIndex: normalizeActiveWindowIndex(
+        activeWindowIndex,
+        windows.length
+      ),
+      windows
+    };
+  }
+
+  if (isPersistedSessionState(value)) {
+    return isMeaningfulPersistedWindowState(value)
+      ? {
+          activeWindowIndex: 0,
+          windows: [value]
+        }
+      : {
+          activeWindowIndex: 0,
+          windows: []
+        };
+  }
+
+  return null;
+}
+
+export function isMeaningfulPersistedWindowState(
+  state: PersistedWindowSessionState
+): boolean {
+  return (
+    state.documentPaths.length > 0 ||
+    state.workspacePath !== null ||
+    (state.paneSizes?.length ?? 0) > 0
+  );
 }
 
 async function readJsonFile(filePath: string): Promise<unknown | null> {
@@ -122,4 +173,39 @@ function isPersistedSessionState(
     (candidate.workspacePath === null ||
       typeof candidate.workspacePath === "string")
   );
+}
+
+function isPersistedMultiWindowSessionState(
+  value: unknown
+): value is PersistedMultiWindowSessionState {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Partial<PersistedMultiWindowSessionState>;
+
+  return (
+    typeof candidate.activeWindowIndex === "number" &&
+    Array.isArray(candidate.windows) &&
+    candidate.windows.every(isPersistedSessionState)
+  );
+}
+
+function normalizeActiveWindowIndex(
+  activeWindowIndex: number,
+  windowCount: number
+): number {
+  if (windowCount === 0) {
+    return 0;
+  }
+
+  if (
+    Number.isInteger(activeWindowIndex) &&
+    activeWindowIndex >= 0 &&
+    activeWindowIndex < windowCount
+  ) {
+    return activeWindowIndex;
+  }
+
+  return 0;
 }

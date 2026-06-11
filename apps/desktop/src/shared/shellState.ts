@@ -55,6 +55,7 @@ export type CommandName =
   | EditorCommandName
   | "keep-editing"
   | "new-file"
+  | "new-window"
   | "open-devtools"
   | "open-file"
   | "open-folder"

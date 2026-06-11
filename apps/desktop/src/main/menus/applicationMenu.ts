@@ -21,6 +21,11 @@ export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
       label: "File",
       submenu: [
         {
+          label: "New Window",
+          accelerator: "CmdOrCtrl+Shift+N",
+          click: () => options.onCommand("new-window")
+        },
+        {
           label: "New File",
           accelerator: "CmdOrCtrl+N",
           click: () => options.onCommand("new-file")
