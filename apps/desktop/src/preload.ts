@@ -2,7 +2,8 @@ import { contextBridge, ipcRenderer } from "electron";
 import type {
   CommandName,
   EditorViewMode,
-  RendererEvent
+  RendererEvent,
+  WorkspaceSearchOptions
 } from "./shared/shellState";
 
 const api = {
@@ -14,6 +15,18 @@ const api = {
   },
   openWorkspaceFile(path: string) {
     return ipcRenderer.invoke("pluma:open-workspace-file", path);
+  },
+  searchWorkspace(
+    query: string,
+    folderPath: string | null,
+    options: WorkspaceSearchOptions
+  ) {
+    return ipcRenderer.invoke(
+      "pluma:search-workspace",
+      query,
+      folderPath,
+      options
+    );
   },
   runCommand(command: CommandName) {
     return ipcRenderer.invoke("pluma:command", command);

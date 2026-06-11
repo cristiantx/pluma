@@ -5,6 +5,13 @@ import {
   foldGutter,
   indentOnInput
 } from "@codemirror/language";
+import {
+  findNext,
+  findPrevious,
+  openSearchPanel,
+  search,
+  searchKeymap
+} from "@codemirror/search";
 import type { Extension } from "@codemirror/state";
 import {
   drawSelection,
@@ -15,10 +22,11 @@ import {
   keymap,
   lineNumbers
 } from "@codemirror/view";
-import { useEffect, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 
 import { markdownCommandKeymap } from "./markdownCommands.js";
 import { plumaSourceEditorTheme } from "./sourceEditorTheme.js";
+import { createSourceSearchPanel } from "./SourceSearchPanel.js";
 
 export type SourceEditorProps = {
   "aria-label"?: string;
@@ -26,68 +34,155 @@ export type SourceEditorProps = {
   documentId: string;
   onChange: (rawText: string) => void;
   rawText: string;
+  searchRevealRequest?: SourceSearchRevealRequest | null;
 };
 
-export function SourceEditor({
-  "aria-label": ariaLabel = "Markdown source editor",
-  autoFocus = false,
-  documentId,
-  onChange,
-  rawText
-}: SourceEditorProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const onChangeRef = useRef(onChange);
-  const viewRef = useRef<EditorView | null>(null);
+export type SourceEditorHandle = {
+  find: () => void;
+  findNext: () => void;
+  findPrevious: () => void;
+  replace: () => void;
+  revealSearchMatch: (match: SourceSearchMatch) => void;
+};
 
-  useEffect(() => {
-    onChangeRef.current = onChange;
-  }, [onChange]);
+export type SourceSearchMatch = {
+  line: number;
+  matchEnd: number;
+  matchStart: number;
+};
 
-  useEffect(() => {
-    const parent = containerRef.current;
+export type SourceSearchRevealRequest = SourceSearchMatch & {
+  requestId: number;
+};
 
-    if (!parent) {
-      return;
-    }
+export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
+  function SourceEditor(
+    {
+      "aria-label": ariaLabel = "Markdown source editor",
+      autoFocus = false,
+      documentId,
+      onChange,
+      rawText,
+      searchRevealRequest = null
+    },
+    ref
+  ) {
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const onChangeRef = useRef(onChange);
+    const viewRef = useRef<EditorView | null>(null);
 
-    const view = new EditorView({
-      doc: rawText,
-      extensions: createSourceEditorExtensions((nextText) => {
-        onChangeRef.current(nextText);
-      }),
-      parent
-    });
+    useImperativeHandle(ref, () => ({
+      find: () => runSourceEditorCommand(viewRef.current, openSearchPanel),
+      findNext: () => runSourceEditorCommand(viewRef.current, findNext),
+      findPrevious: () => runSourceEditorCommand(viewRef.current, findPrevious),
+      replace: () => runSourceEditorCommand(viewRef.current, openSearchPanel),
+      revealSearchMatch: (match) =>
+        revealSourceSearchMatch(viewRef.current, match)
+    }));
 
-    view.dom.setAttribute("aria-label", ariaLabel);
-    viewRef.current = view;
+    useEffect(() => {
+      onChangeRef.current = onChange;
+    }, [onChange]);
 
-    if (autoFocus) {
-      view.focus();
-    }
+    useEffect(() => {
+      const parent = containerRef.current;
 
-    return () => {
-      viewRef.current = null;
-      view.destroy();
-    };
-  }, [ariaLabel, autoFocus, documentId]);
-
-  useEffect(() => {
-    const view = viewRef.current;
-
-    if (!view || view.state.doc.toString() === rawText) {
-      return;
-    }
-
-    view.dispatch({
-      changes: {
-        from: 0,
-        to: view.state.doc.length,
-        insert: rawText
+      if (!parent) {
+        return;
       }
-    });
-  }, [rawText]);
 
-  return <div className="pluma-source-editor" ref={containerRef} />;
+      const view = new EditorView({
+        doc: rawText,
+        extensions: createSourceEditorExtensions((nextText) => {
+          onChangeRef.current(nextText);
+        }),
+        parent
+      });
+
+      view.dom.setAttribute("aria-label", ariaLabel);
+      viewRef.current = view;
+
+      if (autoFocus) {
+        view.focus();
+      }
+
+      return () => {
+        viewRef.current = null;
+        view.destroy();
+      };
+    }, [ariaLabel, autoFocus, documentId]);
+
+    useEffect(() => {
+      const view = viewRef.current;
+
+      if (!view || view.state.doc.toString() === rawText) {
+        return;
+      }
+
+      view.dispatch({
+        changes: {
+          from: 0,
+          to: view.state.doc.length,
+          insert: rawText
+        }
+      });
+    }, [rawText]);
+
+    useEffect(() => {
+      if (!searchRevealRequest) {
+        return;
+      }
+
+      revealSourceSearchMatch(viewRef.current, searchRevealRequest);
+    }, [searchRevealRequest?.requestId]);
+
+    return <div className="pluma-source-editor" ref={containerRef} />;
+  }
+);
+
+function runSourceEditorCommand(
+  view: EditorView | null,
+  command: (view: EditorView) => boolean
+): void {
+  if (!view) {
+    return;
+  }
+
+  command(view);
+  view.focus();
+}
+
+function revealSourceSearchMatch(
+  view: EditorView | null,
+  match: SourceSearchMatch
+): void {
+  if (!view) {
+    return;
+  }
+
+  if (
+    !Number.isFinite(match.line) ||
+    !Number.isFinite(match.matchStart) ||
+    !Number.isFinite(match.matchEnd)
+  ) {
+    return;
+  }
+
+  const lineNumber = Math.max(1, Math.min(match.line, view.state.doc.lines));
+  const line = view.state.doc.line(lineNumber);
+  const matchStart = Math.max(0, Math.min(match.matchStart, match.matchEnd));
+  const matchEnd = Math.max(match.matchStart, match.matchEnd);
+  const from = Math.min(line.to, line.from + matchStart);
+  const to = Math.min(line.to, line.from + Math.max(matchStart + 1, matchEnd));
+
+  view.dispatch({
+    effects: EditorView.scrollIntoView(from, { y: "center" }),
+    selection: {
+      anchor: from,
+      head: to
+    }
+  });
+  view.focus();
 }
 
 function createSourceEditorExtensions(
@@ -106,8 +201,12 @@ function createSourceEditorExtensions(
     highlightActiveLine(),
     highlightActiveLineGutter(),
     markdown(),
+    search({
+      createPanel: createSourceSearchPanel,
+      top: true
+    }),
     markdownCommandKeymap,
-    keymap.of([...defaultKeymap, ...historyKeymap]),
+    keymap.of([...searchKeymap, ...defaultKeymap, ...historyKeymap]),
     EditorView.lineWrapping,
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {

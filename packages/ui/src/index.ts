@@ -16,6 +16,7 @@ export type {
   LayoutSlice,
   PlumaCommandHandlers,
   PlumaShellSnapshot,
+  SidebarView,
   PlumaStore,
   PlumaStoreActions,
   PlumaStoreInitializer,
@@ -23,6 +24,9 @@ export type {
   StatusSlice,
   TabsSlice,
   ThemeSlice,
+  WorkspaceSearchMatch,
+  WorkspaceSearchOptions,
+  WorkspaceSearchRevealRequest,
   WorkspaceSlice
 } from "./state/plumaStoreTypes.js";
 export {

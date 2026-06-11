@@ -208,6 +208,125 @@ describe("usePlumaStore", () => {
     expect(usePlumaStore.getState().workspace.revealRequestId).toBe(2);
   });
 
+  it("defaults the sidebar to the workspace view", () => {
+    expect(usePlumaStore.getState().workspace.sidebarView).toBe("workspace");
+  });
+
+  it("switches sidebar views through shared state", () => {
+    usePlumaStore.getState().setSidebarView("search");
+
+    expect(usePlumaStore.getState().workspace.sidebarView).toBe("search");
+
+    usePlumaStore.getState().setSidebarView("workspace");
+
+    expect(usePlumaStore.getState().workspace.sidebarView).toBe("workspace");
+  });
+
+  it("opens workspace search requests in the search sidebar view", () => {
+    usePlumaStore.getState().setSidebarView("workspace");
+    usePlumaStore.getState().openWorkspaceSearch("/tmp/pluma/Guides");
+
+    expect(usePlumaStore.getState().workspace.sidebarView).toBe("search");
+    expect(usePlumaStore.getState().workspace.searchFolderPath).toBe(
+      "/tmp/pluma/Guides"
+    );
+    expect(usePlumaStore.getState().workspace.searchRequestId).toBe(1);
+  });
+
+  it("records workspace search reveal requests", () => {
+    const match = {
+      filePath: "/tmp/pluma/Notes.md",
+      line: 3,
+      lineText: "Search target line",
+      matchEnd: 13,
+      matchStart: 7,
+      preview: "Search target line"
+    };
+
+    usePlumaStore.getState().revealWorkspaceSearchMatch(match);
+
+    expect(usePlumaStore.getState().workspace.searchRevealRequest).toEqual({
+      match,
+      requestId: 1
+    });
+
+    usePlumaStore.getState().revealWorkspaceSearchMatch(match);
+
+    expect(
+      usePlumaStore.getState().workspace.searchRevealRequest?.requestId
+    ).toBe(2);
+  });
+
+  it("stores workspace search state outside the search panel lifecycle", () => {
+    const results = [
+      {
+        filePath: "/tmp/pluma/Notes.md",
+        line: 3,
+        lineText: "Search target line",
+        matchEnd: 13,
+        matchStart: 7,
+        preview: "Search target line"
+      }
+    ];
+
+    usePlumaStore.getState().setWorkspaceSearchQuery("target");
+    usePlumaStore.getState().setWorkspaceSearchHasSearched(true);
+    usePlumaStore.getState().setWorkspaceSearchOptions({
+      caseSensitive: true,
+      regexp: false,
+      wholeWord: true
+    });
+    usePlumaStore.getState().setWorkspaceSearchResults(results);
+    usePlumaStore.getState().setSidebarView("workspace");
+    usePlumaStore.getState().setSidebarView("search");
+
+    expect(usePlumaStore.getState().workspace.searchQuery).toBe("target");
+    expect(usePlumaStore.getState().workspace.searchHasSearched).toBe(true);
+    expect(usePlumaStore.getState().workspace.searchOptions).toEqual({
+      caseSensitive: true,
+      regexp: false,
+      wholeWord: true
+    });
+    expect(usePlumaStore.getState().workspace.searchResults).toEqual(results);
+  });
+
+  it("toggles collapsed workspace search result groups", () => {
+    const filePath = "/tmp/pluma/Notes.md";
+
+    usePlumaStore.getState().toggleWorkspaceSearchResultFile(filePath);
+
+    expect(
+      usePlumaStore.getState().workspace.collapsedSearchResultFiles
+    ).toEqual([filePath]);
+
+    usePlumaStore.getState().toggleWorkspaceSearchResultFile(filePath);
+
+    expect(
+      usePlumaStore.getState().workspace.collapsedSearchResultFiles
+    ).toEqual([]);
+  });
+
+  it("prunes collapsed workspace search result groups when results change", () => {
+    usePlumaStore
+      .getState()
+      .toggleWorkspaceSearchResultFile("/tmp/pluma/Notes.md");
+
+    usePlumaStore.getState().setWorkspaceSearchResults([
+      {
+        filePath: "/tmp/pluma/Other.md",
+        line: 1,
+        lineText: "Other target line",
+        matchEnd: 12,
+        matchStart: 6,
+        preview: "Other target line"
+      }
+    ]);
+
+    expect(
+      usePlumaStore.getState().workspace.collapsedSearchResultFiles
+    ).toEqual([]);
+  });
+
   it("notifies the shell when pane sizes change", () => {
     const updatePaneSizes = vi.fn();
     usePlumaStore.getState().setCommandHandlers({ updatePaneSizes });

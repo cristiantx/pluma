@@ -310,10 +310,10 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ### Search Candidate Work
 
-- [ ] Add find, find next, and find previous for the active editor.
-- [ ] Add replace for the active editor.
-- [ ] Add Markdown-only workspace search with `@vscode/ripgrep`.
-- [ ] Add `Find in Folder` on top of the workspace-search implementation.
+- [x] Add find, find next, and find previous for the active editor.
+- [x] Add replace for the active editor.
+- [x] Add Markdown-only workspace search with `@vscode/ripgrep`.
+- [x] Add `Find in Folder` on top of the workspace-search implementation.
 
 ## Phase 11.2: Writing Ergonomics
 

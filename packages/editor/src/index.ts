@@ -9,7 +9,11 @@ export {
 } from "./markdownCommands.js";
 export type { RichEditorProps } from "./RichEditor.js";
 export { plumaSourceEditorTheme } from "./sourceEditorTheme.js";
-export type { SourceEditorProps } from "./SourceEditor.js";
+export type {
+  SourceEditorHandle,
+  SourceEditorProps,
+  SourceSearchMatch
+} from "./SourceEditor.js";
 
 export interface EditorFoundation {
   packageName: "@pluma/editor";

@@ -1,13 +1,23 @@
 import { ipcMain } from "electron";
 
 import type { AppSettings } from "../persistence/appPersistence";
-import type { CommandName, EditorViewMode } from "../../shared/shellState";
+import type {
+  CommandName,
+  EditorViewMode,
+  WorkspaceSearchMatch,
+  WorkspaceSearchOptions
+} from "../../shared/shellState";
 
 export type DesktopIpcHandlers = {
   closeTab: (tabId: string) => Promise<void>;
   getSettings: () => Promise<AppSettings>;
   openWorkspaceFile: (filePath: string) => Promise<void>;
   runCommand: (command: CommandName) => Promise<void>;
+  searchWorkspace: (
+    query: unknown,
+    folderPath: unknown,
+    options: unknown
+  ) => Promise<WorkspaceSearchMatch[]>;
   setActiveDocument: (documentId: unknown) => void;
   setEditorMode: (mode: unknown) => void;
   showTabContextMenu: (tabId: string) => void;
@@ -35,6 +45,16 @@ export function registerIpcHandlers(handlers: DesktopIpcHandlers): void {
     async (_event, filePath: string) => {
       await handlers.openWorkspaceFile(filePath);
     }
+  );
+
+  ipcMain.handle(
+    "pluma:search-workspace",
+    async (
+      _event,
+      query: unknown,
+      folderPath: unknown,
+      options: WorkspaceSearchOptions
+    ) => handlers.searchWorkspace(query, folderPath, options)
   );
 
   ipcMain.handle("pluma:close-tab", async (_event, tabId: string) => {

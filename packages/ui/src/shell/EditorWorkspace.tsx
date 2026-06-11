@@ -1,12 +1,17 @@
-import { memo } from "react";
+import { memo, useEffect, useRef } from "react";
 
-import { RichEditor, SourceEditor } from "@pluma/editor";
+import {
+  RichEditor,
+  SourceEditor,
+  type SourceEditorHandle
+} from "@pluma/editor";
 
 import { EditorPaneLayout } from "../panes/EditorPaneLayout.js";
 import { usePlumaStore } from "../state/usePlumaStore.js";
 import { TabStrip } from "./TabStrip.js";
 
 export const EditorWorkspace = memo(function EditorWorkspace() {
+  const sourceEditorRef = useRef<SourceEditorHandle | null>(null);
   const activeDocument = usePlumaStore(
     (state) => state.document.activeDocument
   );
@@ -15,6 +20,9 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   const compareConflict = usePlumaStore((state) => state.compareConflict);
   const keepEditing = usePlumaStore((state) => state.keepEditing);
   const reloadFromDisk = usePlumaStore((state) => state.reloadFromDisk);
+  const searchRevealRequest = usePlumaStore(
+    (state) => state.workspace.searchRevealRequest
+  );
   const splitPaneSizes = usePlumaStore(
     (state) =>
       state.layout.splitPaneSizesByDocumentId[state.tabs.activeTabId] ?? null
@@ -23,6 +31,41 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   const updateSplitPaneSizes = usePlumaStore(
     (state) => state.updateSplitPaneSizes
   );
+
+  useEffect(() => {
+    const handleEditorCommand = (event: Event) => {
+      if (!(event instanceof CustomEvent)) {
+        return;
+      }
+
+      const command = event.detail;
+
+      if (command === "find") {
+        sourceEditorRef.current?.find();
+        return;
+      }
+
+      if (command === "find-next") {
+        sourceEditorRef.current?.findNext();
+        return;
+      }
+
+      if (command === "find-previous") {
+        sourceEditorRef.current?.findPrevious();
+        return;
+      }
+
+      if (command === "replace") {
+        sourceEditorRef.current?.replace();
+      }
+    };
+
+    window.addEventListener("pluma:editor-command", handleEditorCommand);
+
+    return () => {
+      window.removeEventListener("pluma:editor-command", handleEditorCommand);
+    };
+  }, []);
 
   if (!activeDocument) {
     return (
@@ -53,6 +96,18 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
     activeDocument.capability === "source-only" ||
     !showRichEditor;
   const isSourceOnly = activeDocument.capability === "source-only";
+  const sourceSearchRevealRequest =
+    searchRevealRequest &&
+    showSource &&
+    activeDocument.location.kind === "desktop-path" &&
+    activeDocument.location.path === searchRevealRequest.match.filePath
+      ? {
+          line: searchRevealRequest.match.line,
+          matchEnd: searchRevealRequest.match.matchEnd,
+          matchStart: searchRevealRequest.match.matchStart,
+          requestId: searchRevealRequest.requestId
+        }
+      : null;
   const richPane = showRichEditor ? (
     <article className="rich-pane" aria-label="Rich Markdown editor">
       <div className="rich-document">
@@ -74,7 +129,9 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
       <SourceEditor
         documentId={activeDocument.id}
         onChange={(rawText) => updateDocumentText(activeDocument.id, rawText)}
+        ref={sourceEditorRef}
         rawText={activeDocument.rawText}
+        searchRevealRequest={sourceSearchRevealRequest}
       />
     </article>
   ) : null;

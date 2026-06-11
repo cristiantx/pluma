@@ -334,9 +334,154 @@
 }
 
 .pluma-source-editor {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;
+}
+
+.pluma-source-editor .cm-editor {
+  position: relative;
+}
+
+.pluma-source-editor .cm-panels {
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+}
+
+.pluma-source-editor .cm-panels-top {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  left: auto;
+  z-index: 20;
+}
+
+.pluma-search-panel {
+  width: min(448px, calc(100vw - 64px));
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 72%, transparent);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--chrome-bg) 92%, black);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+  padding: 6px 8px 6px 7px;
+}
+
+.pluma-search-panel[data-collapsed="true"] {
+  width: min(420px, calc(100vw - 64px));
+}
+
+.pluma-search-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 26px minmax(188px, 1fr) auto 26px 26px 26px;
+  gap: 4px;
+  align-items: center;
+}
+
+.pluma-search-replace-row {
+  grid-template-columns: 26px minmax(188px, 1fr) auto auto;
+}
+
+.pluma-search-panel[data-collapsed="true"] .pluma-search-replace-row {
+  display: none;
+}
+
+.pluma-search-field {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, 24px);
+  align-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--editor-source-bg);
+}
+
+.pluma-search-input {
+  width: 100%;
+  min-width: 0;
+  height: 24px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  padding: 0 6px;
+}
+
+.pluma-search-replace-row > .pluma-search-input {
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--editor-source-bg);
+}
+
+.pluma-search-field:focus-within,
+.pluma-search-replace-row > .pluma-search-input:focus {
+  outline: 1px solid var(--focus-ring);
+  outline-offset: -1px;
+}
+
+.pluma-search-count {
+  min-width: 72px;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-status);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pluma-search-icon-button,
+.pluma-search-text-button {
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  line-height: 1;
+  padding: 0;
+}
+
+.pluma-search-icon-button {
+  width: 26px;
+  font-size: 14px;
+}
+
+.pluma-search-icon-button svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2;
+}
+
+.pluma-search-field .pluma-search-icon-button {
+  width: 24px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.pluma-search-text-button {
+  padding: 0 8px;
+  font-size: var(--font-size-status);
+}
+
+.pluma-search-icon-button:hover,
+.pluma-search-icon-button:focus-visible,
+.pluma-search-text-button:hover,
+.pluma-search-text-button:focus-visible {
+  background: var(--active-control);
+  color: var(--text-primary);
+}
+
+.pluma-search-icon-button[aria-pressed="true"] {
+  background: var(--active-control);
+  color: var(--text-primary);
 }
 
 .source-lines {

@@ -88,6 +88,27 @@ export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
         { type: "separator" },
         { label: "Select All", accelerator: "CmdOrCtrl+A", role: "selectAll" },
         { type: "separator" },
+        {
+          label: "Find",
+          accelerator: "CmdOrCtrl+F",
+          click: () => options.onCommand("find")
+        },
+        {
+          label: "Find Next",
+          accelerator: "CmdOrCtrl+G",
+          click: () => options.onCommand("find-next")
+        },
+        {
+          label: "Find Previous",
+          accelerator: "Shift+CmdOrCtrl+G",
+          click: () => options.onCommand("find-previous")
+        },
+        {
+          label: "Replace",
+          accelerator: "Alt+CmdOrCtrl+F",
+          click: () => options.onCommand("replace")
+        },
+        { type: "separator" },
         { label: "Start Dictation...", role: "startSpeaking" }
       ]
     },

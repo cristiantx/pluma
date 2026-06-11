@@ -46,6 +46,7 @@ export type WorkspaceFileActionDependencies = {
     filePath: string,
     options?: { workspacePath?: string | null }
   ) => Promise<void>;
+  openFolderSearch: (folderPath: string) => void;
   persistSessionStateSoon: () => void;
   refreshWorkspaceEntries: () => Promise<void>;
   selfWritePaths: Set<string>;
@@ -396,6 +397,7 @@ export function createWorkspaceFileActions(
     }
 
     const menu = buildWorkspaceContextMenu({
+      canFindInFolder: kind === "folder",
       canPaste: hasWorkspaceClipboard(),
       onNewFile: () => void createWorkspaceFile(targetPath, kind),
       onNewDirectory: () => void createWorkspaceDirectory(targetPath, kind),
@@ -410,6 +412,9 @@ export function createWorkspaceFileActions(
       onPaste: () => void pasteWorkspaceItem(targetPath, kind),
       onRename: () => void renameWorkspaceItem(targetPath, kind),
       onMoveToTrash: () => void moveWorkspaceItemToTrash(targetPath, kind),
+      onFindInFolder: () => {
+        dependencies.openFolderSearch(targetPath);
+      },
       onShowInFolder: () => {
         shell.showItemInFolder(targetPath);
         dependencies.emitStatus("Showing item in folder.");

@@ -21,6 +21,7 @@ const defaultCommandHandlers: PlumaCommandHandlers = {
   openFile: noop,
   openFolder: noop,
   openWorkspaceFile: noop,
+  searchWorkspace: () => Promise.resolve([]),
   reloadFromDisk: noop,
   setActiveTabId: noop,
   setEditorViewMode: noop,
@@ -64,6 +65,19 @@ export const initialPlumaStoreState: PlumaStoreInitializer = {
     isDevelopment: false,
     revealRequestId: 0,
     revealWorkspacePath: null,
+    collapsedSearchResultFiles: [],
+    searchFolderPath: null,
+    searchHasSearched: false,
+    searchOptions: {
+      caseSensitive: false,
+      regexp: false,
+      wholeWord: false
+    },
+    searchQuery: "",
+    searchRevealRequest: null,
+    searchResults: [],
+    searchRequestId: 0,
+    sidebarView: "workspace",
     workspaceLabel: "No workspace open",
     workspacePath: "~/Documents/Pluma Docs"
   }
@@ -123,6 +137,16 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
           isDevelopment: snapshot.isDevelopment,
           revealRequestId: state.workspace.revealRequestId,
           revealWorkspacePath: state.workspace.revealWorkspacePath,
+          collapsedSearchResultFiles:
+            state.workspace.collapsedSearchResultFiles,
+          searchFolderPath: state.workspace.searchFolderPath,
+          searchHasSearched: state.workspace.searchHasSearched,
+          searchOptions: state.workspace.searchOptions,
+          searchQuery: state.workspace.searchQuery,
+          searchRevealRequest: state.workspace.searchRevealRequest,
+          searchResults: state.workspace.searchResults,
+          searchRequestId: state.workspace.searchRequestId,
+          sidebarView: state.workspace.sidebarView,
           workspaceLabel: snapshot.workspaceLabel,
           workspacePath: snapshot.workspacePath
         }
@@ -145,6 +169,17 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     get().commands.commandHandlers.keepEditing();
   },
 
+  openWorkspaceSearch: (folderPath) => {
+    set((state) => ({
+      workspace: {
+        ...state.workspace,
+        searchFolderPath: folderPath,
+        searchRequestId: state.workspace.searchRequestId + 1,
+        sidebarView: "search"
+      }
+    }));
+  },
+
   reloadFromDisk: () => {
     get().commands.commandHandlers.reloadFromDisk();
   },
@@ -157,6 +192,76 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
         revealWorkspacePath: path
       }
     }));
+  },
+
+  revealWorkspaceSearchMatch: (match) => {
+    set((state) => ({
+      workspace: {
+        ...state.workspace,
+        searchRevealRequest: {
+          match,
+          requestId: (state.workspace.searchRevealRequest?.requestId ?? 0) + 1
+        }
+      }
+    }));
+  },
+
+  setWorkspaceSearchHasSearched: (hasSearched) => {
+    set((state) => ({
+      workspace: {
+        ...state.workspace,
+        searchHasSearched: hasSearched
+      }
+    }));
+  },
+
+  setWorkspaceSearchOptions: (options) => {
+    set((state) => ({
+      workspace: {
+        ...state.workspace,
+        searchOptions: options
+      }
+    }));
+  },
+
+  setWorkspaceSearchQuery: (query) => {
+    set((state) => ({
+      workspace: {
+        ...state.workspace,
+        searchQuery: query
+      }
+    }));
+  },
+
+  setWorkspaceSearchResults: (results) => {
+    set((state) => ({
+      workspace: {
+        ...state.workspace,
+        collapsedSearchResultFiles:
+          state.workspace.collapsedSearchResultFiles.filter((filePath) =>
+            results.some((result) => result.filePath === filePath)
+          ),
+        searchResults: results
+      }
+    }));
+  },
+
+  toggleWorkspaceSearchResultFile: (filePath) => {
+    set((state) => {
+      const isCollapsed =
+        state.workspace.collapsedSearchResultFiles.includes(filePath);
+
+      return {
+        workspace: {
+          ...state.workspace,
+          collapsedSearchResultFiles: isCollapsed
+            ? state.workspace.collapsedSearchResultFiles.filter(
+                (candidate) => candidate !== filePath
+              )
+            : [...state.workspace.collapsedSearchResultFiles, filePath]
+        }
+      };
+    });
   },
 
   triggerNewFile: () => {
@@ -213,6 +318,15 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
       }
     }));
     get().commands.commandHandlers.setEditorViewMode(mode);
+  },
+
+  setSidebarView: (view) => {
+    set((state) => ({
+      workspace: {
+        ...state.workspace,
+        sidebarView: view
+      }
+    }));
   },
 
   showTabContextMenu: (tabId) => {

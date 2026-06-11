@@ -11,7 +11,8 @@ import {
 import {
   initialShellState,
   reduceShellEvent,
-  type CommandName
+  type CommandName,
+  type WorkspaceSearchOptions
 } from "../shared/shellState";
 import { getShellSnapshot } from "./shellView";
 
@@ -65,6 +66,8 @@ export function App() {
       openFile: () => runCommand(setShellState, "open-file"),
       openFolder: () => runCommand(setShellState, "open-folder"),
       openWorkspaceFile: (path) => runWorkspaceFileCommand(setShellState, path),
+      searchWorkspace: (query, folderPath, options) =>
+        runSearchWorkspace(query, folderPath, options),
       reloadFromDisk: () => runCommand(setShellState, "reload-from-disk"),
       setActiveTabId: (tabId) => runSetActiveTabCommand(setShellState, tabId),
       setEditorViewMode: (mode) => runSetEditorViewMode(setShellState, mode),
@@ -89,8 +92,20 @@ export function App() {
     }
 
     return window.pluma.onEvent((event) => {
+      if (event.type === "editor-command") {
+        window.dispatchEvent(
+          new CustomEvent("pluma:editor-command", {
+            detail: event.command
+          })
+        );
+      }
+
       if (event.type === "reveal-workspace-file") {
         usePlumaStore.getState().revealWorkspaceFile(event.path);
+      }
+
+      if (event.type === "find-in-folder") {
+        usePlumaStore.getState().openWorkspaceSearch(event.path);
       }
 
       setShellState((current) => reduceShellEvent(current, event));
@@ -194,6 +209,18 @@ function runWorkspaceFileCommand(
   }
 
   void window.pluma.openWorkspaceFile(filePath);
+}
+
+function runSearchWorkspace(
+  query: string,
+  folderPath: string | null,
+  options: WorkspaceSearchOptions
+) {
+  if (!window.pluma) {
+    return Promise.resolve([]);
+  }
+
+  return window.pluma.searchWorkspace(query, folderPath, options);
 }
 
 function runSetEditorViewMode(

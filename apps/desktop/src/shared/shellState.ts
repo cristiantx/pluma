@@ -10,6 +10,21 @@ export type WorkspaceTreeEntry = {
   path: string;
 };
 
+export type WorkspaceSearchMatch = {
+  filePath: string;
+  line: number;
+  lineText: string;
+  matchEnd: number;
+  matchStart: number;
+  preview: string;
+};
+
+export type WorkspaceSearchOptions = {
+  caseSensitive: boolean;
+  regexp: boolean;
+  wholeWord: boolean;
+};
+
 export type DesktopShellSnapshot = {
   activeDocumentId: string | null;
   documents: DocumentSession[];
@@ -21,14 +36,23 @@ export type DesktopShellSnapshot = {
 };
 
 export type RendererEvent =
+  | { type: "editor-command"; command: EditorCommandName }
+  | { type: "find-in-folder"; path: string }
   | { type: "mode-changed"; mode: EditorViewMode }
   | { type: "reveal-workspace-file"; path: string }
   | { type: "shell-snapshot"; snapshot: DesktopShellSnapshot }
   | { type: "status"; message: string };
 
+export type EditorCommandName =
+  | "find"
+  | "find-next"
+  | "find-previous"
+  | "replace";
+
 export type CommandName =
   | "close-active-tab"
   | "compare-conflict"
+  | EditorCommandName
   | "keep-editing"
   | "new-file"
   | "open-devtools"
@@ -79,6 +103,10 @@ export function reduceShellEvent(
   event: RendererEvent
 ): ShellState {
   switch (event.type) {
+    case "editor-command":
+      return current;
+    case "find-in-folder":
+      return current;
     case "mode-changed":
       return {
         ...current,

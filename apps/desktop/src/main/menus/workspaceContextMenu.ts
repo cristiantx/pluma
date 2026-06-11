@@ -1,10 +1,12 @@
 import { Menu, type MenuItemConstructorOptions } from "electron";
 
 export type WorkspaceContextMenuOptions = {
+  canFindInFolder: boolean;
   canPaste: boolean;
   onCopy: () => void;
   onCut: () => void;
   onMoveToTrash: () => void;
+  onFindInFolder: () => void;
   onNewDirectory: () => void;
   onNewFile: () => void;
   onPaste: () => void;
@@ -48,6 +50,11 @@ export function buildWorkspaceContextMenu(
       click: options.onMoveToTrash
     },
     { type: "separator" },
+    {
+      enabled: options.canFindInFolder,
+      label: "Find In Folder",
+      click: options.onFindInFolder
+    },
     {
       label: "Show In Folder",
       click: options.onShowInFolder

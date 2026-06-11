@@ -60,6 +60,7 @@ import {
   createWorkspaceFileActions,
   type WorkspaceFileActions
 } from "./workspace/workspaceFileActions";
+import { searchMarkdownWorkspace } from "./workspace/workspaceSearch";
 
 export type DesktopMainProcessOptions = {
   mainBundleDirectory: string;
@@ -324,6 +325,16 @@ function getDocumentById(documentId: string): DocumentSession | null {
   );
 }
 
+function getDocumentByDesktopPath(filePath: string): DocumentSession | null {
+  return (
+    shellData.documents.find(
+      (document) =>
+        document.location.kind === "desktop-path" &&
+        document.location.path === filePath
+    ) ?? null
+  );
+}
+
 function getProtectedDocuments(): DocumentSession[] {
   return shellData.documents.filter(shouldProtectDocumentSessionClose);
 }
@@ -505,6 +516,19 @@ async function openFilePath(
     workspacePath?: string | null;
   } = {}
 ): Promise<void> {
+  const openDocument = getDocumentByDesktopPath(filePath);
+
+  if (openDocument) {
+    updateShellData({
+      activeDocumentId: openDocument.id,
+      status: `Switched to ${path.basename(filePath)}.`
+    });
+    updateActiveFileWatcher();
+    persistSessionStateSoon();
+    emitShellSnapshot();
+    return;
+  }
+
   const session = await createSessionForFilePath(fileSystem, filePath);
 
   if (!session) {
@@ -1204,6 +1228,12 @@ async function handleCommand(command: CommandName): Promise<void> {
     case "compare-conflict":
       showManualCompareStatus();
       return;
+    case "find":
+    case "find-next":
+    case "find-previous":
+    case "replace":
+      emitToRenderer({ type: "editor-command", command });
+      return;
     case "keep-editing":
       await keepEditingActiveDocument();
       return;
@@ -1299,6 +1329,8 @@ function getWorkspaceFileActions(): WorkspaceFileActions {
     getMainWindow: () => mainWindow,
     getWorkspacePath: () => shellData.workspacePath,
     openFilePath,
+    openFolderSearch: (folderPath) =>
+      emitToRenderer({ type: "find-in-folder", path: folderPath }),
     persistSessionStateSoon,
     refreshWorkspaceEntries,
     selfWritePaths
@@ -1347,9 +1379,40 @@ function createWindow(): void {
     }
   });
 }
+function isWorkspaceSearchOptions(options: unknown): options is {
+  caseSensitive: boolean;
+  regexp: boolean;
+  wholeWord: boolean;
+} {
+  return (
+    typeof options === "object" &&
+    options !== null &&
+    typeof (options as { caseSensitive?: unknown }).caseSensitive ===
+      "boolean" &&
+    typeof (options as { regexp?: unknown }).regexp === "boolean" &&
+    typeof (options as { wholeWord?: unknown }).wholeWord === "boolean"
+  );
+}
+
 function registerDesktopIpcHandlers(): void {
   registerIpcHandlers({
     runCommand: handleCommand,
+    searchWorkspace: async (query, folderPath, options) => {
+      if (
+        typeof query !== "string" ||
+        !shellData.workspacePath ||
+        !isWorkspaceSearchOptions(options)
+      ) {
+        return [];
+      }
+
+      return searchMarkdownWorkspace({
+        folderPath: typeof folderPath === "string" ? folderPath : null,
+        options,
+        query,
+        workspacePath: shellData.workspacePath
+      });
+    },
     setEditorMode: (mode) => {
       if (!isEditorViewMode(mode)) {
         return;
