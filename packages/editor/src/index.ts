@@ -17,6 +17,7 @@ export type {
 
 export interface EditorFoundation {
   packageName: "@pluma/editor";
+  richMarkdownPresets: readonly ["commonmark", "gfm"];
   supportsSourceMode: true;
   supportsRichMode: true;
 }
@@ -28,6 +29,7 @@ export function createEditorFoundation(project: ProjectInfo): EditorFoundation {
 
   return {
     packageName: "@pluma/editor",
+    richMarkdownPresets: ["commonmark", "gfm"],
     supportsSourceMode: true,
     supportsRichMode: true
   };

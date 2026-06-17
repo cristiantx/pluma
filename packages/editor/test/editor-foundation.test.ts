@@ -8,6 +8,7 @@ describe("createEditorFoundation", () => {
   it("enables both source and rich modes", () => {
     expect(createEditorFoundation(projectInfo)).toEqual({
       packageName: "@pluma/editor",
+      richMarkdownPresets: ["commonmark", "gfm"],
       supportsSourceMode: true,
       supportsRichMode: true
     });
