@@ -1,13 +1,12 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 
-import { rgPath } from "@vscode/ripgrep";
-
 import type {
   WorkspaceSearchMatch,
   WorkspaceSearchOptions as SharedWorkspaceSearchOptions
 } from "../../shared/shellState";
 import { isPathInsideDirectory } from "./desktopWorkspace";
+import { resolveRipgrepPath } from "./ripgrepPath";
 
 type RipgrepMatch = {
   type: "match";
@@ -64,15 +63,16 @@ function getSearchRoot(options: WorkspaceSearchOptions): string | null {
     : null;
 }
 
-function runRipgrep(
+async function runRipgrep(
   query: string,
   searchRoot: string,
   options: SharedWorkspaceSearchOptions
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const args = createRipgrepArgs(query, searchRoot, options);
+  const ripgrepPath = await resolveRipgrepPath();
+  const args = createRipgrepArgs(query, searchRoot, options);
 
-    const child = spawn(rgPath, args, {
+  return new Promise((resolve, reject) => {
+    const child = spawn(ripgrepPath, args, {
       cwd: path.dirname(searchRoot)
     });
     const output: string[] = [];

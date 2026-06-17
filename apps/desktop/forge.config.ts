@@ -16,6 +16,12 @@ const shouldSign = Boolean(appleIdentity);
 const shouldNotarize = Boolean(
   appleIdentity && appleId && appleIdPassword && appleTeamId
 );
+const ripgrepResourcePath = path.resolve(
+  __dirname,
+  "../../node_modules/@vscode",
+  `ripgrep-${process.platform}-${process.arch}`,
+  "bin"
+);
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -24,6 +30,7 @@ const config: ForgeConfig = {
     appCategoryType: "public.app-category.productivity",
     appCopyright,
     executableName: "Pluma",
+    extraResource: [ripgrepResourcePath],
     helperBundleId: `${appBundleId}.helper`,
     icon: [
       `${path.resolve(__dirname, "assets/icon")}.icns`,
