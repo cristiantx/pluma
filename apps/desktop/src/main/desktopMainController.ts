@@ -3,14 +3,13 @@ import {
   BrowserWindow,
   Menu,
   nativeImage,
+  session,
   type IpcMainInvokeEvent
 } from "electron";
 import path from "node:path";
 
 import { DesktopFileSystemAdapter } from "@pluma/core-desktop";
-import installExtension, {
-  REACT_DEVELOPER_TOOLS
-} from "electron-devtools-installer";
+import { downloadChromeExtension } from "electron-devtools-installer/dist/downloadChromeExtension.js";
 import started from "electron-squirrel-startup";
 
 import type { CommandName } from "../shared/shellState";
@@ -24,8 +23,13 @@ import {
   type AppSettings,
   type PersistedWindowSessionState
 } from "./persistence/appPersistence";
+import { createAppDraftStorage } from "./persistence/appDraftStorage";
 import { buildApplicationMenu } from "./menus/applicationMenu";
 import { registerIpcHandlers } from "./ipc/registerIpcHandlers";
+import {
+  shouldPersistAfterWindowClosed,
+  shouldRouteWindowCloseThroughAppQuit
+} from "./session/quitPersistence";
 import { createMainWindow } from "./windows/createMainWindow";
 import {
   DesktopWindowSession,
@@ -54,6 +58,8 @@ const selfWritePaths = new Set<string>();
 const sessionStateFileName = "session-state.json";
 const appSettingsFileName = "settings.json";
 const autosaveDelayMs = 900;
+const draftsDirectoryName = "drafts";
+const reactDeveloperToolsExtensionId = "fmkadmapgofadopljbjfkapdkoienihi";
 
 if (started) {
   app.quit();
@@ -87,6 +93,10 @@ function getSessionStatePath(): string {
 
 function getAppSettingsPath(): string {
   return path.join(app.getPath("userData"), appSettingsFileName);
+}
+
+function getDraftsDirectory(): string {
+  return path.join(app.getPath("userData"), draftsDirectoryName);
 }
 
 async function persistSessionState(): Promise<void> {
@@ -228,12 +238,23 @@ async function handleMenuCommand(command: CommandName): Promise<void> {
 }
 
 function getApplicationMenu(): Menu {
+  const latestSession = getLatestFocusedSession();
+
   return buildApplicationMenu({
     autosaveEnabled,
+    commandAvailability: {
+      hasActiveDocument: latestSession?.hasActiveDocument() ?? false
+    },
     isDevelopment,
     onCommand: (command) => void handleMenuCommand(command),
     onSetAutosaveEnabled: (enabled) => void setAutosaveEnabled(enabled)
   });
+}
+
+function refreshApplicationMenu(): void {
+  if (app.isReady()) {
+    Menu.setApplicationMenu(getApplicationMenu());
+  }
 }
 
 function createWindowDependencies(
@@ -241,10 +262,12 @@ function createWindowDependencies(
 ): DesktopWindowSessionDependencies {
   return {
     appDocumentsPath: app.getPath("documents"),
+    draftStorage: createAppDraftStorage(getDraftsDirectory()),
     autosaveDelayMs,
     fileSystem,
     getAutosaveEnabled: () => autosaveEnabled,
     isDevelopment,
+    onMenuStateChange: refreshApplicationMenu,
     onPersistSessionState: persistSessionStateSoon,
     selfWritePaths,
     window
@@ -267,10 +290,26 @@ function createWindow(): DesktopWindowSession {
         latestFocusedWindowId = getOrderedSessions().at(-1)?.window.id ?? null;
       }
 
-      persistSessionStateSoon();
+      refreshApplicationMenu();
+      if (shouldPersistAfterWindowClosed(isQuitting)) {
+        persistSessionStateSoon();
+      }
     },
     onClose: (event) => {
       if (isQuitting || windowsAllowedToClose.has(window.id)) {
+        return;
+      }
+
+      if (
+        shouldRouteWindowCloseThroughAppQuit({
+          isQuitting,
+          isWindowAllowedToClose: windowsAllowedToClose.has(window.id),
+          openWindowCount: getOrderedSessions().length,
+          platform: process.platform
+        })
+      ) {
+        event.preventDefault();
+        void quitApplicationWithSessionPersistence();
         return;
       }
 
@@ -300,6 +339,7 @@ function createWindow(): DesktopWindowSession {
   latestFocusedWindowId = window.id;
   window.on("focus", () => {
     latestFocusedWindowId = window.id;
+    refreshApplicationMenu();
   });
 
   return session;
@@ -334,6 +374,16 @@ async function confirmQuitAcrossWindows(): Promise<boolean> {
   }
 
   return true;
+}
+
+async function quitApplicationWithSessionPersistence(): Promise<void> {
+  if (!(await confirmQuitAcrossWindows())) {
+    return;
+  }
+
+  isQuitting = true;
+  await persistSessionState();
+  app.quit();
 }
 
 function registerDesktopIpcHandlers(): void {
@@ -413,7 +463,18 @@ async function installDevelopmentExtensions(): Promise<void> {
   }
 
   try {
-    await installExtension(REACT_DEVELOPER_TOOLS);
+    const installedExtension = session.defaultSession.extensions
+      .getAllExtensions()
+      .find((extension) => extension.id === reactDeveloperToolsExtensionId);
+
+    if (installedExtension) {
+      return;
+    }
+
+    const extensionPath = await downloadChromeExtension(
+      reactDeveloperToolsExtensionId
+    );
+    await session.defaultSession.extensions.loadExtension(extensionPath);
   } catch (error) {
     console.warn(
       error instanceof Error
@@ -477,16 +538,7 @@ export function startDesktopMainProcess(
 
     event.preventDefault();
 
-    void confirmQuitAcrossWindows().then((canQuit) => {
-      if (!canQuit) {
-        return;
-      }
-
-      isQuitting = true;
-      void persistSessionState().finally(() => {
-        app.quit();
-      });
-    });
+    void quitApplicationWithSessionPersistence();
   });
 
   app.on("window-all-closed", () => {

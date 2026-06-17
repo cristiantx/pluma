@@ -16,7 +16,7 @@ export async function confirmDiscardProtectedDocuments(
 
   const detail =
     documents.length === 1
-      ? `${getDocumentDisplayName(documents[0])} has unsaved, saving, or conflicted changes.`
+      ? `${getDocumentDisplayName(documents[0])} has unsaved, draft, saving, or conflicted changes.`
       : `${documents.length} documents have unsaved, saving, or conflicted changes:\n${formatDocumentNameList(documents)}`;
   const actionLabel =
     action === "quit" ? "Quit" : action === "reload" ? "Reload" : "Close";

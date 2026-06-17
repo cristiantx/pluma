@@ -92,4 +92,20 @@ describe("document session save states", () => {
       )
     ).toBe(true);
   });
+
+  it("always protects app drafts from close", () => {
+    const session = createDocumentSession({
+      location: {
+        draftId: "draft-1",
+        kind: "app-draft",
+        name: "Untitled-1"
+      },
+      metadata: null,
+      rawText: "# Untitled\n"
+    });
+
+    expect(session.id).toBe("draft:draft-1");
+    expect(session.saveState).toBe("idle");
+    expect(shouldProtectDocumentSessionClose(session)).toBe(true);
+  });
 });

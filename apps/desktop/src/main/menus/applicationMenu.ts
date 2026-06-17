@@ -2,8 +2,13 @@ import { app, Menu, type MenuItemConstructorOptions } from "electron";
 
 import type { CommandName } from "../../shared/shellState";
 
+export type ApplicationMenuCommandAvailability = {
+  hasActiveDocument: boolean;
+};
+
 export type ApplicationMenuOptions = {
   autosaveEnabled: boolean;
+  commandAvailability: ApplicationMenuCommandAvailability;
   isDevelopment: boolean;
   onCommand: (command: CommandName) => void;
   onSetAutosaveEnabled: (enabled: boolean) => void;
@@ -44,12 +49,25 @@ export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
         {
           label: "Save",
           accelerator: "CmdOrCtrl+S",
+          enabled: options.commandAvailability.hasActiveDocument,
           click: () => options.onCommand("save")
         },
         {
           label: "Save As",
           accelerator: "CmdOrCtrl+Shift+S",
+          enabled: options.commandAvailability.hasActiveDocument,
           click: () => options.onCommand("save-as")
+        },
+        { type: "separator" },
+        {
+          label: "Export as HTML...",
+          enabled: options.commandAvailability.hasActiveDocument,
+          click: () => options.onCommand("export-html")
+        },
+        {
+          label: "Export as PDF...",
+          enabled: options.commandAvailability.hasActiveDocument,
+          click: () => options.onCommand("export-pdf")
         },
         { type: "separator" },
         {
@@ -64,6 +82,7 @@ export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
         {
           label: "Close Tab",
           accelerator: "CmdOrCtrl+W",
+          enabled: options.commandAvailability.hasActiveDocument,
           click: () => options.onCommand("close-active-tab")
         },
         ...(process.platform === "darwin"
@@ -96,21 +115,25 @@ export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
         {
           label: "Find",
           accelerator: "CmdOrCtrl+F",
+          enabled: options.commandAvailability.hasActiveDocument,
           click: () => options.onCommand("find")
         },
         {
           label: "Find Next",
           accelerator: "CmdOrCtrl+G",
+          enabled: options.commandAvailability.hasActiveDocument,
           click: () => options.onCommand("find-next")
         },
         {
           label: "Find Previous",
           accelerator: "Shift+CmdOrCtrl+G",
+          enabled: options.commandAvailability.hasActiveDocument,
           click: () => options.onCommand("find-previous")
         },
         {
           label: "Replace",
           accelerator: "Alt+CmdOrCtrl+F",
+          enabled: options.commandAvailability.hasActiveDocument,
           click: () => options.onCommand("replace")
         },
         { type: "separator" },
@@ -123,6 +146,7 @@ export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
         {
           label: "Toggle Rich/Source Mode",
           accelerator: "CmdOrCtrl+\\",
+          enabled: options.commandAvailability.hasActiveDocument,
           click: () => options.onCommand("toggle-mode")
         },
         ...(options.isDevelopment

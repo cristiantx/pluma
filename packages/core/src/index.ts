@@ -32,7 +32,16 @@ export {
   getSaveConflictReason,
   isMetadataConflict
 } from "./fileSystemAdapter.js";
-export type FileLocationKind = "desktop-path" | "browser-file-handle";
+export type FileLocationKind =
+  | "app-draft"
+  | "desktop-path"
+  | "browser-file-handle";
+
+export type AppDraftFileLocation = {
+  draftId: string;
+  kind: "app-draft";
+  name: string;
+};
 
 export type DesktopFileLocation = {
   kind: "desktop-path";
@@ -45,7 +54,10 @@ export type BrowserFileLocation = {
   name: string;
 };
 
-export type FileLocation = DesktopFileLocation | BrowserFileLocation;
+export type FileLocation =
+  | AppDraftFileLocation
+  | DesktopFileLocation
+  | BrowserFileLocation;
 
 export type PlumaLocationKind = FileLocationKind;
 
@@ -70,6 +82,7 @@ export {
   formatMarkdownText,
   normalizeAccidentalLooseLists
 } from "./markdownFormatter.js";
+export { renderMarkdownExportHtml } from "./markdownExport.js";
 
 export interface ProjectInfo {
   name: string;
@@ -80,10 +93,14 @@ export interface ProjectInfo {
 export const projectInfo: ProjectInfo = {
   name: "Pluma",
   localFirst: true,
-  locationKinds: ["desktop-path", "browser-file-handle"]
+  locationKinds: ["app-draft", "desktop-path", "browser-file-handle"]
 };
 
 export function getFileLocationName(location: FileLocation): string {
+  if (location.kind === "app-draft") {
+    return location.name;
+  }
+
   if (location.kind === "desktop-path") {
     const segments = location.path.replace(/[\\/]+$/, "").split(/[/\\]/);
 

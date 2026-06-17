@@ -39,6 +39,26 @@ describe("getStatusMetrics", () => {
       { label: "Save", value: "Idle shell" }
     ]);
   });
+
+  it("labels app drafts as drafts rather than saved files", () => {
+    const session = createDocumentSession({
+      location: {
+        draftId: "draft-1",
+        kind: "app-draft",
+        name: "Untitled-1"
+      },
+      metadata: null,
+      rawText: "# Untitled\n"
+    });
+
+    expect(
+      getStatusMetrics({
+        ...initialShellState,
+        activeDocumentId: session.id,
+        documents: [session]
+      }).find((metric) => metric.label === "Save")
+    ).toEqual({ label: "Save", value: "Draft" });
+  });
 });
 
 describe("getExplorerNodes", () => {
@@ -85,6 +105,29 @@ describe("getOpenTabs", () => {
         documents: [session]
       }).map((tab) => tab.id)
     ).toEqual([session.id]);
+  });
+
+  it("uses draft display names for draft tabs", () => {
+    const session = createDocumentSession({
+      location: {
+        draftId: "draft-1",
+        kind: "app-draft",
+        name: "Untitled-1"
+      },
+      metadata: null,
+      rawText: "# Untitled\n"
+    });
+
+    expect(
+      getOpenTabs({
+        ...initialShellState,
+        documents: [session]
+      })[0]
+    ).toMatchObject({
+      id: session.id,
+      isDirty: false,
+      title: "Untitled-1"
+    });
   });
 });
 

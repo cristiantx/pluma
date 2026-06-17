@@ -53,6 +53,8 @@ export type CommandName =
   | "close-active-tab"
   | "compare-conflict"
   | EditorCommandName
+  | "export-html"
+  | "export-pdf"
   | "keep-editing"
   | "new-file"
   | "new-window"

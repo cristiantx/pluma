@@ -5,8 +5,21 @@ import type { ThemePreference } from "@pluma/ui";
 
 import type { EditorViewMode } from "../../shared/shellState";
 
+export type PersistedDocumentReference =
+  | {
+      kind: "app-draft";
+      draftId: string;
+      name: string;
+    }
+  | {
+      kind: "desktop-path";
+      path: string;
+    };
+
 export type PersistedSessionState = {
+  activeDocumentRef?: PersistedDocumentReference | null;
   activeDocumentPath: string | null;
+  documentRefs?: PersistedDocumentReference[];
   documentPaths: string[];
   editorMode: EditorViewMode;
   paneSizes?: number[];
@@ -111,6 +124,7 @@ export function isMeaningfulPersistedWindowState(
   state: PersistedWindowSessionState
 ): boolean {
   return (
+    (state.documentRefs?.length ?? 0) > 0 ||
     state.documentPaths.length > 0 ||
     state.workspacePath !== null ||
     (state.paneSizes?.length ?? 0) > 0
@@ -119,9 +133,19 @@ export function isMeaningfulPersistedWindowState(
 
 async function readJsonFile(filePath: string): Promise<unknown | null> {
   try {
-    return JSON.parse(await readFile(filePath, "utf8")) as unknown;
+    const rawJson = await readFile(filePath, "utf8");
+
+    if (rawJson.trim() === "") {
+      return null;
+    }
+
+    return JSON.parse(rawJson) as unknown;
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return null;
+    }
+
+    if (error instanceof SyntaxError) {
       return null;
     }
 
@@ -160,10 +184,16 @@ function isPersistedSessionState(
   return (
     (candidate.activeDocumentPath === null ||
       typeof candidate.activeDocumentPath === "string") &&
+    (candidate.activeDocumentRef === undefined ||
+      candidate.activeDocumentRef === null ||
+      isPersistedDocumentReference(candidate.activeDocumentRef)) &&
     Array.isArray(candidate.documentPaths) &&
     candidate.documentPaths.every(
       (documentPath) => typeof documentPath === "string"
     ) &&
+    (candidate.documentRefs === undefined ||
+      (Array.isArray(candidate.documentRefs) &&
+        candidate.documentRefs.every(isPersistedDocumentReference))) &&
     isEditorViewMode(candidate.editorMode) &&
     (candidate.paneSizes === undefined ||
       (Array.isArray(candidate.paneSizes) &&
@@ -173,6 +203,29 @@ function isPersistedSessionState(
     (candidate.workspacePath === null ||
       typeof candidate.workspacePath === "string")
   );
+}
+
+function isPersistedDocumentReference(
+  value: unknown
+): value is PersistedDocumentReference {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Partial<PersistedDocumentReference>;
+
+  if (candidate.kind === "desktop-path") {
+    return typeof candidate.path === "string";
+  }
+
+  if (candidate.kind === "app-draft") {
+    return (
+      typeof candidate.draftId === "string" &&
+      typeof candidate.name === "string"
+    );
+  }
+
+  return false;
 }
 
 function isPersistedMultiWindowSessionState(

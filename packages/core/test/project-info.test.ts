@@ -9,12 +9,21 @@ describe("projectInfo", () => {
 
   it("tracks the current shared location kinds", () => {
     expect(projectInfo.locationKinds).toEqual([
+      "app-draft",
       "desktop-path",
       "browser-file-handle"
     ]);
   });
 
   it("extracts display names from shared file locations", () => {
+    expect(
+      getFileLocationName({
+        draftId: "draft-123",
+        kind: "app-draft",
+        name: "Untitled-1"
+      })
+    ).toBe("Untitled-1");
+
     expect(
       getFileLocationName({
         kind: "desktop-path",

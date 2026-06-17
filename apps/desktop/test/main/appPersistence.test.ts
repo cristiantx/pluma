@@ -1,8 +1,13 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
   isMeaningfulPersistedWindowState,
-  normalizePersistedSessionState
+  normalizePersistedSessionState,
+  readPersistedSessionState
 } from "../../src/main/persistence/appPersistence";
 
 describe("normalizePersistedSessionState", () => {
@@ -62,6 +67,56 @@ describe("normalizePersistedSessionState", () => {
     });
   });
 
+  it("keeps draft document references as meaningful persisted window state", () => {
+    expect(
+      normalizePersistedSessionState({
+        activeWindowIndex: 0,
+        windows: [
+          {
+            activeDocumentPath: null,
+            activeDocumentRef: {
+              draftId: "draft-1",
+              kind: "app-draft",
+              name: "Untitled-1"
+            },
+            documentPaths: [],
+            documentRefs: [
+              {
+                draftId: "draft-1",
+                kind: "app-draft",
+                name: "Untitled-1"
+              }
+            ],
+            editorMode: "source",
+            workspacePath: null
+          }
+        ]
+      })
+    ).toEqual({
+      activeWindowIndex: 0,
+      windows: [
+        {
+          activeDocumentPath: null,
+          activeDocumentRef: {
+            draftId: "draft-1",
+            kind: "app-draft",
+            name: "Untitled-1"
+          },
+          documentPaths: [],
+          documentRefs: [
+            {
+              draftId: "draft-1",
+              kind: "app-draft",
+              name: "Untitled-1"
+            }
+          ],
+          editorMode: "source",
+          workspacePath: null
+        }
+      ]
+    });
+  });
+
   it("preserves the active restored window index after empty windows are filtered", () => {
     expect(
       normalizePersistedSessionState({
@@ -105,6 +160,25 @@ describe("normalizePersistedSessionState", () => {
         ]
       })
     ).toBeNull();
+  });
+
+  it("treats empty and malformed persisted files as absent state", async () => {
+    const directoryPath = await mkdtemp(path.join(tmpdir(), "pluma-state-"));
+
+    try {
+      const emptyPath = path.join(directoryPath, "empty.json");
+      const malformedPath = path.join(directoryPath, "malformed.json");
+
+      await writeFile(emptyPath, "", "utf8");
+      await writeFile(malformedPath, "{", "utf8");
+
+      await expect(readPersistedSessionState(emptyPath)).resolves.toBeNull();
+      await expect(
+        readPersistedSessionState(malformedPath)
+      ).resolves.toBeNull();
+    } finally {
+      await rm(directoryPath, { force: true, recursive: true });
+    }
   });
 });
 

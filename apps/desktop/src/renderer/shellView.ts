@@ -133,6 +133,10 @@ function toModeMetricValue(mode: ShellState["mode"]): string {
 }
 
 function toSaveMetricValue(document: DocumentSession): string {
+  if (document.location.kind === "app-draft") {
+    return document.saveState === "dirty" ? "Draft edited" : "Draft";
+  }
+
   switch (document.saveState) {
     case "idle":
       return "Saved";

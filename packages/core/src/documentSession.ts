@@ -46,6 +46,10 @@ export function createDocumentSession(
 }
 
 export function getDocumentSessionId(location: FileLocation): string {
+  if (location.kind === "app-draft") {
+    return `draft:${location.draftId}`;
+  }
+
   if (location.kind === "desktop-path") {
     return `desktop:${location.path}`;
   }
@@ -117,6 +121,7 @@ export function shouldProtectDocumentSessionClose(
   session: DocumentSession
 ): boolean {
   return (
+    session.location.kind === "app-draft" ||
     session.saveState === "conflict" ||
     session.saveState === "dirty" ||
     session.saveState === "error" ||

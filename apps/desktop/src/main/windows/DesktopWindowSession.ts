@@ -3,7 +3,9 @@ import { rename, stat } from "node:fs/promises";
 import path from "node:path";
 
 import {
+  createDocumentSession,
   formatMarkdownText,
+  getFileLocationName,
   markDocumentSessionConflict,
   markDocumentSessionExternalChange,
   markDocumentSessionSaveError,
@@ -12,6 +14,7 @@ import {
   serializeMarkdownSession,
   shouldProtectDocumentSessionClose,
   updateDocumentSessionText,
+  type AppDraftFileLocation,
   type DesktopFileLocation,
   type DocumentCapability,
   type DocumentSession,
@@ -29,8 +32,10 @@ import type {
 } from "../../shared/shellState";
 import {
   isEditorViewMode,
+  type PersistedDocumentReference,
   type PersistedWindowSessionState
 } from "../persistence/appPersistence";
+import type { AppDraftStorage } from "../persistence/appDraftStorage";
 import { AutosaveScheduler } from "../autosave/autosaveScheduler";
 import {
   confirmDiscardDocumentsSequentially as confirmDiscardDocumentsSequentiallyDialog,
@@ -52,13 +57,20 @@ import {
   type WorkspaceFileActions
 } from "../workspace/workspaceFileActions";
 import { searchMarkdownWorkspace } from "../workspace/workspaceSearch";
+import {
+  exportDocument,
+  type ExportDocumentResult
+} from "../export/desktopExport";
+import type { ExportDocumentFormat } from "../export/exportDocumentHtml";
 
 export type DesktopWindowSessionDependencies = {
   appDocumentsPath: string;
   autosaveDelayMs: number;
+  draftStorage: AppDraftStorage;
   fileSystem: FileSystemAdapter<DesktopFileLocation>;
   getAutosaveEnabled: () => boolean;
   isDevelopment: boolean;
+  onMenuStateChange: () => void;
   onPersistSessionState: () => void;
   selfWritePaths: Set<string>;
   window: BrowserWindow;
@@ -127,8 +139,19 @@ export class DesktopWindowSession {
   }
 
   getPersistedState(): PersistedWindowSessionState {
+    const activeDocument = this.getActiveDocument();
+    const activeDocumentRef = activeDocument
+      ? getPersistedDocumentReference(activeDocument)
+      : null;
+
     return {
+      activeDocumentRef,
       activeDocumentPath: this.getDocumentPath(this.shellData.activeDocumentId),
+      documentRefs: this.shellData.documents.flatMap((document) => {
+        const documentRef = getPersistedDocumentReference(document);
+
+        return documentRef ? [documentRef] : [];
+      }),
       documentPaths: this.shellData.documents.flatMap((document) =>
         document.location.kind === "desktop-path"
           ? [document.location.path]
@@ -144,6 +167,10 @@ export class DesktopWindowSession {
     return this.shellData.documents.filter(shouldProtectDocumentSessionClose);
   }
 
+  hasActiveDocument(): boolean {
+    return this.getActiveDocument() !== null;
+  }
+
   async restorePersistedState(
     persistedState: PersistedWindowSessionState
   ): Promise<void> {
@@ -153,22 +180,23 @@ export class DesktopWindowSession {
       this.dependencies.fileSystem,
       persistedState.workspacePath
     );
+    const documentRefs =
+      persistedState.documentRefs ??
+      persistedState.documentPaths.map((documentPath) => ({
+        kind: "desktop-path" as const,
+        path: documentPath
+      }));
     const documents = (
       await Promise.all(
-        persistedState.documentPaths.map((documentPath) =>
-          tryCreateSessionForFilePath(
-            this.dependencies.fileSystem,
-            documentPath
-          )
+        documentRefs.map((documentRef) =>
+          this.createSessionForPersistedDocumentRef(documentRef)
         )
       )
     ).filter((session) => session !== null);
-    const activeDocument =
-      documents.find(
-        (document) =>
-          document.location.kind === "desktop-path" &&
-          document.location.path === persistedState.activeDocumentPath
-      ) ?? documents[0];
+    const activeDocument = getActivePersistedDocument(
+      documents,
+      persistedState
+    );
 
     this.updateShellData({
       activeDocumentId: activeDocument?.id ?? null,
@@ -221,6 +249,12 @@ export class DesktopWindowSession {
       case "find-previous":
       case "replace":
         this.emitToRenderer({ type: "editor-command", command });
+        return;
+      case "export-html":
+        await this.exportActiveDocument("html");
+        return;
+      case "export-pdf":
+        await this.exportActiveDocument("pdf");
         return;
       case "keep-editing":
         await this.keepEditingActiveDocument();
@@ -429,7 +463,10 @@ export class DesktopWindowSession {
       (document) => document.id === documentId
     );
     if (nextDocument?.saveState === "dirty") {
-      if (this.dependencies.getAutosaveEnabled()) {
+      if (
+        nextDocument.location.kind === "app-draft" ||
+        this.dependencies.getAutosaveEnabled()
+      ) {
         this.autosaveScheduler.schedule(documentId);
       } else {
         this.autosaveScheduler.clear(documentId);
@@ -479,10 +516,16 @@ export class DesktopWindowSession {
   private updateShellData(
     update: Partial<DesktopShellSnapshot>
   ): DesktopShellSnapshot {
+    const hadActiveDocument = this.hasActiveDocument();
+
     this.shellData = {
       ...this.shellData,
       ...update
     };
+
+    if (hadActiveDocument !== this.hasActiveDocument()) {
+      this.dependencies.onMenuStateChange();
+    }
 
     return this.shellData;
   }
@@ -536,6 +579,13 @@ export class DesktopWindowSession {
   }
 
   private getDefaultSaveAsPath(document: DocumentSession): string {
+    if (document.location.kind === "app-draft") {
+      return path.join(
+        this.shellData.workspacePath ?? this.dependencies.appDocumentsPath,
+        `${document.location.name}.md`
+      );
+    }
+
     if (document.location.kind === "desktop-path") {
       const parsedPath = path.parse(document.location.path);
 
@@ -546,6 +596,100 @@ export class DesktopWindowSession {
     }
 
     return this.getDefaultNewFilePath();
+  }
+
+  private async exportActiveDocument(
+    format: ExportDocumentFormat
+  ): Promise<void> {
+    const activeDocument = this.getActiveDocument();
+
+    if (!activeDocument) {
+      this.emitToRenderer({
+        type: "status",
+        message: "No active document to export."
+      });
+      return;
+    }
+
+    try {
+      const result = await exportDocument({
+        appDocumentsPath: this.dependencies.appDocumentsPath,
+        document: activeDocument,
+        format,
+        parentWindow: this.window
+      });
+
+      this.handleExportResult(result, format);
+    } catch (error) {
+      this.emitToRenderer({
+        type: "status",
+        message:
+          error instanceof Error
+            ? `Export failed: ${error.message}`
+            : "Export failed."
+      });
+    }
+  }
+
+  private handleExportResult(
+    result: ExportDocumentResult,
+    format: ExportDocumentFormat
+  ): void {
+    if (result.kind === "cancelled") {
+      this.emitToRenderer({ type: "status", message: "Export cancelled." });
+      return;
+    }
+
+    this.emitToRenderer({
+      type: "status",
+      message:
+        format === "html"
+          ? `Exported HTML to ${path.basename(result.filePath)}.`
+          : `Exported PDF to ${path.basename(result.filePath)}.`
+    });
+  }
+
+  private getNextDraftName(): string {
+    const usedNames = new Set(
+      this.shellData.documents
+        .filter((document) => document.location.kind === "app-draft")
+        .map((document) => getFileLocationName(document.location))
+    );
+    let index = 1;
+
+    while (usedNames.has(`Untitled-${index}`)) {
+      index += 1;
+    }
+
+    return `Untitled-${index}`;
+  }
+
+  private async createSessionForPersistedDocumentRef(
+    documentRef: PersistedDocumentReference
+  ): Promise<DocumentSession | null> {
+    if (documentRef.kind === "desktop-path") {
+      return tryCreateSessionForFilePath(
+        this.dependencies.fileSystem,
+        documentRef.path
+      );
+    }
+
+    const location: AppDraftFileLocation = {
+      draftId: documentRef.draftId,
+      kind: "app-draft",
+      name: documentRef.name
+    };
+    const rawText = await this.dependencies.draftStorage.readDraft(location);
+
+    if (rawText === null) {
+      return null;
+    }
+
+    return createDocumentSession({
+      location,
+      metadata: null,
+      rawText
+    });
   }
 
   private persistSessionStateSoon(): void {
@@ -564,7 +708,29 @@ export class DesktopWindowSession {
     this.updateActiveFileWatcher();
   }
 
+  private replaceDocumentSession(
+    documentId: string,
+    nextSession: DocumentSession
+  ): void {
+    this.updateShellData({
+      activeDocumentId:
+        this.shellData.activeDocumentId === documentId
+          ? nextSession.id
+          : this.shellData.activeDocumentId,
+      documents: this.shellData.documents.map((document) =>
+        document.id === documentId ? nextSession : document
+      )
+    });
+    this.updateActiveFileWatcher();
+  }
+
   private closeDocumentSession(documentId: string): void {
+    const closingDocument = this.getDocumentById(documentId);
+
+    if (closingDocument?.location.kind === "app-draft") {
+      void this.dependencies.draftStorage.deleteDraft(closingDocument.location);
+    }
+
     this.autosaveScheduler.clear(documentId);
     const nextDocuments = this.shellData.documents.filter(
       (document) => document.id !== documentId
@@ -589,6 +755,14 @@ export class DesktopWindowSession {
     const documentIdSet = new Set(documentIds);
 
     for (const documentId of documentIdSet) {
+      const closingDocument = this.getDocumentById(documentId);
+
+      if (closingDocument?.location.kind === "app-draft") {
+        void this.dependencies.draftStorage.deleteDraft(
+          closingDocument.location
+        );
+      }
+
       this.autosaveScheduler.clear(documentId);
     }
 
@@ -901,35 +1075,21 @@ export class DesktopWindowSession {
   }
 
   private async createNewMarkdownFile(): Promise<void> {
-    const result = await dialog.showSaveDialog(this.window, {
-      defaultPath: this.getDefaultNewFilePath(),
-      filters: [{ name: "Markdown", extensions: ["md", "markdown", "mdown"] }],
-      title: "New Markdown File"
+    const rawText = "# Untitled\n";
+    const location = await this.dependencies.draftStorage.createDraft(
+      this.getNextDraftName(),
+      rawText
+    );
+    const session = createDocumentSession({
+      location,
+      metadata: null,
+      rawText
     });
 
-    if (result.canceled || !result.filePath) {
-      this.emitToRenderer({ type: "status", message: "New file cancelled." });
-      return;
-    }
-
-    const writeResult = await this.dependencies.fileSystem.writeTextAtomic(
-      { kind: "desktop-path", path: result.filePath },
-      "# Untitled\n"
-    );
-
-    if (writeResult.kind !== "success") {
-      this.emitToRenderer({
-        type: "status",
-        message:
-          writeResult.kind === "conflict"
-            ? `New file conflict: file was ${writeResult.reason}.`
-            : `New file failed: ${writeResult.message}`
-      });
-      return;
-    }
-
-    await this.openFilePath(result.filePath);
-    await this.refreshWorkspaceEntries();
+    this.mergeDocumentSession(session);
+    this.updateShellData({ status: `Created ${location.name}.` });
+    this.persistSessionStateSoon();
+    this.emitShellSnapshot();
   }
 
   private async saveActiveDocumentAs(): Promise<void> {
@@ -940,6 +1100,11 @@ export class DesktopWindowSession {
         type: "status",
         message: "No active document to save."
       });
+      return;
+    }
+
+    if (activeDocument.location.kind === "app-draft") {
+      await this.promoteDraftDocument(activeDocument);
       return;
     }
 
@@ -973,6 +1138,91 @@ export class DesktopWindowSession {
 
     await this.openFilePath(result.filePath);
     await this.refreshWorkspaceEntries();
+  }
+
+  private async saveDraftDocument(document: DocumentSession): Promise<void> {
+    if (document.location.kind !== "app-draft") {
+      return;
+    }
+
+    this.autosaveScheduler.clear(document.id);
+    await this.dependencies.draftStorage.writeDraft(
+      document.location,
+      document.rawText
+    );
+    this.updateShellData({
+      documents: this.shellData.documents.map((candidate) =>
+        candidate.id === document.id
+          ? markDocumentSessionSaved(candidate, {
+              fileId: null,
+              mtimeMs: Date.now(),
+              size: document.rawText.length
+            })
+          : candidate
+      ),
+      status: `Draft saved for ${document.location.name}.`
+    });
+    this.persistSessionStateSoon();
+    this.emitShellSnapshot();
+  }
+
+  private async promoteDraftDocument(document: DocumentSession): Promise<void> {
+    if (document.location.kind !== "app-draft") {
+      return;
+    }
+
+    const result = await dialog.showSaveDialog(this.window, {
+      defaultPath: this.getDefaultSaveAsPath(document),
+      filters: [{ name: "Markdown", extensions: ["md", "markdown", "mdown"] }],
+      title: "Save Markdown File"
+    });
+
+    if (result.canceled || !result.filePath) {
+      this.emitToRenderer({ type: "status", message: "Save cancelled." });
+      return;
+    }
+
+    const textToSave = document.rawText;
+    const fileLocation = {
+      kind: "desktop-path" as const,
+      path: result.filePath
+    };
+    const saveResult = await this.dependencies.fileSystem.writeTextAtomic(
+      fileLocation,
+      textToSave
+    );
+
+    if (saveResult.kind !== "success") {
+      this.emitToRenderer({
+        type: "status",
+        message:
+          saveResult.kind === "conflict"
+            ? `Save conflict: file was ${saveResult.reason}.`
+            : `Save failed: ${saveResult.message}`
+      });
+      return;
+    }
+
+    await this.dependencies.draftStorage.deleteDraft(document.location);
+    const nextSession =
+      (await createSessionForFilePath(
+        this.dependencies.fileSystem,
+        result.filePath
+      )) ??
+      createDocumentSession({
+        location: fileLocation,
+        metadata: saveResult.metadata,
+        rawText: textToSave
+      });
+
+    this.autosaveScheduler.clear(document.id);
+    this.replaceDocumentSession(document.id, nextSession);
+    this.updateShellData({
+      status: `Saved ${path.basename(result.filePath)}.`
+    });
+    await this.refreshWorkspaceEntries();
+    this.persistSessionStateSoon();
+    this.emitShellSnapshot();
   }
 
   private async renameDocument(documentId: string): Promise<void> {
@@ -1092,7 +1342,18 @@ export class DesktopWindowSession {
       (document) => document.id === documentId
     );
 
-    if (!activeDocument || activeDocument.saveState === "idle") {
+    if (!activeDocument) {
+      return;
+    }
+
+    if (activeDocument.saveState === "idle") {
+      if (
+        trigger === "manual" &&
+        activeDocument.location.kind === "app-draft"
+      ) {
+        await this.promoteDraftDocument(activeDocument);
+      }
+
       return;
     }
 
@@ -1104,6 +1365,16 @@ export class DesktopWindowSession {
         type: "status",
         message: "Resolve the disk conflict before saving."
       });
+      return;
+    }
+
+    if (activeDocument.location.kind === "app-draft") {
+      if (trigger === "autosave") {
+        await this.saveDraftDocument(activeDocument);
+      } else {
+        await this.promoteDraftDocument(activeDocument);
+      }
+
       return;
     }
 
@@ -1430,6 +1701,61 @@ function markDocumentAfterSuccessfulWrite(
     lastSavedText: savedText,
     saveState: document.rawText === savedText ? "idle" : "dirty"
   };
+}
+
+function getPersistedDocumentReference(
+  document: DocumentSession
+): PersistedDocumentReference | null {
+  if (document.location.kind === "app-draft") {
+    return {
+      draftId: document.location.draftId,
+      kind: "app-draft",
+      name: document.location.name
+    };
+  }
+
+  if (document.location.kind === "desktop-path") {
+    return {
+      kind: "desktop-path",
+      path: document.location.path
+    };
+  }
+
+  return null;
+}
+
+function getActivePersistedDocument(
+  documents: DocumentSession[],
+  persistedState: PersistedWindowSessionState
+): DocumentSession | undefined {
+  const activeDocumentRef = persistedState.activeDocumentRef;
+
+  if (activeDocumentRef) {
+    const activeDocument = documents.find(
+      (document) =>
+        document.id === createPersistedDocumentSessionId(activeDocumentRef)
+    );
+
+    if (activeDocument) {
+      return activeDocument;
+    }
+  }
+
+  return (
+    documents.find(
+      (document) =>
+        document.location.kind === "desktop-path" &&
+        document.location.path === persistedState.activeDocumentPath
+    ) ?? documents[0]
+  );
+}
+
+function createPersistedDocumentSessionId(
+  documentRef: PersistedDocumentReference
+): string {
+  return documentRef.kind === "app-draft"
+    ? `draft:${documentRef.draftId}`
+    : `desktop:${documentRef.path}`;
 }
 
 function isWorkspaceSearchOptions(
