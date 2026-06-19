@@ -34,15 +34,49 @@
   color: var(--text-muted);
 }
 
-.status-metric-value,
-.statusbar-filetype {
+.status-metric-value {
   min-width: 0;
   overflow: hidden;
   color: var(--text-secondary);
   text-overflow: ellipsis;
 }
 
-.statusbar-filetype {
-  max-width: 120px;
-  white-space: nowrap;
+.statusbar-view-switch {
+  height: 24px;
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-bg);
+}
+
+.statusbar-view-switch-button {
+  min-width: 54px;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-left: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  line-height: 1;
+  padding: 0 9px;
+}
+
+.statusbar-view-switch-button:first-child {
+  border-left: 0;
+}
+
+.statusbar-view-switch-button:hover,
+.statusbar-view-switch-button:focus-visible {
+  background: var(--active-control);
+  color: var(--text-primary);
+}
+
+.statusbar-view-switch-button[aria-pressed="true"] {
+  background: var(--active-control);
+  color: var(--text-primary);
+  font-weight: 650;
 }
