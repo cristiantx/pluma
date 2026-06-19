@@ -2,11 +2,20 @@ import { isSortable } from "@dnd-kit/react/sortable";
 import type { FileLocation } from "@pluma/core";
 
 export type EditorTab = {
+  kind?: "document";
   id: string;
   isDirty?: boolean;
   location: FileLocation;
   title: string;
 };
+
+export type SettingsTab = {
+  id: "settings";
+  kind: "settings";
+  title: "Settings";
+};
+
+export type PlumaTab = EditorTab | SettingsTab;
 
 type SortableDragEndEvent = {
   canceled: boolean;
@@ -16,10 +25,10 @@ type SortableDragEndEvent = {
 };
 
 export function reorderTabItems(
-  tabs: EditorTab[],
+  tabs: PlumaTab[],
   fromIndex: number,
   toIndex: number
-): EditorTab[] {
+): PlumaTab[] {
   if (
     fromIndex === toIndex ||
     fromIndex < 0 ||
@@ -42,9 +51,9 @@ export function reorderTabItems(
 }
 
 export function reorderTabsFromDragEvent(
-  tabs: EditorTab[],
+  tabs: PlumaTab[],
   event: SortableDragEndEvent
-): EditorTab[] {
+): PlumaTab[] {
   if (event.canceled) {
     return tabs;
   }

@@ -1,6 +1,6 @@
 import { ipcMain, type IpcMainInvokeEvent } from "electron";
 
-import type { AppSettings } from "../persistence/appPersistence";
+import type { AppSettings } from "@pluma/ui";
 import type {
   CommandName,
   EditorViewMode,
@@ -11,6 +11,8 @@ import type {
 export type DesktopIpcHandlers = {
   closeTab: (event: IpcMainInvokeEvent, tabId: string) => Promise<void>;
   getSettings: (event: IpcMainInvokeEvent) => Promise<AppSettings>;
+  openAppDataFolder: (event: IpcMainInvokeEvent) => Promise<void>;
+  openSettingsFile: (event: IpcMainInvokeEvent) => Promise<void>;
   openWorkspaceFile: (
     event: IpcMainInvokeEvent,
     filePath: unknown
@@ -27,6 +29,7 @@ export type DesktopIpcHandlers = {
   ) => Promise<WorkspaceSearchMatch[]>;
   setActiveDocument: (event: IpcMainInvokeEvent, documentId: unknown) => void;
   setEditorMode: (event: IpcMainInvokeEvent, mode: unknown) => void;
+  resetSettings: (event: IpcMainInvokeEvent) => Promise<AppSettings>;
   showTabContextMenu: (event: IpcMainInvokeEvent, tabId: string) => void;
   showWorkspaceContextMenu: (
     event: IpcMainInvokeEvent,
@@ -105,9 +108,19 @@ export function registerIpcHandlers(handlers: DesktopIpcHandlers): void {
     handlers.getSettings(event)
   );
 
-  ipcMain.handle(
-    "pluma:update-settings",
-    async (event, settings: unknown) =>
-      handlers.updateSettings(event, settings)
+  ipcMain.handle("pluma:open-app-data-folder", async (event) => {
+    await handlers.openAppDataFolder(event);
+  });
+
+  ipcMain.handle("pluma:open-settings-file", async (event) => {
+    await handlers.openSettingsFile(event);
+  });
+
+  ipcMain.handle("pluma:reset-settings", async (event) =>
+    handlers.resetSettings(event)
+  );
+
+  ipcMain.handle("pluma:update-settings", async (event, settings: unknown) =>
+    handlers.updateSettings(event, settings)
   );
 }

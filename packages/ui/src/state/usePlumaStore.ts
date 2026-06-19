@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { updateDocumentSessionText } from "@pluma/core";
 
 import { resolveThemePreference } from "../theme.js";
+import type { AppSettings } from "../settings.js";
 import { hydratePlumaShellSnapshot } from "./plumaStoreHydration.js";
 import { initialPlumaStoreState } from "./plumaStoreInitialState.js";
 import type { PlumaShellSnapshot, PlumaStore } from "./plumaStoreTypes.js";
@@ -13,6 +14,11 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   ...initialPlumaStoreState,
 
   closeTab: (tabId) => {
+    if (tabId === "settings") {
+      get().closeSettingsTab();
+      return;
+    }
+
     const closeTabHandler = get().commands.commandHandlers.closeTab;
     closeTabHandler(tabId);
   },
@@ -21,8 +27,54 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     get().commands.commandHandlers.compareConflict();
   },
 
+  closeSettingsTab: () => {
+    set((state) => {
+      if (!state.tabs.tabs.some((tab) => tab.id === "settings")) {
+        return state;
+      }
+
+      const nextTabs = state.tabs.tabs.filter((tab) => tab.id !== "settings");
+      const nextActiveTabId =
+        state.tabs.activeTabId === "settings"
+          ? (state.document.activeDocument?.id ?? nextTabs[0]?.id ?? "")
+          : state.tabs.activeTabId;
+
+      return {
+        tabs: {
+          activeTabId: nextActiveTabId,
+          tabs: nextTabs
+        }
+      };
+    });
+  },
+
   hydrateShellSnapshot: (snapshot: PlumaShellSnapshot) => {
     set((state) => hydratePlumaShellSnapshot(state, snapshot));
+  },
+
+  hydrateSettings: (settings: AppSettings) => {
+    set((state) => ({
+      settings,
+      theme: {
+        preference: settings.themePreference,
+        resolvedTheme: resolveThemePreference(
+          settings.themePreference,
+          state.theme.systemPrefersDark
+        ),
+        systemPrefersDark: state.theme.systemPrefersDark
+      },
+      writing: {
+        spellcheckEnabled: settings.spellcheckEnabled
+      },
+      workspace: {
+        ...state.workspace,
+        searchOptions: {
+          caseSensitive: settings.workspaceSearchCaseSensitive,
+          regexp: settings.workspaceSearchRegexp,
+          wholeWord: settings.workspaceSearchWholeWord
+        }
+      }
+    }));
   },
 
   reorderTabs: (tabs) => {
@@ -40,6 +92,34 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     get().commands.commandHandlers.keepEditing();
   },
 
+  openSettingsTab: () => {
+    set((state) => {
+      const hasSettingsTab = state.tabs.tabs.some(
+        (tab) => tab.id === "settings"
+      );
+
+      return {
+        tabs: {
+          activeTabId: "settings",
+          tabs: hasSettingsTab
+            ? state.tabs.tabs
+            : [
+                ...state.tabs.tabs,
+                { id: "settings", kind: "settings", title: "Settings" }
+              ]
+        }
+      };
+    });
+  },
+
+  openAppDataFolder: () => {
+    get().commands.commandHandlers.openAppDataFolder();
+  },
+
+  openSettingsFile: () => {
+    get().commands.commandHandlers.openSettingsFile();
+  },
+
   openWorkspaceSearch: (folderPath) => {
     set((state) => ({
       workspace: {
@@ -53,6 +133,11 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
 
   reloadFromDisk: () => {
     get().commands.commandHandlers.reloadFromDisk();
+  },
+
+  resetSettings: async () => {
+    const nextSettings = await get().commands.commandHandlers.resetSettings();
+    get().hydrateSettings(nextSettings);
   },
 
   revealWorkspaceFile: (path) => {
@@ -140,6 +225,16 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   },
 
   setActiveTabId: (tabId) => {
+    if (tabId === "settings") {
+      set((state) => ({
+        tabs: {
+          ...state.tabs,
+          activeTabId: "settings"
+        }
+      }));
+      return;
+    }
+
     set((state) => ({
       document: {
         activeDocument:
@@ -219,15 +314,23 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   },
 
   setSpellcheckEnabled: (enabled) => {
-    set({
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        spellcheckEnabled: enabled
+      },
       writing: {
         spellcheckEnabled: enabled
       }
-    });
+    }));
   },
 
   setThemePreference: (preference) => {
     set((state) => ({
+      settings: {
+        ...state.settings,
+        themePreference: preference
+      },
       theme: {
         preference,
         resolvedTheme: resolveThemePreference(
@@ -245,6 +348,10 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
         state.theme.resolvedTheme === "dark" ? "light" : "dark";
 
       return {
+        settings: {
+          ...state.settings,
+          themePreference: nextPreference
+        },
         theme: {
           preference: nextPreference,
           resolvedTheme: resolveThemePreference(
@@ -339,6 +446,12 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
         }
       }
     }));
+  },
+
+  updateSettings: async (settings) => {
+    const nextSettings =
+      await get().commands.commandHandlers.updateSettings(settings);
+    get().hydrateSettings(nextSettings);
   },
 
   triggerToggleMode: () => {

@@ -3,6 +3,7 @@ import { copyFile, cp, mkdir, rename, stat } from "node:fs/promises";
 import path from "node:path";
 
 import {
+  applyLineEnding,
   shouldProtectDocumentSessionClose,
   type DesktopFileLocation,
   type DocumentSession,
@@ -40,6 +41,7 @@ export type WorkspaceFileActionDependencies = {
   emitStatus: (message: string) => void;
   fileSystem: FileSystemAdapter<DesktopFileLocation>;
   getDocuments: () => DocumentSession[];
+  getDefaultLineEnding: () => "crlf" | "lf" | "system";
   getMainWindow: () => BrowserWindow | null;
   getWorkspacePath: () => string | null;
   openFilePath: (
@@ -111,7 +113,7 @@ export function createWorkspaceFileActions(
 
     const writeResult = await dependencies.fileSystem.writeTextAtomic(
       { kind: "desktop-path", path: result.filePath },
-      "# Untitled\n"
+      applyLineEnding("# Untitled\n", getWritableDefaultLineEnding())
     );
 
     if (writeResult.kind !== "success") {
@@ -127,6 +129,16 @@ export function createWorkspaceFileActions(
       workspacePath: dependencies.getWorkspacePath()
     });
     await dependencies.refreshWorkspaceEntries();
+  }
+
+  function getWritableDefaultLineEnding(): "crlf" | "lf" {
+    const preference = dependencies.getDefaultLineEnding();
+
+    if (preference === "crlf" || preference === "lf") {
+      return preference;
+    }
+
+    return process.platform === "win32" ? "crlf" : "lf";
   }
 
   async function createWorkspaceDirectory(

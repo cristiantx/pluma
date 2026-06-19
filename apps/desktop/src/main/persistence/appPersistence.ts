@@ -1,9 +1,22 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { ThemePreference } from "@pluma/ui";
+import {
+  defaultAppSettings,
+  isDefaultLineEnding,
+  isEditorWidthPreference,
+  isRichEditorDensity,
+  isSourceEditorFontFamily,
+  isSourceEditorFontSize,
+  isSourceEditorTabSize,
+  isSplitViewOrder,
+  isThemePreference,
+  type AppSettings
+} from "@pluma/ui";
 
 import type { EditorViewMode } from "../../shared/shellState";
+
+export { defaultAppSettings };
 
 export type PersistedDocumentReference =
   | {
@@ -33,24 +46,8 @@ export type PersistedMultiWindowSessionState = {
   windows: PersistedWindowSessionState[];
 };
 
-export type AppSettings = {
-  autosaveEnabled: boolean;
-  spellcheckEnabled: boolean;
-  themePreference: ThemePreference;
-};
-
-export const defaultAppSettings: AppSettings = {
-  autosaveEnabled: true,
-  spellcheckEnabled: true,
-  themePreference: "system"
-};
-
 export function isEditorViewMode(value: unknown): value is EditorViewMode {
   return value === "source" || value === "rich" || value === "split";
-}
-
-export function isThemePreference(value: unknown): value is ThemePreference {
-  return value === "system" || value === "light" || value === "dark";
 }
 
 export async function readAppSettings(filePath: string): Promise<AppSettings> {
@@ -172,6 +169,43 @@ function isAppSettings(value: unknown): value is AppSettings {
       typeof candidate.autosaveEnabled === "boolean") &&
     (candidate.spellcheckEnabled === undefined ||
       typeof candidate.spellcheckEnabled === "boolean") &&
+    (candidate.richEditorWidth === undefined ||
+      isEditorWidthPreference(candidate.richEditorWidth)) &&
+    (candidate.sourceEditorWidth === undefined ||
+      isEditorWidthPreference(candidate.sourceEditorWidth)) &&
+    (candidate.sourceEditorFontFamily === undefined ||
+      isSourceEditorFontFamily(candidate.sourceEditorFontFamily)) &&
+    (candidate.sourceEditorColorScheme === undefined ||
+      candidate.sourceEditorColorScheme === "follow-theme" ||
+      candidate.sourceEditorColorScheme === "pluma-dark" ||
+      candidate.sourceEditorColorScheme === "pluma-light") &&
+    (candidate.sourceEditorFontSize === undefined ||
+      isSourceEditorFontSize(candidate.sourceEditorFontSize)) &&
+    (candidate.sourceEditorLineNumbers === undefined ||
+      typeof candidate.sourceEditorLineNumbers === "boolean") &&
+    (candidate.sourceEditorTabSize === undefined ||
+      isSourceEditorTabSize(candidate.sourceEditorTabSize)) &&
+    (candidate.sourceEditorWordWrap === undefined ||
+      typeof candidate.sourceEditorWordWrap === "boolean") &&
+    (candidate.richEditorDensity === undefined ||
+      isRichEditorDensity(candidate.richEditorDensity)) &&
+    (candidate.splitViewOrder === undefined ||
+      isSplitViewOrder(candidate.splitViewOrder)) &&
+    (candidate.defaultLineEnding === undefined ||
+      isDefaultLineEnding(candidate.defaultLineEnding)) &&
+    (candidate.openExportedFile === undefined ||
+      typeof candidate.openExportedFile === "boolean") &&
+    (candidate.restorePreviousSession === undefined ||
+      typeof candidate.restorePreviousSession === "boolean") &&
+    (candidate.workspaceSearchCaseSensitive === undefined ||
+      typeof candidate.workspaceSearchCaseSensitive === "boolean") &&
+    (candidate.workspaceSearchRegexp === undefined ||
+      typeof candidate.workspaceSearchRegexp === "boolean") &&
+    (candidate.workspaceSearchWholeWord === undefined ||
+      typeof candidate.workspaceSearchWholeWord === "boolean") &&
+    (candidate.workspaceShowHiddenFiles === undefined ||
+      typeof candidate.workspaceShowHiddenFiles === "boolean") &&
+    typeof candidate.themePreference === "string" &&
     isThemePreference(candidate.themePreference)
   );
 }

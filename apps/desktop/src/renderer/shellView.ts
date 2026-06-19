@@ -1,4 +1,8 @@
-import { getFileLocationName, type DocumentSession } from "@pluma/core";
+import {
+  formatLineEndingLabel,
+  getFileLocationName,
+  type DocumentSession
+} from "@pluma/core";
 import type {
   EditorTab,
   ExplorerNode,
@@ -54,6 +58,12 @@ export function getStatusMetrics(state: ShellState): StatusMetric[] {
       value: toModeMetricValue(state.mode)
     },
     {
+      label: "Line",
+      value: activeDocument
+        ? formatLineEndingLabel(activeDocument.lineEnding)
+        : "--"
+    },
+    {
       label: "Save",
       value: activeDocument ? toSaveMetricValue(activeDocument) : "Idle shell"
     }
@@ -87,6 +97,7 @@ export function getOpenTabs(state: ShellState): EditorTab[] {
   return getDocuments(state).map((document) => ({
     id: document.id,
     isDirty: document.saveState !== "idle",
+    kind: "document" as const,
     location: document.location,
     title: getFileLocationName(document.location)
   }));

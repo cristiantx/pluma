@@ -9,12 +9,12 @@ export const plumaSourceEditorTheme: Extension = [
       height: "100%",
       backgroundColor: "var(--editor-source-bg)",
       color: "var(--text-secondary)",
-      fontFamily: "var(--font-editor)",
-      fontSize: "14px",
+      fontFamily: "var(--source-editor-font-family, var(--font-editor))",
+      fontSize: "var(--source-editor-font-size, 14px)",
       lineHeight: "1.65"
     },
     ".cm-scroller": {
-      fontFamily: "var(--font-editor)",
+      fontFamily: "var(--source-editor-font-family, var(--font-editor))",
       overflow: "overlay"
     },
     ".cm-scroller::-webkit-scrollbar": {
@@ -37,8 +37,8 @@ export const plumaSourceEditorTheme: Extension = [
     ".cm-content": {
       flex: "0 0 auto",
       minHeight: "100%",
-      width: "min(760px, calc(100% - 112px))",
-      maxWidth: "760px",
+      width: "min(var(--source-editor-content-width), calc(100% - 112px))",
+      maxWidth: "var(--source-editor-content-width)",
       padding: "18px 24px 64px 0",
       caretColor: "var(--text-primary)"
     },
@@ -49,7 +49,8 @@ export const plumaSourceEditorTheme: Extension = [
       backgroundColor: "var(--editor-source-bg)",
       borderRight: "0",
       color: "var(--text-muted)",
-      paddingLeft: "max(24px, calc((100% - 888px) / 2))"
+      paddingLeft:
+        "max(24px, calc((100% - var(--source-editor-shell-width)) / 2))"
     },
     ".cm-lineNumbers .cm-gutterElement": {
       minWidth: "41px",

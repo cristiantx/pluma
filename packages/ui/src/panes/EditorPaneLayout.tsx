@@ -6,14 +6,19 @@ type EditorPaneLayoutProps = {
   paneSizes?: number[];
   rich: ReactNode;
   source: ReactNode;
+  splitViewOrder: "rich-source" | "source-rich";
 };
 
 export function EditorPaneLayout({
   onPaneSizesChange,
   paneSizes,
   rich,
-  source
+  source,
+  splitViewOrder
 }: EditorPaneLayoutProps) {
+  const leftPane = splitViewOrder === "source-rich" ? source : rich;
+  const rightPane = splitViewOrder === "source-rich" ? rich : source;
+
   return (
     <Allotment
       className="editor-pane-layout"
@@ -22,8 +27,8 @@ export function EditorPaneLayout({
       proportionalLayout
       vertical={false}
     >
-      <Allotment.Pane minSize={280}>{rich}</Allotment.Pane>
-      <Allotment.Pane minSize={280}>{source}</Allotment.Pane>
+      <Allotment.Pane minSize={280}>{leftPane}</Allotment.Pane>
+      <Allotment.Pane minSize={280}>{rightPane}</Allotment.Pane>
     </Allotment>
   );
 }

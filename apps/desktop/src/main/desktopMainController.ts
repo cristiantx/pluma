@@ -4,23 +4,35 @@ import {
   Menu,
   nativeImage,
   session,
+  shell,
   type IpcMainInvokeEvent
 } from "electron";
 import path from "node:path";
 
 import { DesktopFileSystemAdapter } from "@pluma/core-desktop";
+import {
+  defaultAppSettings,
+  isDefaultLineEnding,
+  isEditorWidthPreference,
+  isRichEditorDensity,
+  isSourceEditorFontFamily,
+  isSourceEditorFontSize,
+  isSourceEditorTabSize,
+  isSplitViewOrder,
+  isThemePreference,
+  type AppSettings,
+  type DefaultLineEnding
+} from "@pluma/ui";
 import { downloadChromeExtension } from "electron-devtools-installer/dist/downloadChromeExtension.js";
 import started from "electron-squirrel-startup";
 
 import type { CommandName } from "../shared/shellState";
 import {
   isMeaningfulPersistedWindowState,
-  isThemePreference,
   readAppSettings,
   readPersistedSessionState,
   writeAppSettings,
   writePersistedSessionState,
-  type AppSettings,
   type PersistedWindowSessionState
 } from "./persistence/appPersistence";
 import { createAppDraftStorage } from "./persistence/appDraftStorage";
@@ -46,7 +58,11 @@ let mainBundleDirectory = "";
 let rendererDevServerUrl: string | undefined;
 let rendererName = "";
 let autosaveEnabled = true;
+let defaultLineEnding: DefaultLineEnding = "system";
+let openExportedFile = false;
+let restorePreviousSession = true;
 let spellcheckEnabled = true;
+let workspaceShowHiddenFiles = true;
 let isDevelopment = false;
 let isQuitting = false;
 let latestFocusedWindowId: number | null = null;
@@ -223,9 +239,9 @@ function applySpellcheckEnabled(enabled: boolean): void {
   }
 }
 
-function emitSpellcheckSettingChanged(enabled: boolean): void {
+function emitSettingsChanged(settings: AppSettings): void {
   for (const session of sessions.values()) {
-    session.emitSettingsChanged(enabled);
+    session.emitSettingsChanged(settings);
   }
 }
 
@@ -251,7 +267,11 @@ async function updateStoredAppSettings(
 
   await writeAppSettings(getAppSettingsPath(), nextSettings);
   autosaveEnabled = nextSettings.autosaveEnabled;
+  defaultLineEnding = nextSettings.defaultLineEnding;
+  openExportedFile = nextSettings.openExportedFile;
+  restorePreviousSession = nextSettings.restorePreviousSession;
   spellcheckEnabled = nextSettings.spellcheckEnabled;
+  workspaceShowHiddenFiles = nextSettings.workspaceShowHiddenFiles;
 
   if (!autosaveEnabled) {
     for (const session of sessions.values()) {
@@ -261,12 +281,27 @@ async function updateStoredAppSettings(
 
   if (currentSettings.spellcheckEnabled !== nextSettings.spellcheckEnabled) {
     applySpellcheckEnabled(spellcheckEnabled);
-    emitSpellcheckSettingChanged(spellcheckEnabled);
   }
+
+  if (
+    currentSettings.workspaceShowHiddenFiles !==
+    nextSettings.workspaceShowHiddenFiles
+  ) {
+    for (const session of sessions.values()) {
+      void session.refreshSettingsSensitiveState();
+    }
+  }
+
+  emitSettingsChanged(nextSettings);
 
   Menu.setApplicationMenu(getApplicationMenu());
 
   return nextSettings;
+}
+
+async function resetStoredAppSettings(): Promise<AppSettings> {
+  await writeAppSettings(getAppSettingsPath(), defaultAppSettings);
+  return updateStoredAppSettings(defaultAppSettings);
 }
 
 function getAppSettingsUpdate(settings: unknown): Partial<AppSettings> {
@@ -281,7 +316,59 @@ function getAppSettingsUpdate(settings: unknown): Partial<AppSettings> {
     ...(typeof settings.spellcheckEnabled === "boolean"
       ? { spellcheckEnabled: settings.spellcheckEnabled }
       : {}),
-    ...(isThemePreference(settings.themePreference)
+    ...(typeof settings.openExportedFile === "boolean"
+      ? { openExportedFile: settings.openExportedFile }
+      : {}),
+    ...(typeof settings.restorePreviousSession === "boolean"
+      ? { restorePreviousSession: settings.restorePreviousSession }
+      : {}),
+    ...(typeof settings.workspaceSearchCaseSensitive === "boolean"
+      ? { workspaceSearchCaseSensitive: settings.workspaceSearchCaseSensitive }
+      : {}),
+    ...(typeof settings.workspaceSearchRegexp === "boolean"
+      ? { workspaceSearchRegexp: settings.workspaceSearchRegexp }
+      : {}),
+    ...(typeof settings.workspaceSearchWholeWord === "boolean"
+      ? { workspaceSearchWholeWord: settings.workspaceSearchWholeWord }
+      : {}),
+    ...(typeof settings.workspaceShowHiddenFiles === "boolean"
+      ? { workspaceShowHiddenFiles: settings.workspaceShowHiddenFiles }
+      : {}),
+    ...(isEditorWidthPreference(settings.richEditorWidth)
+      ? { richEditorWidth: settings.richEditorWidth }
+      : {}),
+    ...(isEditorWidthPreference(settings.sourceEditorWidth)
+      ? { sourceEditorWidth: settings.sourceEditorWidth }
+      : {}),
+    ...(isSourceEditorFontFamily(settings.sourceEditorFontFamily)
+      ? { sourceEditorFontFamily: settings.sourceEditorFontFamily }
+      : {}),
+    ...(isSourceEditorColorSchemeSetting(settings.sourceEditorColorScheme)
+      ? { sourceEditorColorScheme: settings.sourceEditorColorScheme }
+      : {}),
+    ...(isSourceEditorFontSize(settings.sourceEditorFontSize)
+      ? { sourceEditorFontSize: settings.sourceEditorFontSize }
+      : {}),
+    ...(typeof settings.sourceEditorLineNumbers === "boolean"
+      ? { sourceEditorLineNumbers: settings.sourceEditorLineNumbers }
+      : {}),
+    ...(isSourceEditorTabSize(settings.sourceEditorTabSize)
+      ? { sourceEditorTabSize: settings.sourceEditorTabSize }
+      : {}),
+    ...(typeof settings.sourceEditorWordWrap === "boolean"
+      ? { sourceEditorWordWrap: settings.sourceEditorWordWrap }
+      : {}),
+    ...(isRichEditorDensity(settings.richEditorDensity)
+      ? { richEditorDensity: settings.richEditorDensity }
+      : {}),
+    ...(isSplitViewOrder(settings.splitViewOrder)
+      ? { splitViewOrder: settings.splitViewOrder }
+      : {}),
+    ...(isDefaultLineEnding(settings.defaultLineEnding)
+      ? { defaultLineEnding: settings.defaultLineEnding }
+      : {}),
+    ...(typeof settings.themePreference === "string" &&
+    isThemePreference(settings.themePreference)
       ? { themePreference: settings.themePreference }
       : {})
   };
@@ -289,6 +376,16 @@ function getAppSettingsUpdate(settings: unknown): Partial<AppSettings> {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isSourceEditorColorSchemeSetting(
+  value: unknown
+): value is AppSettings["sourceEditorColorScheme"] {
+  return (
+    value === "follow-theme" ||
+    value === "pluma-dark" ||
+    value === "pluma-light"
+  );
 }
 
 async function handleMenuCommand(command: CommandName): Promise<void> {
@@ -299,6 +396,10 @@ async function handleMenuCommand(command: CommandName): Promise<void> {
 
   const session = getLatestFocusedSession() ?? createWindow();
   await session.handleCommand(command);
+}
+
+function handleConvertLineEndings(target: "crlf" | "lf"): void {
+  getLatestFocusedSession()?.convertActiveDocumentLineEndings(target);
 }
 
 function getApplicationMenu(): Menu {
@@ -312,6 +413,7 @@ function getApplicationMenu(): Menu {
     isDevelopment,
     spellcheckEnabled,
     onCommand: (command) => void handleMenuCommand(command),
+    onConvertLineEndings: handleConvertLineEndings,
     onSetAutosaveEnabled: (enabled) => void setAutosaveEnabled(enabled),
     onSetSpellcheckEnabled: (enabled) => void setSpellcheckEnabled(enabled)
   });
@@ -332,6 +434,9 @@ function createWindowDependencies(
     autosaveDelayMs,
     fileSystem,
     getAutosaveEnabled: () => autosaveEnabled,
+    getDefaultLineEnding: () => defaultLineEnding,
+    getOpenExportedFile: () => openExportedFile,
+    getWorkspaceShowHiddenFiles: () => workspaceShowHiddenFiles,
     isDevelopment,
     onMenuStateChange: refreshApplicationMenu,
     onPersistSessionState: persistSessionStateSoon,
@@ -413,6 +518,11 @@ function createWindow(): DesktopWindowSession {
 }
 
 async function restorePersistedSessionState(): Promise<void> {
+  if (!restorePreviousSession) {
+    createWindow();
+    return;
+  }
+
   const persistedState = await readPersistedSessionState(getSessionStatePath());
 
   if (!persistedState || persistedState.windows.length === 0) {
@@ -493,11 +603,26 @@ function registerDesktopIpcHandlers(): void {
     getSettings: async () => {
       const settings = await readAppSettings(getAppSettingsPath());
       autosaveEnabled = settings.autosaveEnabled;
+      defaultLineEnding = settings.defaultLineEnding;
+      openExportedFile = settings.openExportedFile;
+      restorePreviousSession = settings.restorePreviousSession;
       spellcheckEnabled = settings.spellcheckEnabled;
+      workspaceShowHiddenFiles = settings.workspaceShowHiddenFiles;
       applySpellcheckEnabled(spellcheckEnabled);
 
       return settings;
     },
+    openAppDataFolder: async () => {
+      await shell.openPath(app.getPath("userData"));
+    },
+    openSettingsFile: async () => {
+      await writeAppSettings(
+        getAppSettingsPath(),
+        await readAppSettings(getAppSettingsPath())
+      );
+      await shell.openPath(getAppSettingsPath());
+    },
+    resetSettings: async () => resetStoredAppSettings(),
     updateSettings: async (_event, settings) => {
       return updateStoredAppSettings(getAppSettingsUpdate(settings));
     }
@@ -545,7 +670,11 @@ export function startDesktopMainProcess(
     await installDevelopmentExtensions();
     const settings = await readAppSettings(getAppSettingsPath());
     autosaveEnabled = settings.autosaveEnabled;
+    defaultLineEnding = settings.defaultLineEnding;
+    openExportedFile = settings.openExportedFile;
+    restorePreviousSession = settings.restorePreviousSession;
     spellcheckEnabled = settings.spellcheckEnabled;
+    workspaceShowHiddenFiles = settings.workspaceShowHiddenFiles;
     applySpellcheckEnabled(spellcheckEnabled);
     Menu.setApplicationMenu(getApplicationMenu());
     await restorePersistedSessionState();

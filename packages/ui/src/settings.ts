@@ -1,0 +1,121 @@
+import type { ThemePreference } from "./theme.js";
+
+export type EditorWidthPreference = "default" | "full" | "narrow" | "wide";
+export type RichEditorDensity = "comfortable" | "compact";
+export type SplitViewOrder = "rich-source" | "source-rich";
+export type DefaultLineEnding = "crlf" | "lf" | "system";
+export type SourceEditorFontSize = 12 | 13 | 14 | 15 | 16 | 18;
+export type SourceEditorFontFamily = "mono" | "system";
+export type SourceEditorTabSize = 2 | 4;
+export type SourceEditorColorScheme =
+  | "follow-theme"
+  | "pluma-dark"
+  | "pluma-light";
+
+export type AppSettings = {
+  autosaveEnabled: boolean;
+  defaultLineEnding: DefaultLineEnding;
+  openExportedFile: boolean;
+  richEditorDensity: RichEditorDensity;
+  richEditorWidth: EditorWidthPreference;
+  restorePreviousSession: boolean;
+  sourceEditorWidth: EditorWidthPreference;
+  sourceEditorFontFamily: SourceEditorFontFamily;
+  sourceEditorColorScheme: SourceEditorColorScheme;
+  sourceEditorFontSize: SourceEditorFontSize;
+  sourceEditorLineNumbers: boolean;
+  sourceEditorTabSize: SourceEditorTabSize;
+  sourceEditorWordWrap: boolean;
+  spellcheckEnabled: boolean;
+  splitViewOrder: SplitViewOrder;
+  themePreference: ThemePreference;
+  workspaceSearchCaseSensitive: boolean;
+  workspaceSearchRegexp: boolean;
+  workspaceSearchWholeWord: boolean;
+  workspaceShowHiddenFiles: boolean;
+};
+
+export const defaultAppSettings: AppSettings = {
+  autosaveEnabled: true,
+  defaultLineEnding: "system",
+  openExportedFile: false,
+  richEditorDensity: "comfortable",
+  richEditorWidth: "default",
+  restorePreviousSession: true,
+  sourceEditorFontFamily: "mono",
+  sourceEditorColorScheme: "follow-theme",
+  sourceEditorFontSize: 14,
+  sourceEditorLineNumbers: true,
+  sourceEditorTabSize: 2,
+  sourceEditorWordWrap: true,
+  sourceEditorWidth: "default",
+  spellcheckEnabled: true,
+  splitViewOrder: "rich-source",
+  themePreference: "system",
+  workspaceSearchCaseSensitive: false,
+  workspaceSearchRegexp: false,
+  workspaceSearchWholeWord: false,
+  workspaceShowHiddenFiles: true
+};
+
+export function isEditorWidthPreference(
+  value: unknown
+): value is EditorWidthPreference {
+  return (
+    value === "default" ||
+    value === "full" ||
+    value === "narrow" ||
+    value === "wide"
+  );
+}
+
+export function isRichEditorDensity(
+  value: unknown
+): value is RichEditorDensity {
+  return value === "comfortable" || value === "compact";
+}
+
+export function isSplitViewOrder(value: unknown): value is SplitViewOrder {
+  return value === "rich-source" || value === "source-rich";
+}
+
+export function isDefaultLineEnding(
+  value: unknown
+): value is DefaultLineEnding {
+  return value === "crlf" || value === "lf" || value === "system";
+}
+
+export function isSourceEditorFontSize(
+  value: unknown
+): value is SourceEditorFontSize {
+  return (
+    value === 12 ||
+    value === 13 ||
+    value === 14 ||
+    value === 15 ||
+    value === 16 ||
+    value === 18
+  );
+}
+
+export function isSourceEditorFontFamily(
+  value: unknown
+): value is SourceEditorFontFamily {
+  return value === "mono" || value === "system";
+}
+
+export function isSourceEditorTabSize(
+  value: unknown
+): value is SourceEditorTabSize {
+  return value === 2 || value === 4;
+}
+
+export function isSourceEditorColorScheme(
+  value: unknown
+): value is SourceEditorColorScheme {
+  return (
+    value === "follow-theme" ||
+    value === "pluma-dark" ||
+    value === "pluma-light"
+  );
+}

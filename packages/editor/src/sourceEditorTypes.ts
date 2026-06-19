@@ -21,6 +21,11 @@ export type SourceEditorProps = {
   onChange: (rawText: string) => void;
   rawText: string;
   searchRevealRequest?: SourceSearchRevealRequest | null;
+  sourceFontFamily?: "mono" | "system";
+  sourceFontSize?: number;
+  sourceLineNumbers?: boolean;
+  sourceTabSize?: 2 | 4;
+  sourceWordWrap?: boolean;
   spellCheck?: boolean;
 };
 

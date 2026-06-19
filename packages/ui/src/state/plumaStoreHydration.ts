@@ -34,6 +34,12 @@ export function hydratePlumaShellSnapshot(
       ([documentId]) => openDocumentIds.has(documentId)
     )
   );
+  const settingsTab = state.tabs.tabs.find((tab) => tab.id === "settings");
+  const tabs = settingsTab ? [...snapshot.tabs, settingsTab] : snapshot.tabs;
+  const activeTabId =
+    state.tabs.activeTabId === "settings"
+      ? "settings"
+      : (snapshot.activeDocumentId ?? "");
 
   return {
     document: {
@@ -52,8 +58,8 @@ export function hydratePlumaShellSnapshot(
       statusMetrics: snapshot.statusMetrics
     },
     tabs: {
-      activeTabId: snapshot.activeDocumentId ?? "",
-      tabs: snapshot.tabs
+      activeTabId,
+      tabs
     },
     workspace: {
       explorerNodes: snapshot.explorerNodes,

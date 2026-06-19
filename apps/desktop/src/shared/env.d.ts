@@ -1,19 +1,15 @@
 import type { CommandName, RendererEvent } from "./shellState";
 import type { WorkspaceSearchMatch } from "./shellState";
 import type { WorkspaceSearchOptions } from "./shellState";
-import type { EditorViewMode, ThemePreference } from "@pluma/ui";
-
-type AppSettings = {
-  autosaveEnabled: boolean;
-  spellcheckEnabled: boolean;
-  themePreference: ThemePreference;
-};
+import type { AppSettings, EditorViewMode } from "@pluma/ui";
 
 declare global {
   interface Window {
     pluma: {
       closeTab(tabId: string): Promise<void>;
       getSettings(): Promise<AppSettings>;
+      openAppDataFolder(): Promise<void>;
+      openSettingsFile(): Promise<void>;
       openWorkspaceFile(path: string): Promise<void>;
       searchWorkspace(
         query: string,
@@ -21,6 +17,7 @@ declare global {
         options: WorkspaceSearchOptions
       ): Promise<WorkspaceSearchMatch[]>;
       runCommand(command: CommandName): Promise<void>;
+      resetSettings(): Promise<AppSettings>;
       setActiveDocument(documentId: string): Promise<void>;
       setEditorMode(mode: EditorViewMode): Promise<void>;
       showTabContextMenu(tabId: string): Promise<void>;

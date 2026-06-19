@@ -1,13 +1,4 @@
-import {
-  BookOpen,
-  Bug,
-  Code2,
-  Columns2,
-  Folder,
-  PanelLeft,
-  Moon,
-  Sun
-} from "lucide-react";
+import { Bug, Folder, PanelLeft, Settings } from "lucide-react";
 import { memo } from "react";
 
 import { usePlumaStore } from "../state/usePlumaStore.js";
@@ -24,15 +15,11 @@ export const TitleBar = memo(function TitleBar() {
   const isSidebarVisible = usePlumaStore(
     (state) => state.layout.isSidebarVisible
   );
-  const resolvedTheme = usePlumaStore((state) => state.theme.resolvedTheme);
   const triggerOpenDevTools = usePlumaStore(
     (state) => state.triggerOpenDevTools
   );
-  const editorViewMode = usePlumaStore((state) => state.layout.editorViewMode);
-  const setEditorViewMode = usePlumaStore((state) => state.setEditorViewMode);
-  const toggleTheme = usePlumaStore((state) => state.toggleTheme);
+  const openSettingsTab = usePlumaStore((state) => state.openSettingsTab);
   const toggleSidebar = usePlumaStore((state) => state.toggleSidebar);
-  const ThemeToggleIcon = resolvedTheme === "dark" ? Sun : Moon;
 
   return (
     <header className={`titlebar ${hasWorkspace ? "with-workspace" : ""}`}>
@@ -63,9 +50,9 @@ export const TitleBar = memo(function TitleBar() {
           <span className="bridge-warning">Offline</span>
         ) : null}
         <TitleBarButton
-          aria-label="Toggle theme"
-          icon={ThemeToggleIcon}
-          onClick={toggleTheme}
+          aria-label="Open settings"
+          icon={Settings}
+          onClick={openSettingsTab}
         />
         {isDevelopment ? (
           <TitleBarButton
@@ -74,24 +61,6 @@ export const TitleBar = memo(function TitleBar() {
             onClick={triggerOpenDevTools}
           />
         ) : null}
-        <TitleBarButton
-          aria-label="Source view"
-          icon={Code2}
-          isActive={editorViewMode === "source"}
-          onClick={() => setEditorViewMode("source")}
-        />
-        <TitleBarButton
-          aria-label="Split view"
-          icon={Columns2}
-          isActive={editorViewMode === "split"}
-          onClick={() => setEditorViewMode("split")}
-        />
-        <TitleBarButton
-          aria-label="Rich view"
-          icon={BookOpen}
-          isActive={editorViewMode === "rich"}
-          onClick={() => setEditorViewMode("rich")}
-        />
       </div>
     </header>
   );

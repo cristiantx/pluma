@@ -31,8 +31,20 @@ export function createPlumaCommandHandlers({
     keepEditing: () => runCommand(setShellState, "keep-editing"),
     newFile: () => runCommand(setShellState, "new-file"),
     openDevTools: () => runCommand(setShellState, "open-devtools"),
+    openAppDataFolder: () =>
+      invokePlumaOrSetStatus(
+        setShellState,
+        "Cannot open app data because IPC is unavailable.",
+        (pluma) => void pluma.openAppDataFolder()
+      ),
     openFile: () => runCommand(setShellState, "open-file"),
     openFolder: () => runCommand(setShellState, "open-folder"),
+    openSettingsFile: () =>
+      invokePlumaOrSetStatus(
+        setShellState,
+        "Cannot open settings because IPC is unavailable.",
+        (pluma) => void pluma.openSettingsFile()
+      ),
     openWorkspaceFile: (path) =>
       invokePlumaOrSetStatus(
         setShellState,
@@ -41,7 +53,9 @@ export function createPlumaCommandHandlers({
       ),
     searchWorkspace: (query, folderPath, options) =>
       runSearchWorkspace(query, folderPath, options),
+    updateSettings: (settings) => runUpdateSettings(settings),
     reloadFromDisk: () => runCommand(setShellState, "reload-from-disk"),
+    resetSettings: () => runResetSettings(),
     setActiveTabId: (tabId) => runSetActiveTabCommand(setShellState, tabId),
     setEditorViewMode: (mode) => runSetEditorViewMode(setShellState, mode),
     showTabContextMenu: (tabId) =>
@@ -64,6 +78,52 @@ export function createPlumaCommandHandlers({
       ),
     updatePaneSizes: schedulePaneSizesSave,
     toggleMode: () => runCommand(setShellState, "toggle-mode")
+  };
+}
+
+function runResetSettings() {
+  if (!window.pluma) {
+    return Promise.resolve(useFallbackSettings({}));
+  }
+
+  return window.pluma.resetSettings();
+}
+
+function runUpdateSettings(
+  settings: Parameters<NonNullable<typeof window.pluma>["updateSettings"]>[0]
+) {
+  if (!window.pluma) {
+    return Promise.resolve(useFallbackSettings(settings));
+  }
+
+  return window.pluma.updateSettings(settings);
+}
+
+function useFallbackSettings(
+  settings: Parameters<NonNullable<typeof window.pluma>["updateSettings"]>[0]
+) {
+  return {
+    autosaveEnabled: true,
+    defaultLineEnding: "system" as const,
+    openExportedFile: false,
+    richEditorDensity: "comfortable" as const,
+    richEditorWidth: "default" as const,
+    restorePreviousSession: true,
+    sourceEditorColorScheme: "follow-theme" as const,
+    sourceEditorFontFamily: "mono" as const,
+    sourceEditorFontSize: 14 as const,
+    sourceEditorLineNumbers: true,
+    sourceEditorTabSize: 2 as const,
+    sourceEditorWordWrap: true,
+    sourceEditorWidth: "default" as const,
+    spellcheckEnabled: true,
+    splitViewOrder: "rich-source" as const,
+    themePreference: "system" as const,
+    workspaceSearchCaseSensitive: false,
+    workspaceSearchRegexp: false,
+    workspaceSearchWholeWord: false,
+    workspaceShowHiddenFiles: true,
+    ...settings
   };
 }
 

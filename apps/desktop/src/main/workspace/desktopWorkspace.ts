@@ -73,10 +73,15 @@ export async function tryCreateSessionForFilePath(
   }
 }
 
+export type CollectWorkspaceEntriesOptions = {
+  showHiddenFiles: boolean;
+};
+
 export async function collectWorkspaceEntries(
   fileSystem: FileSystemAdapter<DesktopFileLocation>,
   directoryPath: string,
-  depth = 0
+  depth = 0,
+  options: CollectWorkspaceEntriesOptions = { showHiddenFiles: true }
 ): Promise<WorkspaceTreeEntry[]> {
   const directoryEntries = await fileSystem.listDirectory(
     toDesktopFileLocation(directoryPath)
@@ -84,11 +89,16 @@ export async function collectWorkspaceEntries(
   const workspaceEntries: WorkspaceTreeEntry[] = [];
 
   for (const directoryEntry of directoryEntries) {
+    if (!options.showHiddenFiles && directoryEntry.name.startsWith(".")) {
+      continue;
+    }
+
     if (directoryEntry.kind === "directory") {
       const childEntries = await collectWorkspaceEntries(
         fileSystem,
         directoryEntry.location.path,
-        depth + 1
+        depth + 1,
+        options
       );
 
       workspaceEntries.push({
@@ -118,14 +128,15 @@ export async function collectWorkspaceEntries(
 
 export async function tryCollectWorkspaceEntries(
   fileSystem: FileSystemAdapter<DesktopFileLocation>,
-  directoryPath: string | null
+  directoryPath: string | null,
+  options: CollectWorkspaceEntriesOptions = { showHiddenFiles: true }
 ): Promise<WorkspaceTreeEntry[]> {
   if (!directoryPath) {
     return [];
   }
 
   try {
-    return await collectWorkspaceEntries(fileSystem, directoryPath);
+    return await collectWorkspaceEntries(fileSystem, directoryPath, 0, options);
   } catch {
     return [];
   }

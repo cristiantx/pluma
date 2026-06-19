@@ -36,6 +36,7 @@ describe("getStatusMetrics", () => {
       { label: "Words", value: "--" },
       { label: "Lines", value: "--" },
       { label: "Mode", value: "Source" },
+      { label: "Line", value: "--" },
       { label: "Save", value: "Idle shell" }
     ]);
   });

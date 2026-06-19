@@ -12,21 +12,27 @@ vi.mock("electron", () => ({
 
 import { buildApplicationMenu } from "../../../src/main/menus/applicationMenu";
 
-function buildMenuTemplate(spellcheckEnabled: boolean) {
+function buildMenuTemplate(
+  spellcheckEnabled: boolean,
+  hasActiveDocument = true
+) {
+  const onConvertLineEndings = vi.fn();
   const onSetSpellcheckEnabled = vi.fn();
   const template = buildApplicationMenu({
     autosaveEnabled: true,
     commandAvailability: {
-      hasActiveDocument: true
+      hasActiveDocument
     },
     isDevelopment: false,
     spellcheckEnabled,
     onCommand: vi.fn(),
+    onConvertLineEndings,
     onSetAutosaveEnabled: vi.fn(),
     onSetSpellcheckEnabled
   }) as unknown as MenuItemConstructorOptions[];
 
   return {
+    onConvertLineEndings,
     onSetSpellcheckEnabled,
     template
   };
@@ -84,5 +90,38 @@ describe("buildApplicationMenu", () => {
     item.click?.({ checked: true } as Electron.MenuItem, undefined, undefined);
 
     expect(onSetSpellcheckEnabled).toHaveBeenCalledWith(true);
+  });
+
+  it("disables document-based menu actions without an active document", () => {
+    const { template } = buildMenuTemplate(true, false);
+
+    expect(getSubmenuItem(template, "File", "Save")).toMatchObject({
+      enabled: false
+    });
+    expect(getSubmenuItem(template, "Edit", "Find")).toMatchObject({
+      enabled: false
+    });
+    expect(
+      getSubmenuItem(template, "Edit", "Convert Line Endings To")
+    ).toMatchObject({
+      enabled: false
+    });
+    expect(
+      getSubmenuItem(template, "View", "Toggle Rich/Source Mode")
+    ).toMatchObject({
+      enabled: false
+    });
+  });
+
+  it("converts line endings from the edit submenu", () => {
+    const { onConvertLineEndings, template } = buildMenuTemplate(true);
+    const item = getSubmenuItem(template, "Edit", "Convert Line Endings To");
+    const submenu = item.submenu as MenuItemConstructorOptions[];
+
+    submenu
+      .find((candidate) => candidate.label === "CRLF")
+      ?.click?.({} as Electron.MenuItem, undefined, undefined);
+
+    expect(onConvertLineEndings).toHaveBeenCalledWith("crlf");
   });
 });

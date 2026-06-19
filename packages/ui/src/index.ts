@@ -35,4 +35,26 @@ export {
   readStoredThemePreference,
   resolveThemePreference
 } from "./theme.js";
+export {
+  defaultAppSettings,
+  isDefaultLineEnding,
+  isEditorWidthPreference,
+  isRichEditorDensity,
+  isSourceEditorColorScheme,
+  isSourceEditorFontFamily,
+  isSourceEditorFontSize,
+  isSourceEditorTabSize,
+  isSplitViewOrder
+} from "./settings.js";
 export type { ResolvedTheme, ThemePreference } from "./theme.js";
+export type {
+  AppSettings,
+  DefaultLineEnding,
+  EditorWidthPreference,
+  RichEditorDensity,
+  SourceEditorColorScheme,
+  SourceEditorFontFamily,
+  SourceEditorFontSize,
+  SourceEditorTabSize,
+  SplitViewOrder
+} from "./settings.js";

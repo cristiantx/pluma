@@ -30,8 +30,25 @@ describe("readAppSettings", () => {
 
       await expect(readAppSettings(settingsPath)).resolves.toEqual({
         autosaveEnabled: false,
+        defaultLineEnding: "system",
+        openExportedFile: false,
+        richEditorDensity: "comfortable",
+        richEditorWidth: "default",
+        restorePreviousSession: true,
+        sourceEditorColorScheme: "follow-theme",
+        sourceEditorFontFamily: "mono",
+        sourceEditorFontSize: 14,
+        sourceEditorLineNumbers: true,
+        sourceEditorTabSize: 2,
+        sourceEditorWordWrap: true,
+        sourceEditorWidth: "default",
         spellcheckEnabled: true,
-        themePreference: "dark"
+        splitViewOrder: "rich-source",
+        themePreference: "dark",
+        workspaceSearchCaseSensitive: false,
+        workspaceSearchRegexp: false,
+        workspaceSearchWholeWord: false,
+        workspaceShowHiddenFiles: true
       });
     } finally {
       await rm(directoryPath, { force: true, recursive: true });
@@ -56,8 +73,82 @@ describe("readAppSettings", () => {
 
       await expect(readAppSettings(settingsPath)).resolves.toEqual({
         autosaveEnabled: true,
+        defaultLineEnding: "system",
+        openExportedFile: false,
+        richEditorDensity: "comfortable",
+        richEditorWidth: "default",
+        restorePreviousSession: true,
+        sourceEditorColorScheme: "follow-theme",
+        sourceEditorFontFamily: "mono",
+        sourceEditorFontSize: 14,
+        sourceEditorLineNumbers: true,
+        sourceEditorTabSize: 2,
+        sourceEditorWordWrap: true,
+        sourceEditorWidth: "default",
         spellcheckEnabled: false,
-        themePreference: "system"
+        splitViewOrder: "rich-source",
+        themePreference: "system",
+        workspaceSearchCaseSensitive: false,
+        workspaceSearchRegexp: false,
+        workspaceSearchWholeWord: false,
+        workspaceShowHiddenFiles: true
+      });
+    } finally {
+      await rm(directoryPath, { force: true, recursive: true });
+    }
+  });
+
+  it("loads editor settings from persisted settings", async () => {
+    const directoryPath = await mkdtemp(path.join(tmpdir(), "pluma-settings-"));
+
+    try {
+      const settingsPath = path.join(directoryPath, "settings.json");
+
+      await writeFile(
+        settingsPath,
+        JSON.stringify({
+          autosaveEnabled: true,
+          defaultLineEnding: "crlf",
+          openExportedFile: true,
+          richEditorDensity: "compact",
+          richEditorWidth: "wide",
+          restorePreviousSession: false,
+          sourceEditorColorScheme: "pluma-dark",
+          sourceEditorFontFamily: "system",
+          sourceEditorFontSize: 16,
+          sourceEditorLineNumbers: false,
+          sourceEditorTabSize: 4,
+          sourceEditorWordWrap: false,
+          sourceEditorWidth: "full",
+          spellcheckEnabled: true,
+          splitViewOrder: "source-rich",
+          themePreference: "system",
+          workspaceSearchCaseSensitive: true,
+          workspaceSearchRegexp: true,
+          workspaceSearchWholeWord: true,
+          workspaceShowHiddenFiles: false
+        }),
+        "utf8"
+      );
+
+      await expect(readAppSettings(settingsPath)).resolves.toMatchObject({
+        defaultLineEnding: "crlf",
+        openExportedFile: true,
+        richEditorDensity: "compact",
+        richEditorWidth: "wide",
+        restorePreviousSession: false,
+        sourceEditorColorScheme: "pluma-dark",
+        sourceEditorFontFamily: "system",
+        sourceEditorFontSize: 16,
+        sourceEditorLineNumbers: false,
+        sourceEditorTabSize: 4,
+        sourceEditorWordWrap: false,
+        sourceEditorWidth: "full",
+        splitViewOrder: "source-rich",
+        workspaceSearchCaseSensitive: true,
+        workspaceSearchRegexp: true,
+        workspaceSearchWholeWord: true,
+        workspaceShowHiddenFiles: false
       });
     } finally {
       await rm(directoryPath, { force: true, recursive: true });

@@ -11,6 +11,7 @@ import { EditorPaneLayout } from "../panes/EditorPaneLayout.js";
 import { usePlumaStore } from "../state/usePlumaStore.js";
 import { addEditorCommandEventListener } from "./editorCommandEvents.js";
 import { EditorSearchPanel } from "./EditorSearchPanel.js";
+import { SettingsView } from "./SettingsView.js";
 import { TabStrip } from "./TabStrip.js";
 import { useEditorWorkspaceController } from "./useEditorWorkspaceController.js";
 
@@ -20,7 +21,38 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   const activeDocument = usePlumaStore(
     (state) => state.document.activeDocument
   );
+  const activeTabId = usePlumaStore((state) => state.tabs.activeTabId);
   const editorViewMode = usePlumaStore((state) => state.layout.editorViewMode);
+  const richEditorDensity = usePlumaStore(
+    (state) => state.settings.richEditorDensity
+  );
+  const richEditorWidth = usePlumaStore(
+    (state) => state.settings.richEditorWidth
+  );
+  const sourceEditorWidth = usePlumaStore(
+    (state) => state.settings.sourceEditorWidth
+  );
+  const sourceEditorFontFamily = usePlumaStore(
+    (state) => state.settings.sourceEditorFontFamily
+  );
+  const sourceEditorColorScheme = usePlumaStore(
+    (state) => state.settings.sourceEditorColorScheme
+  );
+  const sourceEditorFontSize = usePlumaStore(
+    (state) => state.settings.sourceEditorFontSize
+  );
+  const sourceEditorLineNumbers = usePlumaStore(
+    (state) => state.settings.sourceEditorLineNumbers
+  );
+  const sourceEditorTabSize = usePlumaStore(
+    (state) => state.settings.sourceEditorTabSize
+  );
+  const sourceEditorWordWrap = usePlumaStore(
+    (state) => state.settings.sourceEditorWordWrap
+  );
+  const splitViewOrder = usePlumaStore(
+    (state) => state.settings.splitViewOrder
+  );
   const hasWorkspace = usePlumaStore((state) => state.workspace.hasWorkspace);
   const compareConflict = usePlumaStore((state) => state.compareConflict);
   const keepEditing = usePlumaStore((state) => state.keepEditing);
@@ -75,6 +107,15 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   useEffect(() => {
     return addEditorCommandEventListener(handleEditorCommand);
   }, [handleEditorCommand]);
+
+  if (activeTabId === "settings") {
+    return (
+      <section className="editor-workspace">
+        <TabStrip />
+        <SettingsView />
+      </section>
+    );
+  }
 
   if (!activeDocument) {
     return (
@@ -142,7 +183,11 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
     </article>
   ) : null;
   const sourcePane = showSource ? (
-    <article className="source-pane" aria-label="Markdown source">
+    <article
+      className="source-pane"
+      data-source-color-scheme={sourceEditorColorScheme}
+      aria-label="Markdown source"
+    >
       {isSourceOnly ? (
         <div className="source-only-notice" role="status">
           Source mode is preserving unsupported Markdown constructs.
@@ -160,6 +205,11 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
         ref={sourceEditorRef}
         rawText={activeDocument.rawText}
         searchRevealRequest={sourceSearchRevealRequest}
+        sourceFontFamily={sourceEditorFontFamily}
+        sourceFontSize={sourceEditorFontSize}
+        sourceLineNumbers={sourceEditorLineNumbers}
+        sourceTabSize={sourceEditorTabSize}
+        sourceWordWrap={sourceEditorWordWrap}
         spellCheck={spellcheckEnabled}
       />
     </article>
@@ -219,7 +269,13 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
         />
       ) : null}
 
-      <div className="editor-panes" data-view-mode={editorViewMode}>
+      <div
+        className="editor-panes"
+        data-rich-density={richEditorDensity}
+        data-rich-width={richEditorWidth}
+        data-source-width={sourceEditorWidth}
+        data-view-mode={editorViewMode}
+      >
         {richPane && sourcePane ? (
           <EditorPaneLayout
             key={activeDocument.id}
@@ -228,6 +284,7 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
             }
             {...(splitPaneSizes ? { paneSizes: splitPaneSizes } : {})}
             rich={richPane}
+            splitViewOrder={splitViewOrder}
             source={sourcePane}
           />
         ) : (
