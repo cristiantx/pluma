@@ -24,6 +24,10 @@ export function SettingsView() {
     (key: SettingKey) => (event: ChangeEvent<HTMLSelectElement>) => {
       void updateSettings({ [key]: event.target.value });
     };
+  const updateNumberSetting =
+    (key: SettingKey) => (event: ChangeEvent<HTMLSelectElement>) => {
+      void updateSettings({ [key]: Number(event.target.value) });
+    };
 
   return (
     <section className="settings-view" aria-label="Settings">
@@ -85,6 +89,70 @@ export function SettingsView() {
                   {label}
                 </option>
               ))}
+            </select>
+          </label>
+          <label className="settings-row">
+            <span>
+              <strong>Source font size</strong>
+              <small>Adjusts Markdown source text and gutters.</small>
+            </span>
+            <select
+              onChange={updateNumberSetting("sourceEditorFontSize")}
+              value={settings.sourceEditorFontSize}
+            >
+              {[12, 13, 14, 15, 16, 18].map((value) => (
+                <option key={value} value={value}>
+                  {value}px
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="settings-row">
+            <span>
+              <strong>Source font family</strong>
+              <small>Choose compact monospace or the app UI font.</small>
+            </span>
+            <select
+              onChange={updateStringSetting("sourceEditorFontFamily")}
+              value={settings.sourceEditorFontFamily}
+            >
+              <option value="mono">Monospace</option>
+              <option value="system">System UI</option>
+            </select>
+          </label>
+          <label className="settings-row settings-row-checkbox">
+            <span>
+              <strong>Source word wrap</strong>
+              <small>Wrap long Markdown lines inside the source editor.</small>
+            </span>
+            <input
+              checked={settings.sourceEditorWordWrap}
+              onChange={updateBooleanSetting("sourceEditorWordWrap")}
+              type="checkbox"
+            />
+          </label>
+          <label className="settings-row settings-row-checkbox">
+            <span>
+              <strong>Source line numbers</strong>
+              <small>Show line numbers in the source editor gutter.</small>
+            </span>
+            <input
+              checked={settings.sourceEditorLineNumbers}
+              onChange={updateBooleanSetting("sourceEditorLineNumbers")}
+              type="checkbox"
+            />
+          </label>
+          <label className="settings-row">
+            <span>
+              <strong>Source tab size</strong>
+              <small>Controls rendered tab width and indentation units.</small>
+            </span>
+            <select
+              onChange={updateNumberSetting("sourceEditorTabSize")}
+              value={settings.sourceEditorTabSize}
+            >
+              <option value={2}>2 spaces</option>
+              <option value={4}>4 spaces</option>
             </select>
           </label>
           <label className="settings-row">

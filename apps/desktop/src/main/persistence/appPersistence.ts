@@ -6,6 +6,9 @@ import {
   isDefaultLineEnding,
   isEditorWidthPreference,
   isRichEditorDensity,
+  isSourceEditorFontFamily,
+  isSourceEditorFontSize,
+  isSourceEditorTabSize,
   isSplitViewOrder,
   isThemePreference,
   type AppSettings
@@ -170,6 +173,16 @@ function isAppSettings(value: unknown): value is AppSettings {
       isEditorWidthPreference(candidate.richEditorWidth)) &&
     (candidate.sourceEditorWidth === undefined ||
       isEditorWidthPreference(candidate.sourceEditorWidth)) &&
+    (candidate.sourceEditorFontFamily === undefined ||
+      isSourceEditorFontFamily(candidate.sourceEditorFontFamily)) &&
+    (candidate.sourceEditorFontSize === undefined ||
+      isSourceEditorFontSize(candidate.sourceEditorFontSize)) &&
+    (candidate.sourceEditorLineNumbers === undefined ||
+      typeof candidate.sourceEditorLineNumbers === "boolean") &&
+    (candidate.sourceEditorTabSize === undefined ||
+      isSourceEditorTabSize(candidate.sourceEditorTabSize)) &&
+    (candidate.sourceEditorWordWrap === undefined ||
+      typeof candidate.sourceEditorWordWrap === "boolean") &&
     (candidate.richEditorDensity === undefined ||
       isRichEditorDensity(candidate.richEditorDensity)) &&
     (candidate.splitViewOrder === undefined ||

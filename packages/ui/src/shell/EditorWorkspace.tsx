@@ -32,6 +32,21 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   const sourceEditorWidth = usePlumaStore(
     (state) => state.settings.sourceEditorWidth
   );
+  const sourceEditorFontFamily = usePlumaStore(
+    (state) => state.settings.sourceEditorFontFamily
+  );
+  const sourceEditorFontSize = usePlumaStore(
+    (state) => state.settings.sourceEditorFontSize
+  );
+  const sourceEditorLineNumbers = usePlumaStore(
+    (state) => state.settings.sourceEditorLineNumbers
+  );
+  const sourceEditorTabSize = usePlumaStore(
+    (state) => state.settings.sourceEditorTabSize
+  );
+  const sourceEditorWordWrap = usePlumaStore(
+    (state) => state.settings.sourceEditorWordWrap
+  );
   const splitViewOrder = usePlumaStore(
     (state) => state.settings.splitViewOrder
   );
@@ -183,6 +198,11 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
         ref={sourceEditorRef}
         rawText={activeDocument.rawText}
         searchRevealRequest={sourceSearchRevealRequest}
+        sourceFontFamily={sourceEditorFontFamily}
+        sourceFontSize={sourceEditorFontSize}
+        sourceLineNumbers={sourceEditorLineNumbers}
+        sourceTabSize={sourceEditorTabSize}
+        sourceWordWrap={sourceEditorWordWrap}
         spellCheck={spellcheckEnabled}
       />
     </article>

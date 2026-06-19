@@ -407,6 +407,14 @@
   height: 100%;
 }
 
+.pluma-source-editor[data-source-font-family="mono"] {
+  --source-editor-font-family: var(--font-editor);
+}
+
+.pluma-source-editor[data-source-font-family="system"] {
+  --source-editor-font-family: var(--font-ui);
+}
+
 .pluma-source-editor .cm-editor {
   position: relative;
 }

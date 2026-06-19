@@ -3,6 +3,7 @@ import { markdown } from "@codemirror/lang-markdown";
 import {
   bracketMatching,
   foldGutter,
+  indentUnit,
   indentOnInput
 } from "@codemirror/language";
 import {
@@ -12,7 +13,7 @@ import {
   replaceNext,
   search
 } from "@codemirror/search";
-import type { Extension } from "@codemirror/state";
+import { EditorState, type Extension } from "@codemirror/state";
 import {
   drawSelection,
   dropCursor,
@@ -23,7 +24,7 @@ import {
   lineNumbers
 } from "@codemirror/view";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import type { RefObject } from "react";
+import type { CSSProperties, RefObject } from "react";
 
 import type {
   EditorCursorAnchor,
@@ -60,6 +61,11 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
       onChange,
       rawText,
       searchRevealRequest = null,
+      sourceFontFamily = "mono",
+      sourceFontSize = 14,
+      sourceLineNumbers = true,
+      sourceTabSize = 2,
+      sourceWordWrap = true,
       spellCheck = true
     },
     ref
@@ -121,6 +127,11 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
       const view = new EditorView({
         doc: rawText,
         extensions: createSourceEditorExtensions(
+          {
+            lineNumbers: sourceLineNumbers,
+            tabSize: sourceTabSize,
+            wordWrap: sourceWordWrap
+          },
           (nextText) => {
             onChangeRef.current(nextText);
           },
@@ -175,7 +186,14 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
         viewRef.current = null;
         view.destroy();
       };
-    }, [ariaLabel, autoFocus, documentId]);
+    }, [
+      ariaLabel,
+      autoFocus,
+      documentId,
+      sourceLineNumbers,
+      sourceTabSize,
+      sourceWordWrap
+    ]);
 
     useEffect(() => {
       setSourceEditorSpellcheck(viewRef.current, spellCheck);
@@ -205,7 +223,18 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
       revealSourceSearchMatch(viewRef.current, searchRevealRequest);
     }, [searchRevealRequest?.requestId]);
 
-    return <div className="pluma-source-editor" ref={containerRef} />;
+    return (
+      <div
+        className="pluma-source-editor"
+        data-source-font-family={sourceFontFamily}
+        ref={containerRef}
+        style={
+          {
+            "--source-editor-font-size": `${sourceFontSize}px`
+          } as CSSProperties
+        }
+      />
+    );
   }
 );
 
@@ -222,14 +251,21 @@ function emitSourceCursorAnchor(
 }
 
 function createSourceEditorExtensions(
+  settings: {
+    lineNumbers: boolean;
+    tabSize: 2 | 4;
+    wordWrap: boolean;
+  },
   onChange: (rawText: string) => void,
   onSelectionChange: (view: EditorView) => void
 ): Extension[] {
   return [
-    lineNumbers(),
+    settings.lineNumbers ? lineNumbers() : [],
     foldGutter({
       markerDOM: createFoldMarker
     }),
+    EditorState.tabSize.of(settings.tabSize),
+    indentUnit.of(" ".repeat(settings.tabSize)),
     history(),
     drawSelection(),
     dropCursor(),
@@ -242,7 +278,7 @@ function createSourceEditorExtensions(
     sourceSearchDecorations,
     markdownCommandKeymap,
     keymap.of([...defaultKeymap, ...historyKeymap]),
-    EditorView.lineWrapping,
+    settings.wordWrap ? EditorView.lineWrapping : [],
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
         onChange(update.state.doc.toString());

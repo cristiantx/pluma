@@ -13,6 +13,9 @@ import {
   isDefaultLineEnding,
   isEditorWidthPreference,
   isRichEditorDensity,
+  isSourceEditorFontFamily,
+  isSourceEditorFontSize,
+  isSourceEditorTabSize,
   isSplitViewOrder,
   isThemePreference,
   type AppSettings,
@@ -296,6 +299,21 @@ function getAppSettingsUpdate(settings: unknown): Partial<AppSettings> {
       : {}),
     ...(isEditorWidthPreference(settings.sourceEditorWidth)
       ? { sourceEditorWidth: settings.sourceEditorWidth }
+      : {}),
+    ...(isSourceEditorFontFamily(settings.sourceEditorFontFamily)
+      ? { sourceEditorFontFamily: settings.sourceEditorFontFamily }
+      : {}),
+    ...(isSourceEditorFontSize(settings.sourceEditorFontSize)
+      ? { sourceEditorFontSize: settings.sourceEditorFontSize }
+      : {}),
+    ...(typeof settings.sourceEditorLineNumbers === "boolean"
+      ? { sourceEditorLineNumbers: settings.sourceEditorLineNumbers }
+      : {}),
+    ...(isSourceEditorTabSize(settings.sourceEditorTabSize)
+      ? { sourceEditorTabSize: settings.sourceEditorTabSize }
+      : {}),
+    ...(typeof settings.sourceEditorWordWrap === "boolean"
+      ? { sourceEditorWordWrap: settings.sourceEditorWordWrap }
       : {}),
     ...(isRichEditorDensity(settings.richEditorDensity)
       ? { richEditorDensity: settings.richEditorDensity }

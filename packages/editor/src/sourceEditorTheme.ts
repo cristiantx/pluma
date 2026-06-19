@@ -9,12 +9,12 @@ export const plumaSourceEditorTheme: Extension = [
       height: "100%",
       backgroundColor: "var(--editor-source-bg)",
       color: "var(--text-secondary)",
-      fontFamily: "var(--font-editor)",
-      fontSize: "14px",
+      fontFamily: "var(--source-editor-font-family, var(--font-editor))",
+      fontSize: "var(--source-editor-font-size, 14px)",
       lineHeight: "1.65"
     },
     ".cm-scroller": {
-      fontFamily: "var(--font-editor)",
+      fontFamily: "var(--source-editor-font-family, var(--font-editor))",
       overflow: "overlay"
     },
     ".cm-scroller::-webkit-scrollbar": {

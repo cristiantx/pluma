@@ -40,6 +40,9 @@ export {
   isDefaultLineEnding,
   isEditorWidthPreference,
   isRichEditorDensity,
+  isSourceEditorFontFamily,
+  isSourceEditorFontSize,
+  isSourceEditorTabSize,
   isSplitViewOrder
 } from "./settings.js";
 export type { ResolvedTheme, ThemePreference } from "./theme.js";
@@ -48,5 +51,8 @@ export type {
   DefaultLineEnding,
   EditorWidthPreference,
   RichEditorDensity,
+  SourceEditorFontFamily,
+  SourceEditorFontSize,
+  SourceEditorTabSize,
   SplitViewOrder
 } from "./settings.js";
