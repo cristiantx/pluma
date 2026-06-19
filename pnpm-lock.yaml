@@ -168,9 +168,6 @@ importers:
       '@milkdown/crepe':
         specifier: ^7.21.1
         version: 7.21.1(prosemirror-model@1.25.7)(prosemirror-state@1.4.4)(prosemirror-view@1.41.8)(typescript@5.9.3)
-      '@milkdown/preset-gfm':
-        specifier: ^7.21.1
-        version: 7.21.1
       '@milkdown/prose':
         specifier: ^7.21.1
         version: 7.21.1

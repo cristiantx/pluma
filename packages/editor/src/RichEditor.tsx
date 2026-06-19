@@ -150,6 +150,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
       }
 
       let isDisposed = false;
+      // Crepe registers Milkdown's CommonMark and GFM presets internally.
       const editor = new Crepe({
         defaultValue: rawText,
         root

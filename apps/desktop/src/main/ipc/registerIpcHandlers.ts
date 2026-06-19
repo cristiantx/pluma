@@ -13,7 +13,7 @@ export type DesktopIpcHandlers = {
   getSettings: (event: IpcMainInvokeEvent) => Promise<AppSettings>;
   openWorkspaceFile: (
     event: IpcMainInvokeEvent,
-    filePath: string
+    filePath: unknown
   ) => Promise<void>;
   runCommand: (
     event: IpcMainInvokeEvent,
@@ -41,7 +41,7 @@ export type DesktopIpcHandlers = {
   updatePaneSizes: (event: IpcMainInvokeEvent, paneSizes: unknown) => void;
   updateSettings: (
     event: IpcMainInvokeEvent,
-    settings: Partial<AppSettings>
+    settings: unknown
   ) => Promise<AppSettings>;
 };
 
@@ -60,7 +60,7 @@ export function registerIpcHandlers(handlers: DesktopIpcHandlers): void {
 
   ipcMain.handle(
     "pluma:open-workspace-file",
-    async (event, filePath: string) => {
+    async (event, filePath: unknown) => {
       await handlers.openWorkspaceFile(event, filePath);
     }
   );
@@ -107,7 +107,7 @@ export function registerIpcHandlers(handlers: DesktopIpcHandlers): void {
 
   ipcMain.handle(
     "pluma:update-settings",
-    async (event, settings: Partial<AppSettings>) =>
+    async (event, settings: unknown) =>
       handlers.updateSettings(event, settings)
   );
 }

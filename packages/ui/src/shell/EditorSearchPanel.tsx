@@ -2,6 +2,8 @@ import type { EditorSearchQuery, EditorSearchStatus } from "@pluma/editor";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 
+import { SearchToggle } from "./SearchToggle.js";
+
 type EditorSearchPanelProps = {
   focusRequestId: number;
   isReplaceVisible: boolean;
@@ -89,6 +91,7 @@ export function EditorSearchPanel({
             value={query.search}
           />
           <SearchToggle
+            className="pluma-search-icon-button"
             isPressed={query.caseSensitive}
             label="Match case"
             onClick={() =>
@@ -101,6 +104,7 @@ export function EditorSearchPanel({
             Aa
           </SearchToggle>
           <SearchToggle
+            className="pluma-search-icon-button"
             isPressed={query.regexp}
             label="Use regular expression"
             onClick={() => onQueryChange({ ...query, regexp: !query.regexp })}
@@ -108,6 +112,7 @@ export function EditorSearchPanel({
             .*
           </SearchToggle>
           <SearchToggle
+            className="pluma-search-icon-button"
             isPressed={query.wholeWord}
             label="Match whole word"
             onClick={() =>
@@ -185,32 +190,5 @@ export function EditorSearchPanel({
         </div>
       ) : null}
     </div>
-  );
-}
-
-type SearchToggleProps = {
-  children: string;
-  isPressed: boolean;
-  label: string;
-  onClick: () => void;
-};
-
-function SearchToggle({
-  children,
-  isPressed,
-  label,
-  onClick
-}: SearchToggleProps) {
-  return (
-    <button
-      aria-label={label}
-      aria-pressed={isPressed}
-      className="pluma-search-icon-button"
-      onClick={onClick}
-      title={label}
-      type="button"
-    >
-      {children}
-    </button>
   );
 }

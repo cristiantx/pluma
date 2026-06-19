@@ -336,6 +336,41 @@ describe("usePlumaStore", () => {
     ).toEqual([]);
   });
 
+  it("resets workspace search state when the workspace changes", () => {
+    const match = {
+      filePath: "/Users/cristianc/Documents/Pluma Docs/Welcome.md",
+      line: 1,
+      lineText: "Welcome target",
+      matchEnd: 14,
+      matchStart: 8,
+      preview: "Welcome target"
+    };
+
+    usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
+    usePlumaStore.getState().setWorkspaceSearchQuery("target");
+    usePlumaStore.getState().setWorkspaceSearchHasSearched(true);
+    usePlumaStore.getState().setWorkspaceSearchResults([match]);
+    usePlumaStore
+      .getState()
+      .toggleWorkspaceSearchResultFile(match.filePath);
+    usePlumaStore.getState().openWorkspaceSearch("/tmp/old-folder");
+    usePlumaStore.getState().revealWorkspaceSearchMatch(match);
+
+    usePlumaStore.getState().hydrateShellSnapshot({
+      ...baseSnapshot,
+      workspacePath: "/Users/cristianc/Documents/New Workspace"
+    });
+
+    expect(usePlumaStore.getState().workspace.searchQuery).toBe("");
+    expect(usePlumaStore.getState().workspace.searchHasSearched).toBe(false);
+    expect(usePlumaStore.getState().workspace.searchResults).toEqual([]);
+    expect(
+      usePlumaStore.getState().workspace.collapsedSearchResultFiles
+    ).toEqual([]);
+    expect(usePlumaStore.getState().workspace.searchFolderPath).toBeNull();
+    expect(usePlumaStore.getState().workspace.searchRevealRequest).toBeNull();
+  });
+
   it("notifies the shell when pane sizes change", () => {
     const updatePaneSizes = vi.fn();
     usePlumaStore.getState().setCommandHandlers({ updatePaneSizes });

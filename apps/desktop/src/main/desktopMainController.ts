@@ -207,24 +207,11 @@ async function flushPendingOpenTargets(): Promise<void> {
 }
 
 async function setAutosaveEnabled(enabled: boolean): Promise<void> {
-  const currentSettings = await readAppSettings(getAppSettingsPath());
-  const nextSettings: AppSettings = {
-    ...currentSettings,
+  const nextSettings = await updateStoredAppSettings({
     autosaveEnabled: enabled
-  };
-
-  await writeAppSettings(getAppSettingsPath(), nextSettings);
-  autosaveEnabled = enabled;
-
-  if (!autosaveEnabled) {
-    for (const session of sessions.values()) {
-      session.clearAutosaveTimers();
-    }
-  }
-
-  Menu.setApplicationMenu(getApplicationMenu());
+  });
   getLatestFocusedSession()?.emitStatus(
-    autosaveEnabled ? "Auto Save enabled." : "Auto Save disabled."
+    nextSettings.autosaveEnabled ? "Auto Save enabled." : "Auto Save disabled."
   );
 }
 
@@ -243,20 +230,65 @@ function emitSpellcheckSettingChanged(enabled: boolean): void {
 }
 
 async function setSpellcheckEnabled(enabled: boolean): Promise<void> {
+  const nextSettings = await updateStoredAppSettings({
+    spellcheckEnabled: enabled
+  });
+  getLatestFocusedSession()?.emitStatus(
+    nextSettings.spellcheckEnabled
+      ? "Spellcheck enabled."
+      : "Spellcheck disabled."
+  );
+}
+
+async function updateStoredAppSettings(
+  update: Partial<AppSettings>
+): Promise<AppSettings> {
   const currentSettings = await readAppSettings(getAppSettingsPath());
   const nextSettings: AppSettings = {
     ...currentSettings,
-    spellcheckEnabled: enabled
+    ...update
   };
 
   await writeAppSettings(getAppSettingsPath(), nextSettings);
-  spellcheckEnabled = enabled;
-  applySpellcheckEnabled(enabled);
-  emitSpellcheckSettingChanged(enabled);
+  autosaveEnabled = nextSettings.autosaveEnabled;
+  spellcheckEnabled = nextSettings.spellcheckEnabled;
+
+  if (!autosaveEnabled) {
+    for (const session of sessions.values()) {
+      session.clearAutosaveTimers();
+    }
+  }
+
+  if (currentSettings.spellcheckEnabled !== nextSettings.spellcheckEnabled) {
+    applySpellcheckEnabled(spellcheckEnabled);
+    emitSpellcheckSettingChanged(spellcheckEnabled);
+  }
+
   Menu.setApplicationMenu(getApplicationMenu());
-  getLatestFocusedSession()?.emitStatus(
-    spellcheckEnabled ? "Spellcheck enabled." : "Spellcheck disabled."
-  );
+
+  return nextSettings;
+}
+
+function getAppSettingsUpdate(settings: unknown): Partial<AppSettings> {
+  if (!isRecord(settings)) {
+    return {};
+  }
+
+  return {
+    ...(typeof settings.autosaveEnabled === "boolean"
+      ? { autosaveEnabled: settings.autosaveEnabled }
+      : {}),
+    ...(typeof settings.spellcheckEnabled === "boolean"
+      ? { spellcheckEnabled: settings.spellcheckEnabled }
+      : {}),
+    ...(isThemePreference(settings.themePreference)
+      ? { themePreference: settings.themePreference }
+      : {})
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 async function handleMenuCommand(command: CommandName): Promise<void> {
@@ -467,35 +499,7 @@ function registerDesktopIpcHandlers(): void {
       return settings;
     },
     updateSettings: async (_event, settings) => {
-      const currentSettings = await readAppSettings(getAppSettingsPath());
-      const nextSettings: AppSettings = {
-        ...currentSettings,
-        ...(typeof settings.autosaveEnabled === "boolean"
-          ? { autosaveEnabled: settings.autosaveEnabled }
-          : {}),
-        ...(typeof settings.spellcheckEnabled === "boolean"
-          ? { spellcheckEnabled: settings.spellcheckEnabled }
-          : {}),
-        ...(isThemePreference(settings.themePreference)
-          ? { themePreference: settings.themePreference }
-          : {})
-      };
-
-      await writeAppSettings(getAppSettingsPath(), nextSettings);
-      autosaveEnabled = nextSettings.autosaveEnabled;
-      spellcheckEnabled = nextSettings.spellcheckEnabled;
-
-      if (!autosaveEnabled) {
-        for (const session of sessions.values()) {
-          session.clearAutosaveTimers();
-        }
-      }
-
-      applySpellcheckEnabled(spellcheckEnabled);
-      emitSpellcheckSettingChanged(spellcheckEnabled);
-      Menu.setApplicationMenu(getApplicationMenu());
-
-      return nextSettings;
+      return updateStoredAppSettings(getAppSettingsUpdate(settings));
     }
   });
 }

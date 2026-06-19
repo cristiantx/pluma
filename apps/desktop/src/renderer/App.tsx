@@ -1,20 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
 
 import {
-  type EditorViewMode,
-  type PlumaCommandHandlers,
   PlumaShell,
   initialPlumaStoreState,
   usePlumaStore
 } from "@pluma/ui";
-import {
-  initialShellState,
-  reduceShellEvent,
-  type CommandName,
-  type WorkspaceSearchOptions
-} from "../shared/shellState";
+import { initialShellState, reduceShellEvent } from "../shared/shellState";
 import { getShellSnapshot } from "./shellView";
+import { createPlumaCommandHandlers } from "./plumaCommandHandlers";
 
 export function App() {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -60,31 +53,12 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const commandHandlers: PlumaCommandHandlers = {
-      closeTab: (tabId) => runCloseTabCommand(setShellState, tabId),
-      compareConflict: () => runCommand(setShellState, "compare-conflict"),
-      keepEditing: () => runCommand(setShellState, "keep-editing"),
-      newFile: () => runCommand(setShellState, "new-file"),
-      openDevTools: () => runCommand(setShellState, "open-devtools"),
-      openFile: () => runCommand(setShellState, "open-file"),
-      openFolder: () => runCommand(setShellState, "open-folder"),
-      openWorkspaceFile: (path) => runWorkspaceFileCommand(setShellState, path),
-      searchWorkspace: (query, folderPath, options) =>
-        runSearchWorkspace(query, folderPath, options),
-      reloadFromDisk: () => runCommand(setShellState, "reload-from-disk"),
-      setActiveTabId: (tabId) => runSetActiveTabCommand(setShellState, tabId),
-      setEditorViewMode: (mode) => runSetEditorViewMode(setShellState, mode),
-      showTabContextMenu: (tabId) =>
-        runShowTabContextMenuCommand(setShellState, tabId),
-      showWorkspaceContextMenu: (path, kind) =>
-        runShowWorkspaceContextMenuCommand(setShellState, path, kind),
-      updateDocumentText: (documentId, rawText) =>
-        runUpdateDocumentText(setShellState, documentId, rawText),
-      updatePaneSizes: schedulePaneSizesSave,
-      toggleMode: () => runCommand(setShellState, "toggle-mode")
-    };
-
-    setCommandHandlers(commandHandlers);
+    setCommandHandlers(
+      createPlumaCommandHandlers({
+        schedulePaneSizesSave,
+        setShellState
+      })
+    );
 
     if (!window.pluma) {
       setShellState((current) => ({
@@ -187,146 +161,4 @@ export function App() {
   }, [hydrateShellSnapshot, shellState]);
 
   return <PlumaShell />;
-}
-
-function runCommand(
-  setShellState: Dispatch<SetStateAction<typeof initialShellState>>,
-  command: CommandName
-) {
-  if (!window.pluma) {
-    setShellState((current) => ({
-      ...current,
-      status: `Cannot run "${command}" because IPC is unavailable.`
-    }));
-    return;
-  }
-
-  void window.pluma.runCommand(command);
-}
-
-function runWorkspaceFileCommand(
-  setShellState: Dispatch<SetStateAction<typeof initialShellState>>,
-  filePath: string
-) {
-  if (!window.pluma) {
-    setShellState((current) => ({
-      ...current,
-      status: `Cannot open "${filePath}" because IPC is unavailable.`
-    }));
-    return;
-  }
-
-  void window.pluma.openWorkspaceFile(filePath);
-}
-
-function runSearchWorkspace(
-  query: string,
-  folderPath: string | null,
-  options: WorkspaceSearchOptions
-) {
-  if (!window.pluma) {
-    return Promise.resolve([]);
-  }
-
-  return window.pluma.searchWorkspace(query, folderPath, options);
-}
-
-function runSetEditorViewMode(
-  setShellState: Dispatch<SetStateAction<typeof initialShellState>>,
-  mode: EditorViewMode
-) {
-  if (!window.pluma) {
-    setShellState((current) => ({
-      ...current,
-      mode,
-      status: `Editor mode switched to ${mode}.`
-    }));
-    return;
-  }
-
-  void window.pluma.setEditorMode(mode);
-}
-
-function runSetActiveTabCommand(
-  setShellState: Dispatch<SetStateAction<typeof initialShellState>>,
-  tabId: string
-) {
-  setShellState((current) => {
-    if (!current.documents.some((document) => document.id === tabId)) {
-      return current;
-    }
-
-    return {
-      ...current,
-      activeDocumentId: tabId
-    };
-  });
-
-  if (!window.pluma) {
-    return;
-  }
-
-  void window.pluma.setActiveDocument(tabId);
-}
-
-function runUpdateDocumentText(
-  setShellState: Dispatch<SetStateAction<typeof initialShellState>>,
-  documentId: string,
-  rawText: string
-) {
-  if (!window.pluma) {
-    setShellState((current) => ({
-      ...current,
-      status: `Cannot update "${documentId}" because IPC is unavailable.`
-    }));
-    return;
-  }
-
-  void window.pluma.updateDocumentText(documentId, rawText);
-}
-
-function runCloseTabCommand(
-  setShellState: Dispatch<SetStateAction<typeof initialShellState>>,
-  tabId: string
-) {
-  if (!window.pluma) {
-    setShellState((current) => ({
-      ...current,
-      status: `Cannot close "${tabId}" because IPC is unavailable.`
-    }));
-    return;
-  }
-
-  void window.pluma.closeTab(tabId);
-}
-
-function runShowTabContextMenuCommand(
-  setShellState: Dispatch<SetStateAction<typeof initialShellState>>,
-  tabId: string
-) {
-  if (!window.pluma) {
-    setShellState((current) => ({
-      ...current,
-      status: `Cannot show tab menu for "${tabId}" because IPC is unavailable.`
-    }));
-    return;
-  }
-
-  void window.pluma.showTabContextMenu(tabId);
-}
-
-function runShowWorkspaceContextMenuCommand(
-  setShellState: Dispatch<SetStateAction<typeof initialShellState>>,
-  filePath: string,
-  kind: "file" | "folder"
-) {
-  if (!window.pluma) {
-    setShellState((current) => ({
-      ...current,
-      status: `Cannot show file menu for "${filePath}" because IPC is unavailable.`
-    }));
-    return;
-  }
-
-  void window.pluma.showWorkspaceContextMenu(filePath, kind);
 }
