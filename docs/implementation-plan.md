@@ -20,6 +20,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Preserve unsupported Markdown by avoiding destructive rich-mode saves.
 - [ ] Support direct `.md` file opening and folder-based Markdown browsing.
 - [ ] Defer accounts, sync, cloud storage, servers, plugins, auto-update, and pasted-image asset management.
+- [ ] managment
 
 ## Future Evaluation Notes
 
@@ -326,8 +327,8 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ### Ergonomics Candidate Work
 
-- [ ] Add spellcheck using Electron's built-in spellchecker.
-- [ ] Add a setting to disable spellcheck.
+- [x] Add spellcheck using Electron's built-in spellchecker.
+- [x] Add a setting to disable spellcheck.
 - [ ] Keep focus mode deferred beyond the current post-MVP sequence.
 - [ ] Keep typewriter mode deferred beyond the current post-MVP sequence.
 - [ ] Keep duplicate, paragraph, and Emoji & Symbols edit-menu additions deferred.

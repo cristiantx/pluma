@@ -40,6 +40,7 @@ export type RendererEvent =
   | { type: "find-in-folder"; path: string }
   | { type: "mode-changed"; mode: EditorViewMode }
   | { type: "reveal-workspace-file"; path: string }
+  | { type: "settings-changed"; spellcheckEnabled: boolean }
   | { type: "shell-snapshot"; snapshot: DesktopShellSnapshot }
   | { type: "status"; message: string };
 
@@ -118,6 +119,8 @@ export function reduceShellEvent(
         activity: appendActivity(current.activity, `Mode: ${event.mode}`)
       };
     case "reveal-workspace-file":
+      return current;
+    case "settings-changed":
       return current;
     case "shell-snapshot": {
       const normalizedSnapshot = normalizeDesktopShellSnapshot(

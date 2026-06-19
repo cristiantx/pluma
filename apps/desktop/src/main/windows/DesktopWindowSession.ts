@@ -500,6 +500,13 @@ export class DesktopWindowSession {
     this.emitToRenderer({ type: "status", message });
   }
 
+  emitSettingsChanged(spellcheckEnabled: boolean): void {
+    this.emitToRenderer({
+      spellcheckEnabled,
+      type: "settings-changed"
+    });
+  }
+
   private emitToRenderer(event: RendererEvent): void {
     if (!this.window.isDestroyed()) {
       this.window.webContents.send("pluma:event", event);

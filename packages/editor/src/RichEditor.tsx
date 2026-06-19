@@ -9,6 +9,7 @@ export type RichEditorProps = {
   documentId: string;
   onChange: (rawText: string) => void;
   rawText: string;
+  spellCheck?: boolean;
 };
 
 export function RichEditor({
@@ -16,7 +17,8 @@ export function RichEditor({
   autoFocus = false,
   documentId,
   onChange,
-  rawText
+  rawText,
+  spellCheck = true
 }: RichEditorProps) {
   const editorRef = useRef<Crepe | null>(null);
   const lastAppliedMarkdownRef = useRef(rawText);
@@ -102,8 +104,13 @@ export function RichEditor({
       data-rich-editor-document-id={documentId}
       aria-label={ariaLabel}
       data-ready={isReady}
+      spellCheck={spellCheck}
     >
-      <div className="rich-editor-surface" ref={rootRef} />
+      <div
+        className="rich-editor-surface"
+        ref={rootRef}
+        spellCheck={spellCheck}
+      />
     </div>
   );
 }

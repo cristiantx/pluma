@@ -35,6 +35,7 @@ export type SourceEditorProps = {
   onChange: (rawText: string) => void;
   rawText: string;
   searchRevealRequest?: SourceSearchRevealRequest | null;
+  spellCheck?: boolean;
 };
 
 export type SourceEditorHandle = {
@@ -63,7 +64,8 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
       documentId,
       onChange,
       rawText,
-      searchRevealRequest = null
+      searchRevealRequest = null,
+      spellCheck = true
     },
     ref
   ) {
@@ -111,6 +113,10 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
         view.destroy();
       };
     }, [ariaLabel, autoFocus, documentId]);
+
+    useEffect(() => {
+      setSourceEditorSpellcheck(viewRef.current, spellCheck);
+    }, [spellCheck]);
 
     useEffect(() => {
       const view = viewRef.current;
@@ -215,6 +221,19 @@ function createSourceEditorExtensions(
     }),
     plumaSourceEditorTheme
   ];
+}
+
+function setSourceEditorSpellcheck(
+  view: EditorView | null,
+  enabled: boolean
+): void {
+  if (!view) {
+    return;
+  }
+
+  const value = String(enabled);
+  view.dom.setAttribute("spellcheck", value);
+  view.contentDOM.setAttribute("spellcheck", value);
 }
 
 function createFoldMarker(isOpen: boolean): HTMLElement {

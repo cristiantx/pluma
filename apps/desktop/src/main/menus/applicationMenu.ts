@@ -10,8 +10,10 @@ export type ApplicationMenuOptions = {
   autosaveEnabled: boolean;
   commandAvailability: ApplicationMenuCommandAvailability;
   isDevelopment: boolean;
+  spellcheckEnabled: boolean;
   onCommand: (command: CommandName) => void;
   onSetAutosaveEnabled: (enabled: boolean) => void;
+  onSetSpellcheckEnabled: (enabled: boolean) => void;
 };
 
 export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
@@ -135,6 +137,15 @@ export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
           accelerator: "Alt+CmdOrCtrl+F",
           enabled: options.commandAvailability.hasActiveDocument,
           click: () => options.onCommand("replace")
+        },
+        { type: "separator" },
+        {
+          checked: options.spellcheckEnabled,
+          click: (menuItem) => {
+            options.onSetSpellcheckEnabled(menuItem.checked);
+          },
+          label: "Check Spelling While Typing",
+          type: "checkbox"
         },
         { type: "separator" },
         { label: "Start Dictation...", role: "startSpeaking" }

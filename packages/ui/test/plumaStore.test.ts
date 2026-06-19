@@ -141,6 +141,15 @@ describe("usePlumaStore", () => {
     expect(usePlumaStore.getState().theme.resolvedTheme).toBe("light");
   });
 
+  it("defaults spellcheck on and updates it in the writing slice", () => {
+    expect(usePlumaStore.getState().writing.spellcheckEnabled).toBe(true);
+
+    usePlumaStore.getState().setSpellcheckEnabled(false);
+
+    expect(usePlumaStore.getState().writing.spellcheckEnabled).toBe(false);
+    expect(usePlumaStore.getState().theme.preference).toBe("system");
+  });
+
   it("keeps tab state stable until the shell confirms close", () => {
     const closeTab = vi.fn();
     usePlumaStore.getState().setCommandHandlers({ closeTab });

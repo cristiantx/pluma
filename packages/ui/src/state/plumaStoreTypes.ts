@@ -37,6 +37,10 @@ export type ThemeSlice = {
   systemPrefersDark: boolean;
 };
 
+export type WritingSlice = {
+  spellcheckEnabled: boolean;
+};
+
 export type WorkspaceSlice = {
   explorerNodes: ExplorerNode[];
   hasWorkspace: boolean;
@@ -105,6 +109,7 @@ export type PlumaStoreState = {
   status: StatusSlice;
   tabs: TabsSlice;
   theme: ThemeSlice;
+  writing: WritingSlice;
   workspace: WorkspaceSlice;
 };
 
@@ -130,6 +135,7 @@ export type PlumaStoreActions = {
   showTabContextMenu: (tabId: string) => void;
   showWorkspaceContextMenu: (path: string, kind: ExplorerNode["kind"]) => void;
   setSystemPrefersDark: (matches: boolean) => void;
+  setSpellcheckEnabled: (enabled: boolean) => void;
   setThemePreference: (preference: ThemePreference) => void;
   toggleTheme: () => void;
   toggleSidebar: () => void;
@@ -173,5 +179,6 @@ export type PlumaStoreInitializer = {
   status: StatusSlice;
   tabs: TabsSlice;
   theme: ThemeSlice;
+  writing: WritingSlice;
   workspace: WorkspaceSlice;
 };

@@ -58,6 +58,9 @@ export const initialPlumaStoreState: PlumaStoreInitializer = {
     resolvedTheme: "light",
     systemPrefersDark: false
   },
+  writing: {
+    spellcheckEnabled: true
+  },
   workspace: {
     explorerNodes: [],
     hasWorkspace: false,
@@ -345,6 +348,14 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
         systemPrefersDark: matches
       }
     }));
+  },
+
+  setSpellcheckEnabled: (enabled) => {
+    set({
+      writing: {
+        spellcheckEnabled: enabled
+      }
+    });
   },
 
   setThemePreference: (preference) => {

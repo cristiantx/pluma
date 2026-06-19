@@ -35,11 +35,13 @@ export type PersistedMultiWindowSessionState = {
 
 export type AppSettings = {
   autosaveEnabled: boolean;
+  spellcheckEnabled: boolean;
   themePreference: ThemePreference;
 };
 
 export const defaultAppSettings: AppSettings = {
   autosaveEnabled: true,
+  spellcheckEnabled: true,
   themePreference: "system"
 };
 
@@ -168,6 +170,8 @@ function isAppSettings(value: unknown): value is AppSettings {
   return (
     (candidate.autosaveEnabled === undefined ||
       typeof candidate.autosaveEnabled === "boolean") &&
+    (candidate.spellcheckEnabled === undefined ||
+      typeof candidate.spellcheckEnabled === "boolean") &&
     isThemePreference(candidate.themePreference)
   );
 }

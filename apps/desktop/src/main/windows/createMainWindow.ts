@@ -9,6 +9,7 @@ export type CreateMainWindowOptions = {
   onClose: (event: Electron.Event) => void;
   onClosed: () => void;
   onLoaded: () => void;
+  spellcheckEnabled: boolean;
 };
 
 export function createMainWindow(
@@ -26,7 +27,8 @@ export function createMainWindow(
     webPreferences: {
       preload: path.join(options.mainBundleDirectory, "preload.js"),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      spellcheck: options.spellcheckEnabled
     }
   });
 

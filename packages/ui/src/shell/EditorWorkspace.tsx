@@ -23,6 +23,9 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   const searchRevealRequest = usePlumaStore(
     (state) => state.workspace.searchRevealRequest
   );
+  const spellcheckEnabled = usePlumaStore(
+    (state) => state.writing.spellcheckEnabled
+  );
   const splitPaneSizes = usePlumaStore(
     (state) =>
       state.layout.splitPaneSizesByDocumentId[state.tabs.activeTabId] ?? null
@@ -115,6 +118,7 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
           documentId={activeDocument.id}
           onChange={(rawText) => updateDocumentText(activeDocument.id, rawText)}
           rawText={activeDocument.rawText}
+          spellCheck={spellcheckEnabled}
         />
       </div>
     </article>
@@ -132,6 +136,7 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
         ref={sourceEditorRef}
         rawText={activeDocument.rawText}
         searchRevealRequest={sourceSearchRevealRequest}
+        spellCheck={spellcheckEnabled}
       />
     </article>
   ) : null;

@@ -46,6 +46,7 @@ let mainBundleDirectory = "";
 let rendererDevServerUrl: string | undefined;
 let rendererName = "";
 let autosaveEnabled = true;
+let spellcheckEnabled = true;
 let isDevelopment = false;
 let isQuitting = false;
 let latestFocusedWindowId: number | null = null;
@@ -227,6 +228,37 @@ async function setAutosaveEnabled(enabled: boolean): Promise<void> {
   );
 }
 
+function applySpellcheckEnabled(enabled: boolean): void {
+  for (const session of sessions.values()) {
+    if (!session.window.isDestroyed()) {
+      session.window.webContents.session.setSpellCheckerEnabled(enabled);
+    }
+  }
+}
+
+function emitSpellcheckSettingChanged(enabled: boolean): void {
+  for (const session of sessions.values()) {
+    session.emitSettingsChanged(enabled);
+  }
+}
+
+async function setSpellcheckEnabled(enabled: boolean): Promise<void> {
+  const currentSettings = await readAppSettings(getAppSettingsPath());
+  const nextSettings: AppSettings = {
+    ...currentSettings,
+    spellcheckEnabled: enabled
+  };
+
+  await writeAppSettings(getAppSettingsPath(), nextSettings);
+  spellcheckEnabled = enabled;
+  applySpellcheckEnabled(enabled);
+  emitSpellcheckSettingChanged(enabled);
+  Menu.setApplicationMenu(getApplicationMenu());
+  getLatestFocusedSession()?.emitStatus(
+    spellcheckEnabled ? "Spellcheck enabled." : "Spellcheck disabled."
+  );
+}
+
 async function handleMenuCommand(command: CommandName): Promise<void> {
   if (command === "new-window") {
     createWindow();
@@ -246,8 +278,10 @@ function getApplicationMenu(): Menu {
       hasActiveDocument: latestSession?.hasActiveDocument() ?? false
     },
     isDevelopment,
+    spellcheckEnabled,
     onCommand: (command) => void handleMenuCommand(command),
-    onSetAutosaveEnabled: (enabled) => void setAutosaveEnabled(enabled)
+    onSetAutosaveEnabled: (enabled) => void setAutosaveEnabled(enabled),
+    onSetSpellcheckEnabled: (enabled) => void setSpellcheckEnabled(enabled)
   });
 }
 
@@ -280,6 +314,7 @@ function createWindow(): DesktopWindowSession {
     mainBundleDirectory,
     rendererDevServerUrl,
     rendererName,
+    spellcheckEnabled,
     onClosed: () => {
       const session = sessions.get(window.id);
       session?.dispose();
@@ -426,6 +461,8 @@ function registerDesktopIpcHandlers(): void {
     getSettings: async () => {
       const settings = await readAppSettings(getAppSettingsPath());
       autosaveEnabled = settings.autosaveEnabled;
+      spellcheckEnabled = settings.spellcheckEnabled;
+      applySpellcheckEnabled(spellcheckEnabled);
 
       return settings;
     },
@@ -436,6 +473,9 @@ function registerDesktopIpcHandlers(): void {
         ...(typeof settings.autosaveEnabled === "boolean"
           ? { autosaveEnabled: settings.autosaveEnabled }
           : {}),
+        ...(typeof settings.spellcheckEnabled === "boolean"
+          ? { spellcheckEnabled: settings.spellcheckEnabled }
+          : {}),
         ...(isThemePreference(settings.themePreference)
           ? { themePreference: settings.themePreference }
           : {})
@@ -443,6 +483,7 @@ function registerDesktopIpcHandlers(): void {
 
       await writeAppSettings(getAppSettingsPath(), nextSettings);
       autosaveEnabled = nextSettings.autosaveEnabled;
+      spellcheckEnabled = nextSettings.spellcheckEnabled;
 
       if (!autosaveEnabled) {
         for (const session of sessions.values()) {
@@ -450,6 +491,8 @@ function registerDesktopIpcHandlers(): void {
         }
       }
 
+      applySpellcheckEnabled(spellcheckEnabled);
+      emitSpellcheckSettingChanged(spellcheckEnabled);
       Menu.setApplicationMenu(getApplicationMenu());
 
       return nextSettings;
@@ -496,8 +539,10 @@ export function startDesktopMainProcess(
   app.whenReady().then(async () => {
     setApplicationIcon();
     await installDevelopmentExtensions();
-    autosaveEnabled = (await readAppSettings(getAppSettingsPath()))
-      .autosaveEnabled;
+    const settings = await readAppSettings(getAppSettingsPath());
+    autosaveEnabled = settings.autosaveEnabled;
+    spellcheckEnabled = settings.spellcheckEnabled;
+    applySpellcheckEnabled(spellcheckEnabled);
     Menu.setApplicationMenu(getApplicationMenu());
     await restorePersistedSessionState();
     queueOpenTargets(normalizeOpenTargets(process.argv.slice(1)));

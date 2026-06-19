@@ -5,10 +5,81 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  defaultAppSettings,
   isMeaningfulPersistedWindowState,
   normalizePersistedSessionState,
+  readAppSettings,
   readPersistedSessionState
 } from "../../src/main/persistence/appPersistence";
+
+describe("readAppSettings", () => {
+  it("defaults spellcheck on for legacy settings", async () => {
+    const directoryPath = await mkdtemp(path.join(tmpdir(), "pluma-settings-"));
+
+    try {
+      const settingsPath = path.join(directoryPath, "settings.json");
+
+      await writeFile(
+        settingsPath,
+        JSON.stringify({
+          autosaveEnabled: false,
+          themePreference: "dark"
+        }),
+        "utf8"
+      );
+
+      await expect(readAppSettings(settingsPath)).resolves.toEqual({
+        autosaveEnabled: false,
+        spellcheckEnabled: true,
+        themePreference: "dark"
+      });
+    } finally {
+      await rm(directoryPath, { force: true, recursive: true });
+    }
+  });
+
+  it("preserves disabled spellcheck settings", async () => {
+    const directoryPath = await mkdtemp(path.join(tmpdir(), "pluma-settings-"));
+
+    try {
+      const settingsPath = path.join(directoryPath, "settings.json");
+
+      await writeFile(
+        settingsPath,
+        JSON.stringify({
+          autosaveEnabled: true,
+          spellcheckEnabled: false,
+          themePreference: "system"
+        }),
+        "utf8"
+      );
+
+      await expect(readAppSettings(settingsPath)).resolves.toEqual({
+        autosaveEnabled: true,
+        spellcheckEnabled: false,
+        themePreference: "system"
+      });
+    } finally {
+      await rm(directoryPath, { force: true, recursive: true });
+    }
+  });
+
+  it("falls back to default settings for malformed settings files", async () => {
+    const directoryPath = await mkdtemp(path.join(tmpdir(), "pluma-settings-"));
+
+    try {
+      const settingsPath = path.join(directoryPath, "settings.json");
+
+      await writeFile(settingsPath, "{", "utf8");
+
+      await expect(readAppSettings(settingsPath)).resolves.toEqual(
+        defaultAppSettings
+      );
+    } finally {
+      await rm(directoryPath, { force: true, recursive: true });
+    }
+  });
+});
 
 describe("normalizePersistedSessionState", () => {
   it("upgrades a legacy single-window session into the multi-window shape", () => {
