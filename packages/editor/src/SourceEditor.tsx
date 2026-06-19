@@ -8,9 +8,9 @@ import {
 import {
   findNext,
   findPrevious,
-  openSearchPanel,
-  search,
-  searchKeymap
+  replaceAll,
+  replaceNext,
+  search
 } from "@codemirror/search";
 import type { Extension } from "@codemirror/state";
 import {
@@ -23,38 +23,29 @@ import {
   lineNumbers
 } from "@codemirror/view";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import type { RefObject } from "react";
 
+import type {
+  EditorCursorAnchor,
+  EditorScrollSyncSource
+} from "./editorTypes.js";
 import { markdownCommandKeymap } from "./markdownCommands.js";
 import { plumaSourceEditorTheme } from "./sourceEditorTheme.js";
-import { createSourceSearchPanel } from "./SourceSearchPanel.js";
-
-export type SourceEditorProps = {
-  "aria-label"?: string;
-  autoFocus?: boolean;
-  documentId: string;
-  onChange: (rawText: string) => void;
-  rawText: string;
-  searchRevealRequest?: SourceSearchRevealRequest | null;
-  spellCheck?: boolean;
-};
-
-export type SourceEditorHandle = {
-  find: () => void;
-  findNext: () => void;
-  findPrevious: () => void;
-  replace: () => void;
-  revealSearchMatch: (match: SourceSearchMatch) => void;
-};
-
-export type SourceSearchMatch = {
-  line: number;
-  matchEnd: number;
-  matchStart: number;
-};
-
-export type SourceSearchRevealRequest = SourceSearchMatch & {
-  requestId: number;
-};
+import { sourceSearchDecorations } from "./sourceSearchDecorations.js";
+import {
+  applySourceCursorAnchor,
+  applySourceScrollAnchor,
+  getSourceCursorAnchor,
+  getSourceScrollAnchor,
+  getSourceSearchStatus,
+  revealSourceSearchMatch,
+  runSourceEditorCommand,
+  setSourceSearchQuery
+} from "./sourceEditorInterop.js";
+import type {
+  SourceEditorHandle,
+  SourceEditorProps
+} from "./sourceEditorTypes.js";
 
 export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
   function SourceEditor(
@@ -62,6 +53,10 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
       "aria-label": ariaLabel = "Markdown source editor",
       autoFocus = false,
       documentId,
+      onCursorAnchorChange,
+      onFocus,
+      onReady,
+      onScrollAnchorChange,
       onChange,
       rawText,
       searchRevealRequest = null,
@@ -70,21 +65,51 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
     ref
   ) {
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const onCursorAnchorChangeRef = useRef(onCursorAnchorChange);
     const onChangeRef = useRef(onChange);
+    const onFocusRef = useRef(onFocus);
+    const onReadyRef = useRef(onReady);
+    const onScrollAnchorChangeRef = useRef(onScrollAnchorChange);
+    const scrollSourceRef = useRef<EditorScrollSyncSource>("user");
     const viewRef = useRef<EditorView | null>(null);
 
     useImperativeHandle(ref, () => ({
-      find: () => runSourceEditorCommand(viewRef.current, openSearchPanel),
-      findNext: () => runSourceEditorCommand(viewRef.current, findNext),
-      findPrevious: () => runSourceEditorCommand(viewRef.current, findPrevious),
-      replace: () => runSourceEditorCommand(viewRef.current, openSearchPanel),
+      findNext: (options) =>
+        runSourceEditorCommand(viewRef.current, findNext, options),
+      findPrevious: (options) =>
+        runSourceEditorCommand(viewRef.current, findPrevious, options),
+      focus: () => viewRef.current?.focus(),
+      getCursorAnchor: () => getSourceCursorAnchor(viewRef.current, documentId),
+      getScrollAnchor: () => getSourceScrollAnchor(viewRef.current, documentId),
+      getSearchStatus: () => getSourceSearchStatus(viewRef.current),
+      applyCursorAnchor: (anchor) =>
+        applySourceCursorAnchor(viewRef.current, anchor),
+      applyScrollAnchor: (anchor) => {
+        scrollSourceRef.current = "programmatic";
+        applySourceScrollAnchor(viewRef.current, anchor);
+        window.requestAnimationFrame(() => {
+          scrollSourceRef.current = "user";
+        });
+      },
+      replaceAll: (options) =>
+        runSourceEditorCommand(viewRef.current, replaceAll, options),
+      replaceNext: (options) =>
+        runSourceEditorCommand(viewRef.current, replaceNext, options),
       revealSearchMatch: (match) =>
-        revealSourceSearchMatch(viewRef.current, match)
+        revealSourceSearchMatch(viewRef.current, match),
+      setSearchQuery: (query) => setSourceSearchQuery(viewRef.current, query)
     }));
 
     useEffect(() => {
       onChangeRef.current = onChange;
     }, [onChange]);
+
+    useEffect(() => {
+      onCursorAnchorChangeRef.current = onCursorAnchorChange;
+      onFocusRef.current = onFocus;
+      onReadyRef.current = onReady;
+      onScrollAnchorChangeRef.current = onScrollAnchorChange;
+    }, [onCursorAnchorChange, onFocus, onReady, onScrollAnchorChange]);
 
     useEffect(() => {
       const parent = containerRef.current;
@@ -95,20 +120,58 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
 
       const view = new EditorView({
         doc: rawText,
-        extensions: createSourceEditorExtensions((nextText) => {
-          onChangeRef.current(nextText);
-        }),
+        extensions: createSourceEditorExtensions(
+          (nextText) => {
+            onChangeRef.current(nextText);
+          },
+          (updatedView) => {
+            emitSourceCursorAnchor(
+              updatedView,
+              documentId,
+              onCursorAnchorChangeRef
+            );
+          }
+        ),
         parent
       });
 
       view.dom.setAttribute("aria-label", ariaLabel);
       viewRef.current = view;
+      onReadyRef.current?.();
+
+      const handleFocusIn = () => {
+        onFocusRef.current?.();
+        emitSourceCursorAnchor(view, documentId, onCursorAnchorChangeRef);
+      };
+      const handleSelectionChange = () => {
+        emitSourceCursorAnchor(view, documentId, onCursorAnchorChangeRef);
+      };
+      const handleScroll = () => {
+        const anchor = getSourceScrollAnchor(view, documentId);
+
+        if (anchor) {
+          onScrollAnchorChangeRef.current?.(anchor, scrollSourceRef.current);
+        }
+      };
+
+      view.dom.addEventListener("focusin", handleFocusIn);
+      view.dom.addEventListener("focusout", handleSelectionChange);
+      view.dom.addEventListener("keyup", handleSelectionChange);
+      view.dom.addEventListener("mouseup", handleSelectionChange);
+      view.scrollDOM.addEventListener("scroll", handleScroll, {
+        passive: true
+      });
 
       if (autoFocus) {
         view.focus();
       }
 
       return () => {
+        view.dom.removeEventListener("focusin", handleFocusIn);
+        view.dom.removeEventListener("focusout", handleSelectionChange);
+        view.dom.removeEventListener("keyup", handleSelectionChange);
+        view.dom.removeEventListener("mouseup", handleSelectionChange);
+        view.scrollDOM.removeEventListener("scroll", handleScroll);
         viewRef.current = null;
         view.destroy();
       };
@@ -146,53 +209,21 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
   }
 );
 
-function runSourceEditorCommand(
-  view: EditorView | null,
-  command: (view: EditorView) => boolean
+function emitSourceCursorAnchor(
+  view: EditorView,
+  documentId: string,
+  callbackRef: RefObject<((anchor: EditorCursorAnchor) => void) | undefined>
 ): void {
-  if (!view) {
-    return;
+  const anchor = getSourceCursorAnchor(view, documentId);
+
+  if (anchor) {
+    callbackRef.current?.(anchor);
   }
-
-  command(view);
-  view.focus();
-}
-
-function revealSourceSearchMatch(
-  view: EditorView | null,
-  match: SourceSearchMatch
-): void {
-  if (!view) {
-    return;
-  }
-
-  if (
-    !Number.isFinite(match.line) ||
-    !Number.isFinite(match.matchStart) ||
-    !Number.isFinite(match.matchEnd)
-  ) {
-    return;
-  }
-
-  const lineNumber = Math.max(1, Math.min(match.line, view.state.doc.lines));
-  const line = view.state.doc.line(lineNumber);
-  const matchStart = Math.max(0, Math.min(match.matchStart, match.matchEnd));
-  const matchEnd = Math.max(match.matchStart, match.matchEnd);
-  const from = Math.min(line.to, line.from + matchStart);
-  const to = Math.min(line.to, line.from + Math.max(matchStart + 1, matchEnd));
-
-  view.dispatch({
-    effects: EditorView.scrollIntoView(from, { y: "center" }),
-    selection: {
-      anchor: from,
-      head: to
-    }
-  });
-  view.focus();
 }
 
 function createSourceEditorExtensions(
-  onChange: (rawText: string) => void
+  onChange: (rawText: string) => void,
+  onSelectionChange: (view: EditorView) => void
 ): Extension[] {
   return [
     lineNumbers(),
@@ -207,16 +238,18 @@ function createSourceEditorExtensions(
     highlightActiveLine(),
     highlightActiveLineGutter(),
     markdown(),
-    search({
-      createPanel: createSourceSearchPanel,
-      top: true
-    }),
+    search(),
+    sourceSearchDecorations,
     markdownCommandKeymap,
-    keymap.of([...searchKeymap, ...defaultKeymap, ...historyKeymap]),
+    keymap.of([...defaultKeymap, ...historyKeymap]),
     EditorView.lineWrapping,
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
         onChange(update.state.doc.toString());
+      }
+
+      if (update.selectionSet) {
+        onSelectionChange(update.view);
       }
     }),
     plumaSourceEditorTheme
