@@ -1,8 +1,4 @@
-import type {
-  CommandName,
-  LineEndingConversionTarget,
-  RendererEvent
-} from "./shellState";
+import type { CommandName, RendererEvent } from "./shellState";
 import type { WorkspaceSearchMatch } from "./shellState";
 import type { WorkspaceSearchOptions } from "./shellState";
 import type { AppSettings, EditorViewMode } from "@pluma/ui";
@@ -11,7 +7,6 @@ declare global {
   interface Window {
     pluma: {
       closeTab(tabId: string): Promise<void>;
-      convertLineEndings(target: LineEndingConversionTarget): Promise<void>;
       getSettings(): Promise<AppSettings>;
       openAppDataFolder(): Promise<void>;
       openSettingsFile(): Promise<void>;

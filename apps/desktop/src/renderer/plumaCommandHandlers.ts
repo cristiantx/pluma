@@ -28,12 +28,6 @@ export function createPlumaCommandHandlers({
         (pluma) => void pluma.closeTab(tabId)
       ),
     compareConflict: () => runCommand(setShellState, "compare-conflict"),
-    convertLineEndings: (target) =>
-      invokePlumaOrSetStatus(
-        setShellState,
-        `Cannot convert line endings because IPC is unavailable.`,
-        (pluma) => void pluma.convertLineEndings(target)
-      ),
     keepEditing: () => runCommand(setShellState, "keep-editing"),
     newFile: () => runCommand(setShellState, "new-file"),
     openDevTools: () => runCommand(setShellState, "open-devtools"),

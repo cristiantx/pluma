@@ -12,6 +12,7 @@ export type ApplicationMenuOptions = {
   isDevelopment: boolean;
   spellcheckEnabled: boolean;
   onCommand: (command: CommandName) => void;
+  onConvertLineEndings: (target: "crlf" | "lf") => void;
   onSetAutosaveEnabled: (enabled: boolean) => void;
   onSetSpellcheckEnabled: (enabled: boolean) => void;
 };
@@ -142,6 +143,20 @@ export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
           accelerator: "Alt+CmdOrCtrl+F",
           enabled: options.commandAvailability.hasActiveDocument,
           click: () => options.onCommand("replace")
+        },
+        {
+          label: "Convert Line Endings To",
+          enabled: options.commandAvailability.hasActiveDocument,
+          submenu: [
+            {
+              label: "LF",
+              click: () => options.onConvertLineEndings("lf")
+            },
+            {
+              label: "CRLF",
+              click: () => options.onConvertLineEndings("crlf")
+            }
+          ]
         },
         { type: "separator" },
         {

@@ -26,8 +26,6 @@ export type WorkspaceSearchOptions = {
   wholeWord: boolean;
 };
 
-export type LineEndingConversionTarget = "crlf" | "lf";
-
 export type DesktopShellSnapshot = {
   activeDocumentId: string | null;
   documents: DocumentSession[];

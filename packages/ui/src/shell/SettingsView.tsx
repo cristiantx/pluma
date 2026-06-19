@@ -1,7 +1,5 @@
 import type { ChangeEvent } from "react";
 
-import { formatLineEndingLabel } from "@pluma/core";
-
 import type { AppSettings } from "../settings.js";
 import { usePlumaStore } from "../state/usePlumaStore.js";
 
@@ -16,10 +14,6 @@ const widthOptions = [
 
 export function SettingsView() {
   const settings = usePlumaStore((state) => state.settings);
-  const activeDocument = usePlumaStore(
-    (state) => state.document.activeDocument
-  );
-  const convertLineEndings = usePlumaStore((state) => state.convertLineEndings);
   const openAppDataFolder = usePlumaStore((state) => state.openAppDataFolder);
   const openSettingsFile = usePlumaStore((state) => state.openSettingsFile);
   const resetSettings = usePlumaStore((state) => state.resetSettings);
@@ -64,32 +58,6 @@ export function SettingsView() {
               <option value="dark">Dark</option>
             </select>
           </label>
-          <div className="settings-row">
-            <span>
-              <strong>Current document line endings</strong>
-              <small>
-                {activeDocument
-                  ? formatLineEndingLabel(activeDocument.lineEnding)
-                  : "No active document"}
-              </small>
-            </span>
-            <div className="settings-inline-actions">
-              <button
-                disabled={!activeDocument}
-                onClick={() => convertLineEndings("lf")}
-                type="button"
-              >
-                Convert To LF
-              </button>
-              <button
-                disabled={!activeDocument}
-                onClick={() => convertLineEndings("crlf")}
-                type="button"
-              >
-                Convert To CRLF
-              </button>
-            </div>
-          </div>
         </section>
 
         <section className="settings-section" aria-labelledby="settings-editor">
@@ -298,32 +266,6 @@ export function SettingsView() {
               <option value="crlf">CRLF</option>
             </select>
           </label>
-          <div className="settings-row">
-            <span>
-              <strong>Current document line endings</strong>
-              <small>
-                {activeDocument
-                  ? formatLineEndingLabel(activeDocument.lineEnding)
-                  : "No active document"}
-              </small>
-            </span>
-            <div className="settings-inline-actions">
-              <button
-                disabled={!activeDocument}
-                onClick={() => convertLineEndings("lf")}
-                type="button"
-              >
-                Convert To LF
-              </button>
-              <button
-                disabled={!activeDocument}
-                onClick={() => convertLineEndings("crlf")}
-                type="button"
-              >
-                Convert To CRLF
-              </button>
-            </div>
-          </div>
         </section>
 
         <section

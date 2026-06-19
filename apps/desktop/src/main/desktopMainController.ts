@@ -398,6 +398,10 @@ async function handleMenuCommand(command: CommandName): Promise<void> {
   await session.handleCommand(command);
 }
 
+function handleConvertLineEndings(target: "crlf" | "lf"): void {
+  getLatestFocusedSession()?.convertActiveDocumentLineEndings(target);
+}
+
 function getApplicationMenu(): Menu {
   const latestSession = getLatestFocusedSession();
 
@@ -409,6 +413,7 @@ function getApplicationMenu(): Menu {
     isDevelopment,
     spellcheckEnabled,
     onCommand: (command) => void handleMenuCommand(command),
+    onConvertLineEndings: handleConvertLineEndings,
     onSetAutosaveEnabled: (enabled) => void setAutosaveEnabled(enabled),
     onSetSpellcheckEnabled: (enabled) => void setSpellcheckEnabled(enabled)
   });
@@ -567,9 +572,6 @@ function registerDesktopIpcHandlers(): void {
       }
 
       await getSessionForEvent(event)?.handleCommand(command);
-    },
-    convertLineEndings: (event, target) => {
-      getSessionForEvent(event)?.convertActiveDocumentLineEndings(target);
     },
     searchWorkspace: (event, query, folderPath, options) =>
       getSessionForEvent(event)?.searchWorkspace(query, folderPath, options) ??

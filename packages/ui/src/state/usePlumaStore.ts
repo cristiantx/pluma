@@ -27,10 +27,6 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     get().commands.commandHandlers.compareConflict();
   },
 
-  convertLineEndings: (target) => {
-    get().commands.commandHandlers.convertLineEndings(target);
-  },
-
   closeSettingsTab: () => {
     set((state) => {
       if (!state.tabs.tabs.some((tab) => tab.id === "settings")) {

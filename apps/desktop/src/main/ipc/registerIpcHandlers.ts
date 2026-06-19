@@ -4,17 +4,12 @@ import type { AppSettings } from "@pluma/ui";
 import type {
   CommandName,
   EditorViewMode,
-  LineEndingConversionTarget,
   WorkspaceSearchMatch,
   WorkspaceSearchOptions
 } from "../../shared/shellState";
 
 export type DesktopIpcHandlers = {
   closeTab: (event: IpcMainInvokeEvent, tabId: string) => Promise<void>;
-  convertLineEndings: (
-    event: IpcMainInvokeEvent,
-    target: LineEndingConversionTarget
-  ) => void;
   getSettings: (event: IpcMainInvokeEvent) => Promise<AppSettings>;
   openAppDataFolder: (event: IpcMainInvokeEvent) => Promise<void>;
   openSettingsFile: (event: IpcMainInvokeEvent) => Promise<void>;
@@ -86,13 +81,6 @@ export function registerIpcHandlers(handlers: DesktopIpcHandlers): void {
   ipcMain.handle("pluma:close-tab", async (event, tabId: string) => {
     await handlers.closeTab(event, tabId);
   });
-
-  ipcMain.handle(
-    "pluma:convert-line-endings",
-    (event, target: LineEndingConversionTarget) => {
-      handlers.convertLineEndings(event, target);
-    }
-  );
 
   ipcMain.handle("pluma:show-tab-context-menu", (event, tabId: string) => {
     handlers.showTabContextMenu(event, tabId);
