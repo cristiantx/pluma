@@ -30,6 +30,9 @@ export function App() {
   const setSystemPrefersDark = usePlumaStore(
     (state) => state.setSystemPrefersDark
   );
+  const setSpellcheckEnabled = usePlumaStore(
+    (state) => state.setSpellcheckEnabled
+  );
   const setThemePreference = usePlumaStore((state) => state.setThemePreference);
 
   const schedulePaneSizesSave = useCallback((paneSizes: number[]) => {
@@ -108,9 +111,13 @@ export function App() {
         usePlumaStore.getState().openWorkspaceSearch(event.path);
       }
 
+      if (event.type === "settings-changed") {
+        setSpellcheckEnabled(event.spellcheckEnabled);
+      }
+
       setShellState((current) => reduceShellEvent(current, event));
     });
-  }, [schedulePaneSizesSave, setCommandHandlers]);
+  }, [schedulePaneSizesSave, setCommandHandlers, setSpellcheckEnabled]);
 
   useEffect(() => {
     return () => {
@@ -148,6 +155,7 @@ export function App() {
         return;
       }
 
+      setSpellcheckEnabled(settings.spellcheckEnabled);
       setThemePreference(settings.themePreference);
       lastPersistedThemePreference.current = settings.themePreference;
       setSettingsLoaded(true);
@@ -156,7 +164,7 @@ export function App() {
     return () => {
       isActive = false;
     };
-  }, [setThemePreference]);
+  }, [setSpellcheckEnabled, setThemePreference]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = resolvedTheme;

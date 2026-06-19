@@ -5,6 +5,7 @@ import type { EditorViewMode, ThemePreference } from "@pluma/ui";
 
 type AppSettings = {
   autosaveEnabled: boolean;
+  spellcheckEnabled: boolean;
   themePreference: ThemePreference;
 };
 
