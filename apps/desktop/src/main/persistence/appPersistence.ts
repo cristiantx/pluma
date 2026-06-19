@@ -175,6 +175,10 @@ function isAppSettings(value: unknown): value is AppSettings {
       isEditorWidthPreference(candidate.sourceEditorWidth)) &&
     (candidate.sourceEditorFontFamily === undefined ||
       isSourceEditorFontFamily(candidate.sourceEditorFontFamily)) &&
+    (candidate.sourceEditorColorScheme === undefined ||
+      candidate.sourceEditorColorScheme === "follow-theme" ||
+      candidate.sourceEditorColorScheme === "pluma-dark" ||
+      candidate.sourceEditorColorScheme === "pluma-light") &&
     (candidate.sourceEditorFontSize === undefined ||
       isSourceEditorFontSize(candidate.sourceEditorFontSize)) &&
     (candidate.sourceEditorLineNumbers === undefined ||

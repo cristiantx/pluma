@@ -152,6 +152,20 @@ export function SettingsView() {
               <option value="system">System UI</option>
             </select>
           </label>
+          <label className="settings-row">
+            <span>
+              <strong>Source color scheme</strong>
+              <small>Use the app theme or pin source code colors.</small>
+            </span>
+            <select
+              onChange={updateStringSetting("sourceEditorColorScheme")}
+              value={settings.sourceEditorColorScheme}
+            >
+              <option value="follow-theme">Follow app theme</option>
+              <option value="pluma-light">Pluma light</option>
+              <option value="pluma-dark">Pluma dark</option>
+            </select>
+          </label>
           <label className="settings-row settings-row-checkbox">
             <span>
               <strong>Source word wrap</strong>

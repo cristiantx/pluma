@@ -92,6 +92,7 @@ function useFallbackSettings(
     defaultLineEnding: "system" as const,
     richEditorDensity: "comfortable" as const,
     richEditorWidth: "default" as const,
+    sourceEditorColorScheme: "follow-theme" as const,
     sourceEditorFontFamily: "mono" as const,
     sourceEditorFontSize: 14 as const,
     sourceEditorLineNumbers: true,

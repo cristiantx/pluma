@@ -35,6 +35,9 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   const sourceEditorFontFamily = usePlumaStore(
     (state) => state.settings.sourceEditorFontFamily
   );
+  const sourceEditorColorScheme = usePlumaStore(
+    (state) => state.settings.sourceEditorColorScheme
+  );
   const sourceEditorFontSize = usePlumaStore(
     (state) => state.settings.sourceEditorFontSize
   );
@@ -180,7 +183,11 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
     </article>
   ) : null;
   const sourcePane = showSource ? (
-    <article className="source-pane" aria-label="Markdown source">
+    <article
+      className="source-pane"
+      data-source-color-scheme={sourceEditorColorScheme}
+      aria-label="Markdown source"
+    >
       {isSourceOnly ? (
         <div className="source-only-notice" role="status">
           Source mode is preserving unsupported Markdown constructs.

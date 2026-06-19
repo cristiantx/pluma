@@ -303,6 +303,9 @@ function getAppSettingsUpdate(settings: unknown): Partial<AppSettings> {
     ...(isSourceEditorFontFamily(settings.sourceEditorFontFamily)
       ? { sourceEditorFontFamily: settings.sourceEditorFontFamily }
       : {}),
+    ...(isSourceEditorColorSchemeSetting(settings.sourceEditorColorScheme)
+      ? { sourceEditorColorScheme: settings.sourceEditorColorScheme }
+      : {}),
     ...(isSourceEditorFontSize(settings.sourceEditorFontSize)
       ? { sourceEditorFontSize: settings.sourceEditorFontSize }
       : {}),
@@ -333,6 +336,16 @@ function getAppSettingsUpdate(settings: unknown): Partial<AppSettings> {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isSourceEditorColorSchemeSetting(
+  value: unknown
+): value is AppSettings["sourceEditorColorScheme"] {
+  return (
+    value === "follow-theme" ||
+    value === "pluma-dark" ||
+    value === "pluma-light"
+  );
 }
 
 async function handleMenuCommand(command: CommandName): Promise<void> {

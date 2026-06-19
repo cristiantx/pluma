@@ -7,6 +7,10 @@ export type DefaultLineEnding = "crlf" | "lf" | "system";
 export type SourceEditorFontSize = 12 | 13 | 14 | 15 | 16 | 18;
 export type SourceEditorFontFamily = "mono" | "system";
 export type SourceEditorTabSize = 2 | 4;
+export type SourceEditorColorScheme =
+  | "follow-theme"
+  | "pluma-dark"
+  | "pluma-light";
 
 export type AppSettings = {
   autosaveEnabled: boolean;
@@ -15,6 +19,7 @@ export type AppSettings = {
   richEditorWidth: EditorWidthPreference;
   sourceEditorWidth: EditorWidthPreference;
   sourceEditorFontFamily: SourceEditorFontFamily;
+  sourceEditorColorScheme: SourceEditorColorScheme;
   sourceEditorFontSize: SourceEditorFontSize;
   sourceEditorLineNumbers: boolean;
   sourceEditorTabSize: SourceEditorTabSize;
@@ -30,6 +35,7 @@ export const defaultAppSettings: AppSettings = {
   richEditorDensity: "comfortable",
   richEditorWidth: "default",
   sourceEditorFontFamily: "mono",
+  sourceEditorColorScheme: "follow-theme",
   sourceEditorFontSize: 14,
   sourceEditorLineNumbers: true,
   sourceEditorTabSize: 2,
@@ -90,4 +96,14 @@ export function isSourceEditorTabSize(
   value: unknown
 ): value is SourceEditorTabSize {
   return value === 2 || value === 4;
+}
+
+export function isSourceEditorColorScheme(
+  value: unknown
+): value is SourceEditorColorScheme {
+  return (
+    value === "follow-theme" ||
+    value === "pluma-dark" ||
+    value === "pluma-light"
+  );
 }
