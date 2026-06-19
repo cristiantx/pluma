@@ -503,6 +503,55 @@ export class DesktopWindowSession {
     this.emitShellSnapshot();
   }
 
+  convertActiveDocumentLineEndings(target: "crlf" | "lf"): void {
+    const activeDocument = this.getActiveDocument();
+
+    if (!activeDocument) {
+      this.emitToRenderer({
+        type: "status",
+        message: "No active document to convert."
+      });
+      return;
+    }
+
+    const convertedText = applyLineEnding(activeDocument.rawText, target);
+    const nextDocument: DocumentSession = {
+      ...activeDocument,
+      lineEnding: target,
+      rawText: convertedText,
+      saveState:
+        convertedText === activeDocument.lastSavedText ? "idle" : "dirty"
+    };
+
+    if (
+      nextDocument.rawText === activeDocument.rawText &&
+      nextDocument.lineEnding === activeDocument.lineEnding
+    ) {
+      this.updateShellData({
+        status: `Line endings already ${target.toUpperCase()}.`
+      });
+      this.emitShellSnapshot();
+      return;
+    }
+
+    this.updateShellData({
+      documents: this.shellData.documents.map((document) =>
+        document.id === activeDocument.id ? nextDocument : document
+      ),
+      status: `Converted line endings to ${target.toUpperCase()}.`
+    });
+
+    if (
+      this.dependencies.getAutosaveEnabled() &&
+      nextDocument.saveState === "dirty"
+    ) {
+      this.autosaveScheduler.schedule(nextDocument.id);
+    }
+
+    this.persistSessionStateSoon();
+    this.emitShellSnapshot();
+  }
+
   async closeWindowWithProtection(): Promise<boolean> {
     const protectedDocuments = this.getProtectedDocuments();
 

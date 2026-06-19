@@ -8,6 +8,7 @@ import type { ResolvedTheme, ThemePreference } from "../theme.js";
 export type PlumaCommandHandlers = {
   closeTab: (tabId: string) => void;
   compareConflict: () => void;
+  convertLineEndings: (target: "crlf" | "lf") => void;
   keepEditing: () => void;
   newFile: () => void;
   openDevTools: () => void;
@@ -121,6 +122,7 @@ export type PlumaStoreState = {
 export type PlumaStoreActions = {
   closeTab: (tabId: string) => void;
   compareConflict: () => void;
+  convertLineEndings: (target: "crlf" | "lf") => void;
   closeSettingsTab: () => void;
   hydrateShellSnapshot: (snapshot: PlumaShellSnapshot) => void;
   hydrateSettings: (settings: AppSettings) => void;

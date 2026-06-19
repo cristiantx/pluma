@@ -72,6 +72,7 @@ function createSession(files: Record<string, string>) {
     draftStorage: createDraftStorage(),
     fileSystem: createFileSystem(files),
     getAutosaveEnabled: () => false,
+    getDefaultLineEnding: () => "lf",
     isDevelopment: false,
     onMenuStateChange: vi.fn(),
     onPersistSessionState: vi.fn(),
@@ -151,5 +152,37 @@ describe("DesktopWindowSession", () => {
     await session.openWorkspaceFile("/outside/notes.md");
 
     expect(session.getPersistedState().documentPaths).toEqual([]);
+  });
+
+  it("converts active document line endings and marks it dirty", async () => {
+    const { send, session } = createSession({
+      "/workspace/notes.md": "# Notes\nBody\n"
+    });
+
+    await session.restorePersistedState({
+      activeDocumentPath: "/workspace/notes.md",
+      documentPaths: ["/workspace/notes.md"],
+      editorMode: "source",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+
+    session.convertActiveDocumentLineEndings("crlf");
+
+    expect(send).toHaveBeenLastCalledWith(
+      "pluma:event",
+      expect.objectContaining({
+        snapshot: expect.objectContaining({
+          documents: [
+            expect.objectContaining({
+              lineEnding: "crlf",
+              rawText: "# Notes\r\nBody\r\n",
+              saveState: "dirty"
+            })
+          ]
+        }),
+        type: "shell-snapshot"
+      })
+    );
   });
 });

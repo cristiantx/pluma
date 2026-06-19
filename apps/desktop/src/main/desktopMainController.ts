@@ -508,6 +508,9 @@ function registerDesktopIpcHandlers(): void {
 
       await getSessionForEvent(event)?.handleCommand(command);
     },
+    convertLineEndings: (event, target) => {
+      getSessionForEvent(event)?.convertActiveDocumentLineEndings(target);
+    },
     searchWorkspace: (event, query, folderPath, options) =>
       getSessionForEvent(event)?.searchWorkspace(query, folderPath, options) ??
       Promise.resolve([]),

@@ -93,3 +93,30 @@
   justify-self: end;
   accent-color: var(--accent);
 }
+
+.settings-inline-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.settings-inline-actions button {
+  height: 28px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-bg);
+  color: var(--text-primary);
+  font: inherit;
+  padding: 0 8px;
+}
+
+.settings-inline-actions button:hover,
+.settings-inline-actions button:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--active-control);
+}
+
+.settings-inline-actions button:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}

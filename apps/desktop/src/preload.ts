@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type {
   CommandName,
   EditorViewMode,
+  LineEndingConversionTarget,
   RendererEvent,
   WorkspaceSearchOptions
 } from "./shared/shellState";
@@ -9,6 +10,9 @@ import type {
 const api = {
   closeTab(tabId: string) {
     return ipcRenderer.invoke("pluma:close-tab", tabId);
+  },
+  convertLineEndings(target: LineEndingConversionTarget) {
+    return ipcRenderer.invoke("pluma:convert-line-endings", target);
   },
   getSettings() {
     return ipcRenderer.invoke("pluma:get-settings");
