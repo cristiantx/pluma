@@ -1,7 +1,6 @@
 import {
   BookOpen,
   Bug,
-  ChevronDown,
   Code2,
   Columns2,
   Folder,
@@ -29,7 +28,6 @@ export const TitleBar = memo(function TitleBar() {
   const triggerOpenDevTools = usePlumaStore(
     (state) => state.triggerOpenDevTools
   );
-  const triggerOpenFolder = usePlumaStore((state) => state.triggerOpenFolder);
   const editorViewMode = usePlumaStore((state) => state.layout.editorViewMode);
   const setEditorViewMode = usePlumaStore((state) => state.setEditorViewMode);
   const toggleTheme = usePlumaStore((state) => state.toggleTheme);
@@ -49,16 +47,10 @@ export const TitleBar = memo(function TitleBar() {
       ) : null}
 
       {hasWorkspace ? (
-        <button
-          aria-label="Open folder"
-          className="titlebar-path"
-          onClick={triggerOpenFolder}
-          type="button"
-        >
+        <div className="titlebar-path">
           <Folder aria-hidden="true" />
           <span>{workspacePath}</span>
-          <ChevronDown aria-hidden="true" />
-        </button>
+        </div>
       ) : (
         <div className="titlebar-brand">
           <PlumaLogo />
