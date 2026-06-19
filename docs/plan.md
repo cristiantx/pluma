@@ -182,10 +182,10 @@ Choose Electron for the MVP because it gives predictable cross-platform file ope
 
 ## Decision Basis
 
-- Electron app lifecycle and file-open handling: https://www.electronjs.org/docs/latest/api/app
-- Electron Forge packaging and makers: https://www.electronforge.io/
-- Milkdown overview and GFM support: https://milkdown.dev/
-- Tiptap Markdown docs note the Markdown extension is beta: https://tiptap.dev/docs/editor/markdown
-- Tauri tradeoffs and prerequisites: https://v2.tauri.app/start/
-- MDN File System Access API picker support: https://developer.mozilla.org/docs/Web/API/Window/showOpenFilePicker
-- MDN Origin Private File System overview: https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system
+- Electron app lifecycle and file-open handling: <https://www.electronjs.org/docs/latest/api/app>
+- Electron Forge packaging and makers: <https://www.electronforge.io/>
+- Milkdown overview and GFM support: <https://milkdown.dev/>
+- Tiptap Markdown docs note the Markdown extension is beta: <https://tiptap.dev/docs/editor/markdown>
+- Tauri tradeoffs and prerequisites: <https://v2.tauri.app/start/>
+- MDN File System Access API picker support: <https://developer.mozilla.org/docs/Web/API/Window/showOpenFilePicker>
+- MDN Origin Private File System overview: <https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system>
