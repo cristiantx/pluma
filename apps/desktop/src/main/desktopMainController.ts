@@ -62,6 +62,7 @@ let defaultLineEnding: DefaultLineEnding = "system";
 let openExportedFile = false;
 let restorePreviousSession = true;
 let spellcheckEnabled = true;
+let workspaceShowHiddenFiles = true;
 let isDevelopment = false;
 let isQuitting = false;
 let latestFocusedWindowId: number | null = null;
@@ -270,6 +271,7 @@ async function updateStoredAppSettings(
   openExportedFile = nextSettings.openExportedFile;
   restorePreviousSession = nextSettings.restorePreviousSession;
   spellcheckEnabled = nextSettings.spellcheckEnabled;
+  workspaceShowHiddenFiles = nextSettings.workspaceShowHiddenFiles;
 
   if (!autosaveEnabled) {
     for (const session of sessions.values()) {
@@ -279,6 +281,15 @@ async function updateStoredAppSettings(
 
   if (currentSettings.spellcheckEnabled !== nextSettings.spellcheckEnabled) {
     applySpellcheckEnabled(spellcheckEnabled);
+  }
+
+  if (
+    currentSettings.workspaceShowHiddenFiles !==
+    nextSettings.workspaceShowHiddenFiles
+  ) {
+    for (const session of sessions.values()) {
+      void session.refreshSettingsSensitiveState();
+    }
   }
 
   emitSettingsChanged(nextSettings);
@@ -310,6 +321,18 @@ function getAppSettingsUpdate(settings: unknown): Partial<AppSettings> {
       : {}),
     ...(typeof settings.restorePreviousSession === "boolean"
       ? { restorePreviousSession: settings.restorePreviousSession }
+      : {}),
+    ...(typeof settings.workspaceSearchCaseSensitive === "boolean"
+      ? { workspaceSearchCaseSensitive: settings.workspaceSearchCaseSensitive }
+      : {}),
+    ...(typeof settings.workspaceSearchRegexp === "boolean"
+      ? { workspaceSearchRegexp: settings.workspaceSearchRegexp }
+      : {}),
+    ...(typeof settings.workspaceSearchWholeWord === "boolean"
+      ? { workspaceSearchWholeWord: settings.workspaceSearchWholeWord }
+      : {}),
+    ...(typeof settings.workspaceShowHiddenFiles === "boolean"
+      ? { workspaceShowHiddenFiles: settings.workspaceShowHiddenFiles }
       : {}),
     ...(isEditorWidthPreference(settings.richEditorWidth)
       ? { richEditorWidth: settings.richEditorWidth }
@@ -408,6 +431,7 @@ function createWindowDependencies(
     getAutosaveEnabled: () => autosaveEnabled,
     getDefaultLineEnding: () => defaultLineEnding,
     getOpenExportedFile: () => openExportedFile,
+    getWorkspaceShowHiddenFiles: () => workspaceShowHiddenFiles,
     isDevelopment,
     onMenuStateChange: refreshApplicationMenu,
     onPersistSessionState: persistSessionStateSoon,
@@ -581,6 +605,7 @@ function registerDesktopIpcHandlers(): void {
       openExportedFile = settings.openExportedFile;
       restorePreviousSession = settings.restorePreviousSession;
       spellcheckEnabled = settings.spellcheckEnabled;
+      workspaceShowHiddenFiles = settings.workspaceShowHiddenFiles;
       applySpellcheckEnabled(spellcheckEnabled);
 
       return settings;
@@ -647,6 +672,7 @@ export function startDesktopMainProcess(
     openExportedFile = settings.openExportedFile;
     restorePreviousSession = settings.restorePreviousSession;
     spellcheckEnabled = settings.spellcheckEnabled;
+    workspaceShowHiddenFiles = settings.workspaceShowHiddenFiles;
     applySpellcheckEnabled(spellcheckEnabled);
     Menu.setApplicationMenu(getApplicationMenu());
     await restorePersistedSessionState();

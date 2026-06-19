@@ -74,6 +74,7 @@ function createSession(files: Record<string, string>) {
     getAutosaveEnabled: () => false,
     getDefaultLineEnding: () => "lf",
     getOpenExportedFile: () => false,
+    getWorkspaceShowHiddenFiles: () => true,
     isDevelopment: false,
     onMenuStateChange: vi.fn(),
     onPersistSessionState: vi.fn(),

@@ -29,6 +29,10 @@ export type AppSettings = {
   spellcheckEnabled: boolean;
   splitViewOrder: SplitViewOrder;
   themePreference: ThemePreference;
+  workspaceSearchCaseSensitive: boolean;
+  workspaceSearchRegexp: boolean;
+  workspaceSearchWholeWord: boolean;
+  workspaceShowHiddenFiles: boolean;
 };
 
 export const defaultAppSettings: AppSettings = {
@@ -47,7 +51,11 @@ export const defaultAppSettings: AppSettings = {
   sourceEditorWidth: "default",
   spellcheckEnabled: true,
   splitViewOrder: "rich-source",
-  themePreference: "system"
+  themePreference: "system",
+  workspaceSearchCaseSensitive: false,
+  workspaceSearchRegexp: false,
+  workspaceSearchWholeWord: false,
+  workspaceShowHiddenFiles: true
 };
 
 export function isEditorWidthPreference(

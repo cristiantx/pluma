@@ -78,6 +78,7 @@ export type DesktopWindowSessionDependencies = {
   getAutosaveEnabled: () => boolean;
   getDefaultLineEnding: () => "crlf" | "lf" | "system";
   getOpenExportedFile: () => boolean;
+  getWorkspaceShowHiddenFiles: () => boolean;
   isDevelopment: boolean;
   onMenuStateChange: () => void;
   onPersistSessionState: () => void;
@@ -187,7 +188,8 @@ export class DesktopWindowSession {
 
     const workspaceEntries = await tryCollectWorkspaceEntries(
       this.dependencies.fileSystem,
-      persistedState.workspacePath
+      persistedState.workspacePath,
+      { showHiddenFiles: this.dependencies.getWorkspaceShowHiddenFiles() }
     );
     const documentRefs =
       persistedState.documentRefs ??
@@ -324,6 +326,10 @@ export class DesktopWindowSession {
       query,
       workspacePath: this.shellData.workspacePath
     });
+  }
+
+  async refreshSettingsSensitiveState(): Promise<void> {
+    await this.refreshWorkspaceEntries();
   }
 
   setEditorMode(mode: unknown): void {
@@ -995,7 +1001,8 @@ export class DesktopWindowSession {
 
     const workspaceEntries = await tryCollectWorkspaceEntries(
       this.dependencies.fileSystem,
-      this.shellData.workspacePath
+      this.shellData.workspacePath,
+      { showHiddenFiles: this.dependencies.getWorkspaceShowHiddenFiles() }
     );
 
     this.updateShellData({
@@ -1145,7 +1152,9 @@ export class DesktopWindowSession {
   private async openFolderPath(directoryPath: string): Promise<void> {
     const workspaceEntries = await collectWorkspaceEntries(
       this.dependencies.fileSystem,
-      directoryPath
+      directoryPath,
+      0,
+      { showHiddenFiles: this.dependencies.getWorkspaceShowHiddenFiles() }
     );
 
     this.updateShellData({

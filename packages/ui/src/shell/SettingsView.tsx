@@ -328,6 +328,61 @@ export function SettingsView() {
 
         <section
           className="settings-section"
+          aria-labelledby="settings-workspace"
+        >
+          <h2 id="settings-workspace">Workspace</h2>
+          <label className="settings-row settings-row-checkbox">
+            <span>
+              <strong>Show hidden files</strong>
+              <small>
+                Include dotfiles and dotfolders in the workspace tree.
+              </small>
+            </span>
+            <input
+              checked={settings.workspaceShowHiddenFiles}
+              onChange={updateBooleanSetting("workspaceShowHiddenFiles")}
+              type="checkbox"
+            />
+          </label>
+          <label className="settings-row settings-row-checkbox">
+            <span>
+              <strong>Search case sensitive</strong>
+              <small>Use case-sensitive matching for workspace searches.</small>
+            </span>
+            <input
+              checked={settings.workspaceSearchCaseSensitive}
+              onChange={updateBooleanSetting("workspaceSearchCaseSensitive")}
+              type="checkbox"
+            />
+          </label>
+          <label className="settings-row settings-row-checkbox">
+            <span>
+              <strong>Search with regular expressions</strong>
+              <small>
+                Treat workspace search queries as regular expressions.
+              </small>
+            </span>
+            <input
+              checked={settings.workspaceSearchRegexp}
+              onChange={updateBooleanSetting("workspaceSearchRegexp")}
+              type="checkbox"
+            />
+          </label>
+          <label className="settings-row settings-row-checkbox">
+            <span>
+              <strong>Search whole words</strong>
+              <small>Match whole words by default in workspace search.</small>
+            </span>
+            <input
+              checked={settings.workspaceSearchWholeWord}
+              onChange={updateBooleanSetting("workspaceSearchWholeWord")}
+              type="checkbox"
+            />
+          </label>
+        </section>
+
+        <section
+          className="settings-section"
           aria-labelledby="settings-advanced"
         >
           <h2 id="settings-advanced">Advanced</h2>

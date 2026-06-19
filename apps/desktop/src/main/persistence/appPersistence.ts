@@ -197,6 +197,14 @@ function isAppSettings(value: unknown): value is AppSettings {
       typeof candidate.openExportedFile === "boolean") &&
     (candidate.restorePreviousSession === undefined ||
       typeof candidate.restorePreviousSession === "boolean") &&
+    (candidate.workspaceSearchCaseSensitive === undefined ||
+      typeof candidate.workspaceSearchCaseSensitive === "boolean") &&
+    (candidate.workspaceSearchRegexp === undefined ||
+      typeof candidate.workspaceSearchRegexp === "boolean") &&
+    (candidate.workspaceSearchWholeWord === undefined ||
+      typeof candidate.workspaceSearchWholeWord === "boolean") &&
+    (candidate.workspaceShowHiddenFiles === undefined ||
+      typeof candidate.workspaceShowHiddenFiles === "boolean") &&
     typeof candidate.themePreference === "string" &&
     isThemePreference(candidate.themePreference)
   );

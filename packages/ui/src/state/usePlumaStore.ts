@@ -69,6 +69,14 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
       },
       writing: {
         spellcheckEnabled: settings.spellcheckEnabled
+      },
+      workspace: {
+        ...state.workspace,
+        searchOptions: {
+          caseSensitive: settings.workspaceSearchCaseSensitive,
+          regexp: settings.workspaceSearchRegexp,
+          wholeWord: settings.workspaceSearchWholeWord
+        }
       }
     }));
   },

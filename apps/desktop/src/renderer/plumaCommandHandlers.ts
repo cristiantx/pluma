@@ -125,6 +125,10 @@ function useFallbackSettings(
     spellcheckEnabled: true,
     splitViewOrder: "rich-source" as const,
     themePreference: "system" as const,
+    workspaceSearchCaseSensitive: false,
+    workspaceSearchRegexp: false,
+    workspaceSearchWholeWord: false,
+    workspaceShowHiddenFiles: true,
     ...settings
   };
 }

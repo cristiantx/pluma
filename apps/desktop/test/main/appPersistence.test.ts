@@ -44,7 +44,11 @@ describe("readAppSettings", () => {
         sourceEditorWidth: "default",
         spellcheckEnabled: true,
         splitViewOrder: "rich-source",
-        themePreference: "dark"
+        themePreference: "dark",
+        workspaceSearchCaseSensitive: false,
+        workspaceSearchRegexp: false,
+        workspaceSearchWholeWord: false,
+        workspaceShowHiddenFiles: true
       });
     } finally {
       await rm(directoryPath, { force: true, recursive: true });
@@ -83,7 +87,11 @@ describe("readAppSettings", () => {
         sourceEditorWidth: "default",
         spellcheckEnabled: false,
         splitViewOrder: "rich-source",
-        themePreference: "system"
+        themePreference: "system",
+        workspaceSearchCaseSensitive: false,
+        workspaceSearchRegexp: false,
+        workspaceSearchWholeWord: false,
+        workspaceShowHiddenFiles: true
       });
     } finally {
       await rm(directoryPath, { force: true, recursive: true });
@@ -114,7 +122,11 @@ describe("readAppSettings", () => {
           sourceEditorWidth: "full",
           spellcheckEnabled: true,
           splitViewOrder: "source-rich",
-          themePreference: "system"
+          themePreference: "system",
+          workspaceSearchCaseSensitive: true,
+          workspaceSearchRegexp: true,
+          workspaceSearchWholeWord: true,
+          workspaceShowHiddenFiles: false
         }),
         "utf8"
       );
@@ -132,7 +144,11 @@ describe("readAppSettings", () => {
         sourceEditorTabSize: 4,
         sourceEditorWordWrap: false,
         sourceEditorWidth: "full",
-        splitViewOrder: "source-rich"
+        splitViewOrder: "source-rich",
+        workspaceSearchCaseSensitive: true,
+        workspaceSearchRegexp: true,
+        workspaceSearchWholeWord: true,
+        workspaceShowHiddenFiles: false
       });
     } finally {
       await rm(directoryPath, { force: true, recursive: true });
