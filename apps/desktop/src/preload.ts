@@ -20,6 +20,15 @@ const api = {
   openWorkspaceFile(path: string) {
     return ipcRenderer.invoke("pluma:open-workspace-file", path);
   },
+  openAppDataFolder() {
+    return ipcRenderer.invoke("pluma:open-app-data-folder");
+  },
+  openSettingsFile() {
+    return ipcRenderer.invoke("pluma:open-settings-file");
+  },
+  resetSettings() {
+    return ipcRenderer.invoke("pluma:reset-settings");
+  },
   searchWorkspace(
     query: string,
     folderPath: string | null,

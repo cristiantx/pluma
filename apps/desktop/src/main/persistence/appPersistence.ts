@@ -193,6 +193,10 @@ function isAppSettings(value: unknown): value is AppSettings {
       isSplitViewOrder(candidate.splitViewOrder)) &&
     (candidate.defaultLineEnding === undefined ||
       isDefaultLineEnding(candidate.defaultLineEnding)) &&
+    (candidate.openExportedFile === undefined ||
+      typeof candidate.openExportedFile === "boolean") &&
+    (candidate.restorePreviousSession === undefined ||
+      typeof candidate.restorePreviousSession === "boolean") &&
     typeof candidate.themePreference === "string" &&
     isThemePreference(candidate.themePreference)
   );

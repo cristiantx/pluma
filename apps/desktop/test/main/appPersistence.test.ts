@@ -31,8 +31,10 @@ describe("readAppSettings", () => {
       await expect(readAppSettings(settingsPath)).resolves.toEqual({
         autosaveEnabled: false,
         defaultLineEnding: "system",
+        openExportedFile: false,
         richEditorDensity: "comfortable",
         richEditorWidth: "default",
+        restorePreviousSession: true,
         sourceEditorColorScheme: "follow-theme",
         sourceEditorFontFamily: "mono",
         sourceEditorFontSize: 14,
@@ -68,8 +70,10 @@ describe("readAppSettings", () => {
       await expect(readAppSettings(settingsPath)).resolves.toEqual({
         autosaveEnabled: true,
         defaultLineEnding: "system",
+        openExportedFile: false,
         richEditorDensity: "comfortable",
         richEditorWidth: "default",
+        restorePreviousSession: true,
         sourceEditorColorScheme: "follow-theme",
         sourceEditorFontFamily: "mono",
         sourceEditorFontSize: 14,
@@ -97,8 +101,10 @@ describe("readAppSettings", () => {
         JSON.stringify({
           autosaveEnabled: true,
           defaultLineEnding: "crlf",
+          openExportedFile: true,
           richEditorDensity: "compact",
           richEditorWidth: "wide",
+          restorePreviousSession: false,
           sourceEditorColorScheme: "pluma-dark",
           sourceEditorFontFamily: "system",
           sourceEditorFontSize: 16,
@@ -115,8 +121,10 @@ describe("readAppSettings", () => {
 
       await expect(readAppSettings(settingsPath)).resolves.toMatchObject({
         defaultLineEnding: "crlf",
+        openExportedFile: true,
         richEditorDensity: "compact",
         richEditorWidth: "wide",
+        restorePreviousSession: false,
         sourceEditorColorScheme: "pluma-dark",
         sourceEditorFontFamily: "system",
         sourceEditorFontSize: 16,

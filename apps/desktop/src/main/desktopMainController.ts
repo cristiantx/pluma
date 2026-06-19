@@ -4,12 +4,14 @@ import {
   Menu,
   nativeImage,
   session,
+  shell,
   type IpcMainInvokeEvent
 } from "electron";
 import path from "node:path";
 
 import { DesktopFileSystemAdapter } from "@pluma/core-desktop";
 import {
+  defaultAppSettings,
   isDefaultLineEnding,
   isEditorWidthPreference,
   isRichEditorDensity,
@@ -57,6 +59,8 @@ let rendererDevServerUrl: string | undefined;
 let rendererName = "";
 let autosaveEnabled = true;
 let defaultLineEnding: DefaultLineEnding = "system";
+let openExportedFile = false;
+let restorePreviousSession = true;
 let spellcheckEnabled = true;
 let isDevelopment = false;
 let isQuitting = false;
@@ -263,6 +267,8 @@ async function updateStoredAppSettings(
   await writeAppSettings(getAppSettingsPath(), nextSettings);
   autosaveEnabled = nextSettings.autosaveEnabled;
   defaultLineEnding = nextSettings.defaultLineEnding;
+  openExportedFile = nextSettings.openExportedFile;
+  restorePreviousSession = nextSettings.restorePreviousSession;
   spellcheckEnabled = nextSettings.spellcheckEnabled;
 
   if (!autosaveEnabled) {
@@ -282,6 +288,11 @@ async function updateStoredAppSettings(
   return nextSettings;
 }
 
+async function resetStoredAppSettings(): Promise<AppSettings> {
+  await writeAppSettings(getAppSettingsPath(), defaultAppSettings);
+  return updateStoredAppSettings(defaultAppSettings);
+}
+
 function getAppSettingsUpdate(settings: unknown): Partial<AppSettings> {
   if (!isRecord(settings)) {
     return {};
@@ -293,6 +304,12 @@ function getAppSettingsUpdate(settings: unknown): Partial<AppSettings> {
       : {}),
     ...(typeof settings.spellcheckEnabled === "boolean"
       ? { spellcheckEnabled: settings.spellcheckEnabled }
+      : {}),
+    ...(typeof settings.openExportedFile === "boolean"
+      ? { openExportedFile: settings.openExportedFile }
+      : {}),
+    ...(typeof settings.restorePreviousSession === "boolean"
+      ? { restorePreviousSession: settings.restorePreviousSession }
       : {}),
     ...(isEditorWidthPreference(settings.richEditorWidth)
       ? { richEditorWidth: settings.richEditorWidth }
@@ -390,6 +407,7 @@ function createWindowDependencies(
     fileSystem,
     getAutosaveEnabled: () => autosaveEnabled,
     getDefaultLineEnding: () => defaultLineEnding,
+    getOpenExportedFile: () => openExportedFile,
     isDevelopment,
     onMenuStateChange: refreshApplicationMenu,
     onPersistSessionState: persistSessionStateSoon,
@@ -471,6 +489,11 @@ function createWindow(): DesktopWindowSession {
 }
 
 async function restorePersistedSessionState(): Promise<void> {
+  if (!restorePreviousSession) {
+    createWindow();
+    return;
+  }
+
   const persistedState = await readPersistedSessionState(getSessionStatePath());
 
   if (!persistedState || persistedState.windows.length === 0) {
@@ -555,11 +578,24 @@ function registerDesktopIpcHandlers(): void {
       const settings = await readAppSettings(getAppSettingsPath());
       autosaveEnabled = settings.autosaveEnabled;
       defaultLineEnding = settings.defaultLineEnding;
+      openExportedFile = settings.openExportedFile;
+      restorePreviousSession = settings.restorePreviousSession;
       spellcheckEnabled = settings.spellcheckEnabled;
       applySpellcheckEnabled(spellcheckEnabled);
 
       return settings;
     },
+    openAppDataFolder: async () => {
+      await shell.openPath(app.getPath("userData"));
+    },
+    openSettingsFile: async () => {
+      await writeAppSettings(
+        getAppSettingsPath(),
+        await readAppSettings(getAppSettingsPath())
+      );
+      await shell.openPath(getAppSettingsPath());
+    },
+    resetSettings: async () => resetStoredAppSettings(),
     updateSettings: async (_event, settings) => {
       return updateStoredAppSettings(getAppSettingsUpdate(settings));
     }
@@ -608,6 +644,8 @@ export function startDesktopMainProcess(
     const settings = await readAppSettings(getAppSettingsPath());
     autosaveEnabled = settings.autosaveEnabled;
     defaultLineEnding = settings.defaultLineEnding;
+    openExportedFile = settings.openExportedFile;
+    restorePreviousSession = settings.restorePreviousSession;
     spellcheckEnabled = settings.spellcheckEnabled;
     applySpellcheckEnabled(spellcheckEnabled);
     Menu.setApplicationMenu(getApplicationMenu());

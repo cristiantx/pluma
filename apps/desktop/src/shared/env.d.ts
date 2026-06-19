@@ -13,6 +13,8 @@ declare global {
       closeTab(tabId: string): Promise<void>;
       convertLineEndings(target: LineEndingConversionTarget): Promise<void>;
       getSettings(): Promise<AppSettings>;
+      openAppDataFolder(): Promise<void>;
+      openSettingsFile(): Promise<void>;
       openWorkspaceFile(path: string): Promise<void>;
       searchWorkspace(
         query: string,
@@ -20,6 +22,7 @@ declare global {
         options: WorkspaceSearchOptions
       ): Promise<WorkspaceSearchMatch[]>;
       runCommand(command: CommandName): Promise<void>;
+      resetSettings(): Promise<AppSettings>;
       setActiveDocument(documentId: string): Promise<void>;
       setEditorMode(mode: EditorViewMode): Promise<void>;
       showTabContextMenu(tabId: string): Promise<void>;

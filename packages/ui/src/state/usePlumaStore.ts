@@ -108,6 +108,14 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     });
   },
 
+  openAppDataFolder: () => {
+    get().commands.commandHandlers.openAppDataFolder();
+  },
+
+  openSettingsFile: () => {
+    get().commands.commandHandlers.openSettingsFile();
+  },
+
   openWorkspaceSearch: (folderPath) => {
     set((state) => ({
       workspace: {
@@ -121,6 +129,11 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
 
   reloadFromDisk: () => {
     get().commands.commandHandlers.reloadFromDisk();
+  },
+
+  resetSettings: async () => {
+    const nextSettings = await get().commands.commandHandlers.resetSettings();
+    get().hydrateSettings(nextSettings);
   },
 
   revealWorkspaceFile: (path) => {

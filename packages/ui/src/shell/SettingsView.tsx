@@ -20,6 +20,9 @@ export function SettingsView() {
     (state) => state.document.activeDocument
   );
   const convertLineEndings = usePlumaStore((state) => state.convertLineEndings);
+  const openAppDataFolder = usePlumaStore((state) => state.openAppDataFolder);
+  const openSettingsFile = usePlumaStore((state) => state.openSettingsFile);
+  const resetSettings = usePlumaStore((state) => state.resetSettings);
   const updateSettings = usePlumaStore((state) => state.updateSettings);
 
   const updateBooleanSetting =
@@ -255,6 +258,30 @@ export function SettingsView() {
               type="checkbox"
             />
           </label>
+          <label className="settings-row settings-row-checkbox">
+            <span>
+              <strong>Restore previous session</strong>
+              <small>
+                Reopen prior windows, tabs, and workspace on launch.
+              </small>
+            </span>
+            <input
+              checked={settings.restorePreviousSession}
+              onChange={updateBooleanSetting("restorePreviousSession")}
+              type="checkbox"
+            />
+          </label>
+          <label className="settings-row settings-row-checkbox">
+            <span>
+              <strong>Open exported file</strong>
+              <small>Open HTML or PDF exports after they are written.</small>
+            </span>
+            <input
+              checked={settings.openExportedFile}
+              onChange={updateBooleanSetting("openExportedFile")}
+              type="checkbox"
+            />
+          </label>
           <label className="settings-row">
             <span>
               <strong>Default line ending</strong>
@@ -271,6 +298,72 @@ export function SettingsView() {
               <option value="crlf">CRLF</option>
             </select>
           </label>
+          <div className="settings-row">
+            <span>
+              <strong>Current document line endings</strong>
+              <small>
+                {activeDocument
+                  ? formatLineEndingLabel(activeDocument.lineEnding)
+                  : "No active document"}
+              </small>
+            </span>
+            <div className="settings-inline-actions">
+              <button
+                disabled={!activeDocument}
+                onClick={() => convertLineEndings("lf")}
+                type="button"
+              >
+                Convert To LF
+              </button>
+              <button
+                disabled={!activeDocument}
+                onClick={() => convertLineEndings("crlf")}
+                type="button"
+              >
+                Convert To CRLF
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="settings-section"
+          aria-labelledby="settings-advanced"
+        >
+          <h2 id="settings-advanced">Advanced</h2>
+          <div className="settings-row">
+            <span>
+              <strong>Settings file</strong>
+              <small>Open the persisted JSON settings file.</small>
+            </span>
+            <div className="settings-inline-actions">
+              <button onClick={openSettingsFile} type="button">
+                Open Settings File
+              </button>
+            </div>
+          </div>
+          <div className="settings-row">
+            <span>
+              <strong>App data</strong>
+              <small>Open Pluma's application support folder.</small>
+            </span>
+            <div className="settings-inline-actions">
+              <button onClick={openAppDataFolder} type="button">
+                Open App Data
+              </button>
+            </div>
+          </div>
+          <div className="settings-row">
+            <span>
+              <strong>Reset settings</strong>
+              <small>Restore Pluma's default settings.</small>
+            </span>
+            <div className="settings-inline-actions">
+              <button onClick={() => void resetSettings()} type="button">
+                Reset Settings
+              </button>
+            </div>
+          </div>
         </section>
       </div>
     </section>

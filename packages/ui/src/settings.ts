@@ -15,8 +15,10 @@ export type SourceEditorColorScheme =
 export type AppSettings = {
   autosaveEnabled: boolean;
   defaultLineEnding: DefaultLineEnding;
+  openExportedFile: boolean;
   richEditorDensity: RichEditorDensity;
   richEditorWidth: EditorWidthPreference;
+  restorePreviousSession: boolean;
   sourceEditorWidth: EditorWidthPreference;
   sourceEditorFontFamily: SourceEditorFontFamily;
   sourceEditorColorScheme: SourceEditorColorScheme;
@@ -32,8 +34,10 @@ export type AppSettings = {
 export const defaultAppSettings: AppSettings = {
   autosaveEnabled: true,
   defaultLineEnding: "system",
+  openExportedFile: false,
   richEditorDensity: "comfortable",
   richEditorWidth: "default",
+  restorePreviousSession: true,
   sourceEditorFontFamily: "mono",
   sourceEditorColorScheme: "follow-theme",
   sourceEditorFontSize: 14,

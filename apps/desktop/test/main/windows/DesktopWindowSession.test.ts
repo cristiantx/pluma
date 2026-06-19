@@ -73,6 +73,7 @@ function createSession(files: Record<string, string>) {
     fileSystem: createFileSystem(files),
     getAutosaveEnabled: () => false,
     getDefaultLineEnding: () => "lf",
+    getOpenExportedFile: () => false,
     isDevelopment: false,
     onMenuStateChange: vi.fn(),
     onPersistSessionState: vi.fn(),

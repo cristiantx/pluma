@@ -1,4 +1,4 @@
-import { dialog, type BrowserWindow } from "electron";
+import { dialog, shell, type BrowserWindow } from "electron";
 import { rename, stat } from "node:fs/promises";
 import path from "node:path";
 
@@ -77,6 +77,7 @@ export type DesktopWindowSessionDependencies = {
   fileSystem: FileSystemAdapter<DesktopFileLocation>;
   getAutosaveEnabled: () => boolean;
   getDefaultLineEnding: () => "crlf" | "lf" | "system";
+  getOpenExportedFile: () => boolean;
   isDevelopment: boolean;
   onMenuStateChange: () => void;
   onPersistSessionState: () => void;
@@ -712,7 +713,7 @@ export class DesktopWindowSession {
         parentWindow: this.window
       });
 
-      this.handleExportResult(result, format);
+      await this.handleExportResult(result, format);
     } catch (error) {
       this.emitToRenderer({
         type: "status",
@@ -724,13 +725,17 @@ export class DesktopWindowSession {
     }
   }
 
-  private handleExportResult(
+  private async handleExportResult(
     result: ExportDocumentResult,
     format: ExportDocumentFormat
-  ): void {
+  ): Promise<void> {
     if (result.kind === "cancelled") {
       this.emitToRenderer({ type: "status", message: "Export cancelled." });
       return;
+    }
+
+    if (this.dependencies.getOpenExportedFile()) {
+      await shell.openPath(result.filePath);
     }
 
     this.emitToRenderer({
