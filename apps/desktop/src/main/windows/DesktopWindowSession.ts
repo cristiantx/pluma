@@ -18,7 +18,6 @@ import {
   type DesktopFileLocation,
   type DocumentCapability,
   type DocumentSession,
-  type FileMetadata,
   type FileSystemAdapter
 } from "@pluma/core";
 
@@ -62,6 +61,11 @@ import {
   type ExportDocumentResult
 } from "../export/desktopExport";
 import type { ExportDocumentFormat } from "../export/exportDocumentHtml";
+import { markDocumentAfterSuccessfulWrite } from "./documentSaveState";
+import {
+  getActivePersistedDocument,
+  getPersistedDocumentReference
+} from "./persistedDocumentRefs";
 
 export type DesktopWindowSessionDependencies = {
   appDocumentsPath: string;
@@ -209,6 +213,7 @@ export class DesktopWindowSession {
       workspaceEntries,
       workspacePath: persistedState.workspacePath
     });
+    this.clampEditorModeForActiveDocument({ emit: false });
     this.updateActiveFileWatcher();
     this.updateWorkspaceWatcher();
   }
@@ -332,12 +337,26 @@ export class DesktopWindowSession {
     }
 
     this.updateShellData({ activeDocumentId: documentId });
+    this.clampEditorModeForActiveDocument();
     this.updateActiveFileWatcher();
     this.persistSessionStateSoon();
     this.emitShellSnapshot();
   }
 
-  async openWorkspaceFile(filePath: string): Promise<void> {
+  async openWorkspaceFile(filePath: unknown): Promise<void> {
+    if (
+      typeof filePath !== "string" ||
+      !this.shellData.workspacePath ||
+      !isMarkdownFilePath(filePath) ||
+      !isPathInsideDirectory(this.shellData.workspacePath, filePath)
+    ) {
+      this.emitToRenderer({
+        type: "status",
+        message: "Workspace file open was ignored."
+      });
+      return;
+    }
+
     await this.openFilePath(filePath, {
       workspacePath: this.shellData.workspacePath
     });
@@ -578,6 +597,17 @@ export class DesktopWindowSession {
     );
   }
 
+  private clampEditorModeForActiveDocument(
+    options: { emit?: boolean } = {}
+  ): void {
+    const previousMode = this.currentMode;
+    this.currentMode = this.getAllowedEditorMode(this.currentMode);
+
+    if (options.emit !== false && previousMode !== this.currentMode) {
+      this.emitToRenderer({ type: "mode-changed", mode: this.currentMode });
+    }
+  }
+
   private getDefaultNewFilePath(): string {
     return path.join(
       this.shellData.workspacePath ?? this.dependencies.appDocumentsPath,
@@ -712,6 +742,7 @@ export class DesktopWindowSession {
       activeDocumentId: nextSession.id,
       documents: [nextSession, ...remainingDocuments]
     });
+    this.clampEditorModeForActiveDocument();
     this.updateActiveFileWatcher();
   }
 
@@ -728,6 +759,7 @@ export class DesktopWindowSession {
         document.id === documentId ? nextSession : document
       )
     });
+    this.clampEditorModeForActiveDocument();
     this.updateActiveFileWatcher();
   }
 
@@ -755,6 +787,7 @@ export class DesktopWindowSession {
           ? "All documents closed."
           : "Closed document tab."
     });
+    this.clampEditorModeForActiveDocument();
     this.updateActiveFileWatcher();
   }
 
@@ -787,6 +820,7 @@ export class DesktopWindowSession {
       documents: nextDocuments,
       status
     });
+    this.clampEditorModeForActiveDocument();
     this.updateActiveFileWatcher();
   }
 
@@ -1008,6 +1042,7 @@ export class DesktopWindowSession {
         activeDocumentId: openDocument.id,
         status: `Switched to ${path.basename(filePath)}.`
       });
+      this.clampEditorModeForActiveDocument();
       this.updateActiveFileWatcher();
       this.persistSessionStateSoon();
       this.emitShellSnapshot();
@@ -1035,7 +1070,6 @@ export class DesktopWindowSession {
         : null);
 
     this.mergeDocumentSession(session);
-    this.currentMode = this.getAllowedEditorMode(this.currentMode);
     this.updateShellData({
       status: `Opened ${path.basename(filePath)}.`,
       workspaceEntries: workspacePath ? this.shellData.workspaceEntries : [],
@@ -1060,6 +1094,7 @@ export class DesktopWindowSession {
       workspaceEntries,
       workspacePath: directoryPath
     });
+    this.clampEditorModeForActiveDocument();
     this.autosaveScheduler.clearAll();
     this.updateActiveFileWatcher();
     this.updateWorkspaceWatcher();
@@ -1335,6 +1370,7 @@ export class DesktopWindowSession {
       ),
       status: `Renamed ${path.basename(document.location.path)} to ${path.basename(targetPath)}.`
     });
+    this.clampEditorModeForActiveDocument();
     this.updateActiveFileWatcher();
     await this.refreshWorkspaceEntries();
     this.persistSessionStateSoon();
@@ -1541,6 +1577,7 @@ export class DesktopWindowSession {
       ),
       status: `Reloaded ${path.basename(activeDocument.location.path)} from disk.`
     });
+    this.clampEditorModeForActiveDocument();
     this.emitShellSnapshot();
   }
 
@@ -1684,85 +1721,6 @@ export class DesktopWindowSession {
 
     return this.workspaceFileActions;
   }
-}
-
-function markDocumentAfterSuccessfulWrite(
-  document: DocumentSession,
-  savedText: string,
-  metadata: FileMetadata,
-  originalText: string
-): DocumentSession {
-  if (document.rawText === originalText || document.rawText === savedText) {
-    return markDocumentSessionSaved(
-      {
-        ...document,
-        rawText: savedText
-      },
-      metadata
-    );
-  }
-
-  return {
-    ...document,
-    lastSavedMetadata: metadata,
-    lastSavedText: savedText,
-    saveState: document.rawText === savedText ? "idle" : "dirty"
-  };
-}
-
-function getPersistedDocumentReference(
-  document: DocumentSession
-): PersistedDocumentReference | null {
-  if (document.location.kind === "app-draft") {
-    return {
-      draftId: document.location.draftId,
-      kind: "app-draft",
-      name: document.location.name
-    };
-  }
-
-  if (document.location.kind === "desktop-path") {
-    return {
-      kind: "desktop-path",
-      path: document.location.path
-    };
-  }
-
-  return null;
-}
-
-function getActivePersistedDocument(
-  documents: DocumentSession[],
-  persistedState: PersistedWindowSessionState
-): DocumentSession | undefined {
-  const activeDocumentRef = persistedState.activeDocumentRef;
-
-  if (activeDocumentRef) {
-    const activeDocument = documents.find(
-      (document) =>
-        document.id === createPersistedDocumentSessionId(activeDocumentRef)
-    );
-
-    if (activeDocument) {
-      return activeDocument;
-    }
-  }
-
-  return (
-    documents.find(
-      (document) =>
-        document.location.kind === "desktop-path" &&
-        document.location.path === persistedState.activeDocumentPath
-    ) ?? documents[0]
-  );
-}
-
-function createPersistedDocumentSessionId(
-  documentRef: PersistedDocumentReference
-): string {
-  return documentRef.kind === "app-draft"
-    ? `draft:${documentRef.draftId}`
-    : `desktop:${documentRef.path}`;
 }
 
 function isWorkspaceSearchOptions(

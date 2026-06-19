@@ -3,88 +3,11 @@ import { create } from "zustand";
 import { updateDocumentSessionText } from "@pluma/core";
 
 import { resolveThemePreference } from "../theme.js";
-import type {
-  PlumaCommandHandlers,
-  PlumaStoreInitializer,
-  PlumaShellSnapshot,
-  PlumaStore
-} from "./plumaStoreTypes.js";
+import { hydratePlumaShellSnapshot } from "./plumaStoreHydration.js";
+import { initialPlumaStoreState } from "./plumaStoreInitialState.js";
+import type { PlumaShellSnapshot, PlumaStore } from "./plumaStoreTypes.js";
 
-const noop = () => {};
-
-const defaultCommandHandlers: PlumaCommandHandlers = {
-  closeTab: noop,
-  compareConflict: noop,
-  keepEditing: noop,
-  newFile: noop,
-  openDevTools: noop,
-  openFile: noop,
-  openFolder: noop,
-  openWorkspaceFile: noop,
-  searchWorkspace: () => Promise.resolve([]),
-  reloadFromDisk: noop,
-  setActiveTabId: noop,
-  setEditorViewMode: noop,
-  showTabContextMenu: noop,
-  showWorkspaceContextMenu: noop,
-  updateDocumentText: noop,
-  updatePaneSizes: noop,
-  toggleMode: noop
-};
-
-export const initialPlumaStoreState: PlumaStoreInitializer = {
-  commands: {
-    commandHandlers: defaultCommandHandlers
-  },
-  document: {
-    activeDocument: null,
-    documents: []
-  },
-  layout: {
-    editorViewMode: "source",
-    isSidebarVisible: true,
-    paneSizes: [],
-    splitPaneSizesByDocumentId: {}
-  },
-  status: {
-    statusMetrics: []
-  },
-  tabs: {
-    activeTabId: "",
-    tabs: []
-  },
-  theme: {
-    preference: "system",
-    resolvedTheme: "light",
-    systemPrefersDark: false
-  },
-  writing: {
-    spellcheckEnabled: true
-  },
-  workspace: {
-    explorerNodes: [],
-    hasWorkspace: false,
-    isBridgeAvailable: false,
-    isDevelopment: false,
-    revealRequestId: 0,
-    revealWorkspacePath: null,
-    collapsedSearchResultFiles: [],
-    searchFolderPath: null,
-    searchHasSearched: false,
-    searchOptions: {
-      caseSensitive: false,
-      regexp: false,
-      wholeWord: false
-    },
-    searchQuery: "",
-    searchRevealRequest: null,
-    searchResults: [],
-    searchRequestId: 0,
-    sidebarView: "workspace",
-    workspaceLabel: "No workspace open",
-    workspacePath: "~/Documents/Pluma Docs"
-  }
-};
+export { initialPlumaStoreState } from "./plumaStoreInitialState.js";
 
 export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   ...initialPlumaStoreState,
@@ -99,62 +22,7 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   },
 
   hydrateShellSnapshot: (snapshot: PlumaShellSnapshot) => {
-    set((state) => {
-      const isNewWorkspace =
-        snapshot.hasWorkspace &&
-        (!state.workspace.hasWorkspace ||
-          state.workspace.workspacePath !== snapshot.workspacePath);
-      const openDocumentIds = new Set(
-        snapshot.documents.map((document) => document.id)
-      );
-      const splitPaneSizesByDocumentId = Object.fromEntries(
-        Object.entries(state.layout.splitPaneSizesByDocumentId).filter(
-          ([documentId]) => openDocumentIds.has(documentId)
-        )
-      );
-
-      return {
-        document: {
-          activeDocument: snapshot.activeDocument,
-          documents: snapshot.documents
-        },
-        layout: {
-          editorViewMode: snapshot.editorViewMode,
-          isSidebarVisible: snapshot.hasWorkspace
-            ? isNewWorkspace || state.layout.isSidebarVisible
-            : false,
-          paneSizes: snapshot.paneSizes,
-          splitPaneSizesByDocumentId
-        },
-        status: {
-          statusMetrics: snapshot.statusMetrics
-        },
-        tabs: {
-          activeTabId: snapshot.activeDocumentId ?? "",
-          tabs: snapshot.tabs
-        },
-        workspace: {
-          explorerNodes: snapshot.explorerNodes,
-          hasWorkspace: snapshot.hasWorkspace,
-          isBridgeAvailable: snapshot.isBridgeAvailable,
-          isDevelopment: snapshot.isDevelopment,
-          revealRequestId: state.workspace.revealRequestId,
-          revealWorkspacePath: state.workspace.revealWorkspacePath,
-          collapsedSearchResultFiles:
-            state.workspace.collapsedSearchResultFiles,
-          searchFolderPath: state.workspace.searchFolderPath,
-          searchHasSearched: state.workspace.searchHasSearched,
-          searchOptions: state.workspace.searchOptions,
-          searchQuery: state.workspace.searchQuery,
-          searchRevealRequest: state.workspace.searchRevealRequest,
-          searchResults: state.workspace.searchResults,
-          searchRequestId: state.workspace.searchRequestId,
-          sidebarView: state.workspace.sidebarView,
-          workspaceLabel: snapshot.workspaceLabel,
-          workspacePath: snapshot.workspacePath
-        }
-      };
-    });
+    set((state) => hydratePlumaShellSnapshot(state, snapshot));
   },
 
   reorderTabs: (tabs) => {

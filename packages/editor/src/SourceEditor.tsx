@@ -273,9 +273,23 @@ function createFoldMarker(isOpen: boolean): HTMLElement {
   const marker = document.createElement("span");
   marker.className = "pluma-fold-marker";
   marker.setAttribute("aria-hidden", "true");
-  marker.innerHTML = isOpen
-    ? '<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>'
-    : '<svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>';
+  marker.appendChild(
+    createFoldMarkerIcon(isOpen ? "m6 9 6 6 6-6" : "m9 18 6-6-6-6")
+  );
 
   return marker;
+}
+
+function createFoldMarkerIcon(pathData: string): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const pathElement = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "path"
+  );
+
+  svg.setAttribute("viewBox", "0 0 24 24");
+  pathElement.setAttribute("d", pathData);
+  svg.appendChild(pathElement);
+
+  return svg;
 }

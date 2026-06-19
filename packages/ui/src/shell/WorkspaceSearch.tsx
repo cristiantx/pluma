@@ -7,10 +7,11 @@ import {
   WholeWord
 } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { FormEvent } from "react";
 
 import { usePlumaStore } from "../state/usePlumaStore.js";
-import type { WorkspaceSearchMatch } from "../state/plumaStoreTypes.js";
+import { HighlightedSearchLine } from "./HighlightedSearchLine.js";
+import { SearchToggle } from "./SearchToggle.js";
 import {
   getWorkspaceSearchSummary,
   groupWorkspaceSearchMatches
@@ -19,6 +20,7 @@ import {
 export const WorkspaceSearch = memo(function WorkspaceSearch() {
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const searchSequenceRef = useRef(0);
   const collapsedSearchResultFiles = usePlumaStore(
     (state) => state.workspace.collapsedSearchResultFiles
@@ -71,11 +73,8 @@ export const WorkspaceSearch = memo(function WorkspaceSearch() {
       return;
     }
 
-    const input = document.querySelector<HTMLInputElement>(
-      ".workspace-search-input"
-    );
-    input?.focus();
-    input?.select();
+    inputRef.current?.focus();
+    inputRef.current?.select();
   }, [searchRequestId]);
 
   const runSearch = useCallback(async () => {
@@ -169,10 +168,12 @@ export const WorkspaceSearch = memo(function WorkspaceSearch() {
           className="workspace-search-input"
           onChange={(event) => setSearchQuery(event.target.value)}
           placeholder="Search Markdown"
+          ref={inputRef}
           type="text"
           value={query}
         />
-        <WorkspaceSearchToggle
+        <SearchToggle
+          className="workspace-search-toggle"
           isPressed={searchOptions.caseSensitive}
           label={
             searchOptions.caseSensitive ? "Case sensitive" : "Case insensitive"
@@ -185,8 +186,9 @@ export const WorkspaceSearch = memo(function WorkspaceSearch() {
           }
         >
           <CaseSensitive aria-hidden="true" />
-        </WorkspaceSearchToggle>
-        <WorkspaceSearchToggle
+        </SearchToggle>
+        <SearchToggle
+          className="workspace-search-toggle"
           isPressed={searchOptions.regexp}
           label="Use regular expression"
           onClick={() =>
@@ -197,8 +199,9 @@ export const WorkspaceSearch = memo(function WorkspaceSearch() {
           }
         >
           <Regex aria-hidden="true" />
-        </WorkspaceSearchToggle>
-        <WorkspaceSearchToggle
+        </SearchToggle>
+        <SearchToggle
+          className="workspace-search-toggle"
           isPressed={searchOptions.wholeWord}
           label="Match whole word"
           onClick={() =>
@@ -209,7 +212,7 @@ export const WorkspaceSearch = memo(function WorkspaceSearch() {
           }
         >
           <WholeWord aria-hidden="true" />
-        </WorkspaceSearchToggle>
+        </SearchToggle>
       </form>
       {error ? <div className="workspace-search-error">{error}</div> : null}
       {results.length > 0 ? (
@@ -267,61 +270,3 @@ export const WorkspaceSearch = memo(function WorkspaceSearch() {
     </section>
   );
 });
-
-type WorkspaceSearchToggleProps = {
-  children: ReactNode;
-  isPressed: boolean;
-  label: string;
-  onClick: () => void;
-};
-
-function WorkspaceSearchToggle({
-  children,
-  isPressed,
-  label,
-  onClick
-}: WorkspaceSearchToggleProps) {
-  return (
-    <button
-      aria-label={label}
-      aria-pressed={isPressed}
-      className="workspace-search-toggle"
-      onClick={onClick}
-      title={label}
-      type="button"
-    >
-      {children}
-    </button>
-  );
-}
-
-function HighlightedSearchLine({ result }: { result: WorkspaceSearchMatch }) {
-  if (
-    !Number.isFinite(result.matchStart) ||
-    !Number.isFinite(result.matchEnd)
-  ) {
-    return (
-      <span className="workspace-search-result-line">
-        <span aria-hidden="true" className="workspace-search-result-ellipsis">
-          ...
-        </span>
-        {result.lineText}
-      </span>
-    );
-  }
-
-  const before = result.lineText.slice(0, result.matchStart);
-  const match = result.lineText.slice(result.matchStart, result.matchEnd);
-  const after = result.lineText.slice(result.matchEnd);
-
-  return (
-    <span className="workspace-search-result-line">
-      <span aria-hidden="true" className="workspace-search-result-ellipsis">
-        ...
-      </span>
-      {before}
-      <mark>{match}</mark>
-      {after}
-    </span>
-  );
-}

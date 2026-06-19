@@ -182,18 +182,13 @@ export function createWorkspaceFileActions(
       targetPath,
       kind
     );
-    const protectedDocuments = openDocuments.filter(
-      shouldProtectDocumentSessionClose
-    );
 
     if (
-      protectedDocuments.length > 0 &&
-      !(await dependencies.confirmDiscardDocumentsSequentially(
-        protectedDocuments
+      !(await confirmProtectedWorkspaceDocuments(
+        openDocuments,
+        "Rename cancelled."
       ))
     ) {
-      dependencies.emitStatus("Rename cancelled.");
-      dependencies.emitShellSnapshot();
       return;
     }
 
@@ -243,9 +238,7 @@ export function createWorkspaceFileActions(
       );
     }
 
-    await dependencies.refreshWorkspaceEntries();
-    dependencies.persistSessionStateSoon();
-    dependencies.emitShellSnapshot();
+    await finalizeWorkspaceMutation();
   }
 
   async function pasteWorkspaceItem(
@@ -292,18 +285,13 @@ export function createWorkspaceFileActions(
           source.path,
           source.kind
         );
-        const protectedDocuments = openDocuments.filter(
-          shouldProtectDocumentSessionClose
-        );
 
         if (
-          protectedDocuments.length > 0 &&
-          !(await dependencies.confirmDiscardDocumentsSequentially(
-            protectedDocuments
+          !(await confirmProtectedWorkspaceDocuments(
+            openDocuments,
+            "Paste cancelled."
           ))
         ) {
-          dependencies.emitStatus("Paste cancelled.");
-          dependencies.emitShellSnapshot();
           return;
         }
 
@@ -331,9 +319,7 @@ export function createWorkspaceFileActions(
       dependencies.selfWritePaths.delete(destinationPath);
     }
 
-    await dependencies.refreshWorkspaceEntries();
-    dependencies.persistSessionStateSoon();
-    dependencies.emitShellSnapshot();
+    await finalizeWorkspaceMutation();
   }
 
   async function moveWorkspaceItemToTrash(
@@ -345,18 +331,13 @@ export function createWorkspaceFileActions(
       targetPath,
       kind
     );
-    const protectedDocuments = openDocuments.filter(
-      shouldProtectDocumentSessionClose
-    );
 
     if (
-      protectedDocuments.length > 0 &&
-      !(await dependencies.confirmDiscardDocumentsSequentially(
-        protectedDocuments
+      !(await confirmProtectedWorkspaceDocuments(
+        openDocuments,
+        "Move to Trash cancelled."
       ))
     ) {
-      dependencies.emitStatus("Move to Trash cancelled.");
-      dependencies.emitShellSnapshot();
       return;
     }
 
@@ -381,6 +362,32 @@ export function createWorkspaceFileActions(
       );
     }
 
+    await finalizeWorkspaceMutation();
+  }
+
+  async function confirmProtectedWorkspaceDocuments(
+    documents: DocumentSession[],
+    cancelledStatus: string
+  ): Promise<boolean> {
+    const protectedDocuments = documents.filter(
+      shouldProtectDocumentSessionClose
+    );
+
+    if (
+      protectedDocuments.length > 0 &&
+      !(await dependencies.confirmDiscardDocumentsSequentially(
+        protectedDocuments
+      ))
+    ) {
+      dependencies.emitStatus(cancelledStatus);
+      dependencies.emitShellSnapshot();
+      return false;
+    }
+
+    return true;
+  }
+
+  async function finalizeWorkspaceMutation(): Promise<void> {
     await dependencies.refreshWorkspaceEntries();
     dependencies.persistSessionStateSoon();
     dependencies.emitShellSnapshot();
