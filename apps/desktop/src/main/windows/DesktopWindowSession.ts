@@ -4,6 +4,8 @@ import path from "node:path";
 
 import {
   createDocumentSession,
+  applyLineEnding,
+  detectLineEnding,
   formatMarkdownText,
   getFileLocationName,
   markDocumentSessionConflict,
@@ -60,6 +62,7 @@ import {
   exportDocument,
   type ExportDocumentResult
 } from "../export/desktopExport";
+import type { AppSettings } from "@pluma/ui";
 import type { ExportDocumentFormat } from "../export/exportDocumentHtml";
 import { markDocumentAfterSuccessfulWrite } from "./documentSaveState";
 import {
@@ -73,6 +76,7 @@ export type DesktopWindowSessionDependencies = {
   draftStorage: AppDraftStorage;
   fileSystem: FileSystemAdapter<DesktopFileLocation>;
   getAutosaveEnabled: () => boolean;
+  getDefaultLineEnding: () => "crlf" | "lf" | "system";
   isDevelopment: boolean;
   onMenuStateChange: () => void;
   onPersistSessionState: () => void;
@@ -274,6 +278,9 @@ export class DesktopWindowSession {
         return;
       case "open-folder":
         await this.openFolderFromDialog();
+        return;
+      case "open-settings":
+        this.emitToRenderer({ type: "open-settings" });
         return;
       case "reload-from-disk":
         await this.reloadActiveDocumentFromDisk();
@@ -519,9 +526,9 @@ export class DesktopWindowSession {
     this.emitToRenderer({ type: "status", message });
   }
 
-  emitSettingsChanged(spellcheckEnabled: boolean): void {
+  emitSettingsChanged(settings: AppSettings): void {
     this.emitToRenderer({
-      spellcheckEnabled,
+      settings,
       type: "settings-changed"
     });
   }
@@ -1117,13 +1124,17 @@ export class DesktopWindowSession {
   }
 
   private async createNewMarkdownFile(): Promise<void> {
-    const rawText = "# Untitled\n";
+    const rawText = applyLineEnding(
+      "# Untitled\n",
+      this.getWritableDefaultLineEnding()
+    );
     const location = await this.dependencies.draftStorage.createDraft(
       this.getNextDraftName(),
       rawText
     );
     const session = createDocumentSession({
       location,
+      lineEnding: detectLineEnding(rawText),
       metadata: null,
       rawText
     });
@@ -1161,7 +1172,7 @@ export class DesktopWindowSession {
       return;
     }
 
-    const textToSave = activeDocument.rawText;
+    const textToSave = this.prepareTextForSave(activeDocument);
     const saveResult = await this.dependencies.fileSystem.writeTextAtomic(
       { kind: "desktop-path", path: result.filePath },
       textToSave
@@ -1224,7 +1235,7 @@ export class DesktopWindowSession {
       return;
     }
 
-    const textToSave = document.rawText;
+    const textToSave = this.prepareTextForSave(document);
     const fileLocation = {
       kind: "desktop-path" as const,
       path: result.filePath
@@ -1433,9 +1444,10 @@ export class DesktopWindowSession {
 
     const shouldFormatRichSave =
       trigger === "manual" && this.currentMode === "rich";
-    const textToSave = shouldFormatRichSave
+    const formattedText = shouldFormatRichSave
       ? (await formatMarkdownText(activeDocument.rawText)).markdown
       : activeDocument.rawText;
+    const textToSave = this.prepareTextForSave(activeDocument, formattedText);
 
     if (shouldFormatRichSave) {
       const serialized = serializeMarkdownSession({
@@ -1581,6 +1593,31 @@ export class DesktopWindowSession {
     this.emitShellSnapshot();
   }
 
+  private prepareTextForSave(
+    document: DocumentSession,
+    text = document.rawText
+  ): string {
+    if (document.lineEnding === "crlf" || document.lineEnding === "lf") {
+      return applyLineEnding(text, document.lineEnding);
+    }
+
+    if (document.lineEnding === "none") {
+      return applyLineEnding(text, this.getWritableDefaultLineEnding());
+    }
+
+    return text;
+  }
+
+  private getWritableDefaultLineEnding(): "crlf" | "lf" {
+    const preference = this.dependencies.getDefaultLineEnding();
+
+    if (preference === "crlf" || preference === "lf") {
+      return preference;
+    }
+
+    return process.platform === "win32" ? "crlf" : "lf";
+  }
+
   private async keepEditingActiveDocument(): Promise<void> {
     const activeDocument = this.getActiveDocument();
 
@@ -1709,6 +1746,7 @@ export class DesktopWindowSession {
       emitStatus: (message) => this.emitToRenderer({ type: "status", message }),
       fileSystem: this.dependencies.fileSystem,
       getDocuments: () => this.shellData.documents,
+      getDefaultLineEnding: () => this.dependencies.getDefaultLineEnding(),
       getMainWindow: () => this.window,
       getWorkspacePath: () => this.shellData.workspacePath,
       openFilePath: (filePath, options) => this.openFilePath(filePath, options),

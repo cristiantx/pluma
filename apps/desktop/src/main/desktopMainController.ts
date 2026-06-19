@@ -9,18 +9,25 @@ import {
 import path from "node:path";
 
 import { DesktopFileSystemAdapter } from "@pluma/core-desktop";
+import {
+  isDefaultLineEnding,
+  isEditorWidthPreference,
+  isRichEditorDensity,
+  isSplitViewOrder,
+  isThemePreference,
+  type AppSettings,
+  type DefaultLineEnding
+} from "@pluma/ui";
 import { downloadChromeExtension } from "electron-devtools-installer/dist/downloadChromeExtension.js";
 import started from "electron-squirrel-startup";
 
 import type { CommandName } from "../shared/shellState";
 import {
   isMeaningfulPersistedWindowState,
-  isThemePreference,
   readAppSettings,
   readPersistedSessionState,
   writeAppSettings,
   writePersistedSessionState,
-  type AppSettings,
   type PersistedWindowSessionState
 } from "./persistence/appPersistence";
 import { createAppDraftStorage } from "./persistence/appDraftStorage";
@@ -46,6 +53,7 @@ let mainBundleDirectory = "";
 let rendererDevServerUrl: string | undefined;
 let rendererName = "";
 let autosaveEnabled = true;
+let defaultLineEnding: DefaultLineEnding = "system";
 let spellcheckEnabled = true;
 let isDevelopment = false;
 let isQuitting = false;
@@ -223,9 +231,9 @@ function applySpellcheckEnabled(enabled: boolean): void {
   }
 }
 
-function emitSpellcheckSettingChanged(enabled: boolean): void {
+function emitSettingsChanged(settings: AppSettings): void {
   for (const session of sessions.values()) {
-    session.emitSettingsChanged(enabled);
+    session.emitSettingsChanged(settings);
   }
 }
 
@@ -251,6 +259,7 @@ async function updateStoredAppSettings(
 
   await writeAppSettings(getAppSettingsPath(), nextSettings);
   autosaveEnabled = nextSettings.autosaveEnabled;
+  defaultLineEnding = nextSettings.defaultLineEnding;
   spellcheckEnabled = nextSettings.spellcheckEnabled;
 
   if (!autosaveEnabled) {
@@ -261,8 +270,9 @@ async function updateStoredAppSettings(
 
   if (currentSettings.spellcheckEnabled !== nextSettings.spellcheckEnabled) {
     applySpellcheckEnabled(spellcheckEnabled);
-    emitSpellcheckSettingChanged(spellcheckEnabled);
   }
+
+  emitSettingsChanged(nextSettings);
 
   Menu.setApplicationMenu(getApplicationMenu());
 
@@ -281,7 +291,23 @@ function getAppSettingsUpdate(settings: unknown): Partial<AppSettings> {
     ...(typeof settings.spellcheckEnabled === "boolean"
       ? { spellcheckEnabled: settings.spellcheckEnabled }
       : {}),
-    ...(isThemePreference(settings.themePreference)
+    ...(isEditorWidthPreference(settings.richEditorWidth)
+      ? { richEditorWidth: settings.richEditorWidth }
+      : {}),
+    ...(isEditorWidthPreference(settings.sourceEditorWidth)
+      ? { sourceEditorWidth: settings.sourceEditorWidth }
+      : {}),
+    ...(isRichEditorDensity(settings.richEditorDensity)
+      ? { richEditorDensity: settings.richEditorDensity }
+      : {}),
+    ...(isSplitViewOrder(settings.splitViewOrder)
+      ? { splitViewOrder: settings.splitViewOrder }
+      : {}),
+    ...(isDefaultLineEnding(settings.defaultLineEnding)
+      ? { defaultLineEnding: settings.defaultLineEnding }
+      : {}),
+    ...(typeof settings.themePreference === "string" &&
+    isThemePreference(settings.themePreference)
       ? { themePreference: settings.themePreference }
       : {})
   };
@@ -332,6 +358,7 @@ function createWindowDependencies(
     autosaveDelayMs,
     fileSystem,
     getAutosaveEnabled: () => autosaveEnabled,
+    getDefaultLineEnding: () => defaultLineEnding,
     isDevelopment,
     onMenuStateChange: refreshApplicationMenu,
     onPersistSessionState: persistSessionStateSoon,
@@ -493,6 +520,7 @@ function registerDesktopIpcHandlers(): void {
     getSettings: async () => {
       const settings = await readAppSettings(getAppSettingsPath());
       autosaveEnabled = settings.autosaveEnabled;
+      defaultLineEnding = settings.defaultLineEnding;
       spellcheckEnabled = settings.spellcheckEnabled;
       applySpellcheckEnabled(spellcheckEnabled);
 
@@ -545,6 +573,7 @@ export function startDesktopMainProcess(
     await installDevelopmentExtensions();
     const settings = await readAppSettings(getAppSettingsPath());
     autosaveEnabled = settings.autosaveEnabled;
+    defaultLineEnding = settings.defaultLineEnding;
     spellcheckEnabled = settings.spellcheckEnabled;
     applySpellcheckEnabled(spellcheckEnabled);
     Menu.setApplicationMenu(getApplicationMenu());

@@ -1,9 +1,19 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { ThemePreference } from "@pluma/ui";
+import {
+  defaultAppSettings,
+  isDefaultLineEnding,
+  isEditorWidthPreference,
+  isRichEditorDensity,
+  isSplitViewOrder,
+  isThemePreference,
+  type AppSettings
+} from "@pluma/ui";
 
 import type { EditorViewMode } from "../../shared/shellState";
+
+export { defaultAppSettings };
 
 export type PersistedDocumentReference =
   | {
@@ -33,24 +43,8 @@ export type PersistedMultiWindowSessionState = {
   windows: PersistedWindowSessionState[];
 };
 
-export type AppSettings = {
-  autosaveEnabled: boolean;
-  spellcheckEnabled: boolean;
-  themePreference: ThemePreference;
-};
-
-export const defaultAppSettings: AppSettings = {
-  autosaveEnabled: true,
-  spellcheckEnabled: true,
-  themePreference: "system"
-};
-
 export function isEditorViewMode(value: unknown): value is EditorViewMode {
   return value === "source" || value === "rich" || value === "split";
-}
-
-export function isThemePreference(value: unknown): value is ThemePreference {
-  return value === "system" || value === "light" || value === "dark";
 }
 
 export async function readAppSettings(filePath: string): Promise<AppSettings> {
@@ -172,6 +166,17 @@ function isAppSettings(value: unknown): value is AppSettings {
       typeof candidate.autosaveEnabled === "boolean") &&
     (candidate.spellcheckEnabled === undefined ||
       typeof candidate.spellcheckEnabled === "boolean") &&
+    (candidate.richEditorWidth === undefined ||
+      isEditorWidthPreference(candidate.richEditorWidth)) &&
+    (candidate.sourceEditorWidth === undefined ||
+      isEditorWidthPreference(candidate.sourceEditorWidth)) &&
+    (candidate.richEditorDensity === undefined ||
+      isRichEditorDensity(candidate.richEditorDensity)) &&
+    (candidate.splitViewOrder === undefined ||
+      isSplitViewOrder(candidate.splitViewOrder)) &&
+    (candidate.defaultLineEnding === undefined ||
+      isDefaultLineEnding(candidate.defaultLineEnding)) &&
+    typeof candidate.themePreference === "string" &&
     isThemePreference(candidate.themePreference)
   );
 }

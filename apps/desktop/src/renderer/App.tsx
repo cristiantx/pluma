@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import {
-  PlumaShell,
-  initialPlumaStoreState,
-  usePlumaStore
-} from "@pluma/ui";
+import { PlumaShell, initialPlumaStoreState, usePlumaStore } from "@pluma/ui";
 import { initialShellState, reduceShellEvent } from "../shared/shellState";
 import { getShellSnapshot } from "./shellView";
 import { createPlumaCommandHandlers } from "./plumaCommandHandlers";
@@ -20,13 +16,10 @@ export function App() {
     (state) => state.hydrateShellSnapshot
   );
   const setCommandHandlers = usePlumaStore((state) => state.setCommandHandlers);
+  const hydrateSettings = usePlumaStore((state) => state.hydrateSettings);
   const setSystemPrefersDark = usePlumaStore(
     (state) => state.setSystemPrefersDark
   );
-  const setSpellcheckEnabled = usePlumaStore(
-    (state) => state.setSpellcheckEnabled
-  );
-  const setThemePreference = usePlumaStore((state) => state.setThemePreference);
 
   const schedulePaneSizesSave = useCallback((paneSizes: number[]) => {
     if (!window.pluma) {
@@ -85,13 +78,17 @@ export function App() {
         usePlumaStore.getState().openWorkspaceSearch(event.path);
       }
 
+      if (event.type === "open-settings") {
+        usePlumaStore.getState().openSettingsTab();
+      }
+
       if (event.type === "settings-changed") {
-        setSpellcheckEnabled(event.spellcheckEnabled);
+        hydrateSettings(event.settings);
       }
 
       setShellState((current) => reduceShellEvent(current, event));
     });
-  }, [schedulePaneSizesSave, setCommandHandlers, setSpellcheckEnabled]);
+  }, [hydrateSettings, schedulePaneSizesSave, setCommandHandlers]);
 
   useEffect(() => {
     return () => {
@@ -129,8 +126,7 @@ export function App() {
         return;
       }
 
-      setSpellcheckEnabled(settings.spellcheckEnabled);
-      setThemePreference(settings.themePreference);
+      hydrateSettings(settings);
       lastPersistedThemePreference.current = settings.themePreference;
       setSettingsLoaded(true);
     });
@@ -138,7 +134,7 @@ export function App() {
     return () => {
       isActive = false;
     };
-  }, [setSpellcheckEnabled, setThemePreference]);
+  }, [hydrateSettings]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = resolvedTheme;

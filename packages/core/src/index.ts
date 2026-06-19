@@ -5,6 +5,11 @@ export type {
   DocumentSaveState,
   DocumentSession
 } from "./documentSession.js";
+export type {
+  DefaultLineEnding,
+  LineEnding,
+  WritableLineEnding
+} from "./lineEndings.js";
 export {
   createDocumentSession,
   getDocumentSessionId,
@@ -16,6 +21,12 @@ export {
   shouldProtectDocumentSessionClose,
   updateDocumentSessionText
 } from "./documentSession.js";
+export {
+  applyLineEnding,
+  detectLineEnding,
+  formatLineEndingLabel,
+  resolveDefaultLineEnding
+} from "./lineEndings.js";
 export { resolveFileLocationReference } from "./fileLocation.js";
 export type {
   FileMetadata,

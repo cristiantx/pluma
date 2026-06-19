@@ -1,14 +1,14 @@
 import { useSortable } from "@dnd-kit/react/sortable";
-import { FileText, X } from "lucide-react";
+import { FileText, Settings, X } from "lucide-react";
 
-import type { EditorTab } from "../adapters/tabModel.js";
+import type { PlumaTab } from "../adapters/tabModel.js";
 
 type TabButtonProps = {
   activeTabId: string;
   onActiveTabChange: (tabId: string) => void;
   onContextMenu: (tabId: string) => void;
   onTabClose: (tabId: string) => void;
-  tab: EditorTab;
+  tab: PlumaTab;
   tabIndex: number;
 };
 
@@ -25,6 +25,7 @@ export function TabButton({
     index: tabIndex
   });
   const isActive = tab.id === activeTabId;
+  const TabIcon = tab.kind === "settings" ? Settings : FileText;
 
   return (
     <div
@@ -47,16 +48,20 @@ export function TabButton({
         onContextMenu={(event) => {
           event.preventDefault();
           onActiveTabChange(tab.id);
-          onContextMenu(tab.id);
+          if (tab.kind !== "settings") {
+            onContextMenu(tab.id);
+          }
         }}
         ref={sortable.handleRef}
         role="tab"
         type="button"
       >
-        <FileText className="tree-icon" aria-hidden="true" />
+        <TabIcon className="tree-icon" aria-hidden="true" />
         <span className="tab-label">
           <span className="tab-title">{tab.title}</span>
-          {tab.isDirty ? <span className="tab-dirty-indicator">•</span> : null}
+          {tab.kind !== "settings" && tab.isDirty ? (
+            <span className="tab-dirty-indicator">•</span>
+          ) : null}
         </span>
       </button>
       <span

@@ -5,6 +5,7 @@ import {
   Columns2,
   Folder,
   PanelLeft,
+  Settings,
   Moon,
   Sun
 } from "lucide-react";
@@ -31,6 +32,7 @@ export const TitleBar = memo(function TitleBar() {
   const editorViewMode = usePlumaStore((state) => state.layout.editorViewMode);
   const setEditorViewMode = usePlumaStore((state) => state.setEditorViewMode);
   const toggleTheme = usePlumaStore((state) => state.toggleTheme);
+  const openSettingsTab = usePlumaStore((state) => state.openSettingsTab);
   const toggleSidebar = usePlumaStore((state) => state.toggleSidebar);
   const ThemeToggleIcon = resolvedTheme === "dark" ? Sun : Moon;
 
@@ -62,6 +64,11 @@ export const TitleBar = memo(function TitleBar() {
         {!isBridgeAvailable ? (
           <span className="bridge-warning">Offline</span>
         ) : null}
+        <TitleBarButton
+          aria-label="Open settings"
+          icon={Settings}
+          onClick={openSettingsTab}
+        />
         <TitleBarButton
           aria-label="Toggle theme"
           icon={ThemeToggleIcon}

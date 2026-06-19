@@ -1,5 +1,6 @@
 import type { FileLocation } from "./index.js";
 import type { FileMetadata } from "./fileSystemAdapter.js";
+import { detectLineEnding, type LineEnding } from "./lineEndings.js";
 
 export type DocumentCapability = "rich-safe" | "source-only" | "unknown";
 export type DocumentMode = "rich" | "source";
@@ -16,6 +17,7 @@ export type DocumentSession = {
   id: string;
   lastSavedMetadata: FileMetadata | null;
   lastSavedText: string;
+  lineEnding: LineEnding;
   location: FileLocation;
   mode: DocumentMode;
   rawText: string;
@@ -24,6 +26,7 @@ export type DocumentSession = {
 
 export type CreateDocumentSessionInput = {
   capability?: DocumentCapability;
+  lineEnding?: LineEnding;
   location: FileLocation;
   metadata: FileMetadata | null;
   mode?: DocumentMode;
@@ -38,6 +41,7 @@ export function createDocumentSession(
     id: getDocumentSessionId(input.location),
     lastSavedMetadata: input.metadata,
     lastSavedText: input.rawText,
+    lineEnding: input.lineEnding ?? detectLineEnding(input.rawText),
     location: input.location,
     mode: input.mode ?? "source",
     rawText: input.rawText,

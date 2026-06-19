@@ -1,13 +1,7 @@
 import type { CommandName, RendererEvent } from "./shellState";
 import type { WorkspaceSearchMatch } from "./shellState";
 import type { WorkspaceSearchOptions } from "./shellState";
-import type { EditorViewMode, ThemePreference } from "@pluma/ui";
-
-type AppSettings = {
-  autosaveEnabled: boolean;
-  spellcheckEnabled: boolean;
-  themePreference: ThemePreference;
-};
+import type { AppSettings, EditorViewMode } from "@pluma/ui";
 
 declare global {
   interface Window {

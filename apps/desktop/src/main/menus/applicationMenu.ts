@@ -47,6 +47,11 @@ export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
           accelerator: "CmdOrCtrl+Shift+O",
           click: () => options.onCommand("open-folder")
         },
+        {
+          label: "Settings...",
+          accelerator: "CmdOrCtrl+,",
+          click: () => options.onCommand("open-settings")
+        },
         { type: "separator" },
         {
           label: "Save",

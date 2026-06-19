@@ -1,4 +1,5 @@
 import {
+  detectLineEnding,
   markDocumentSessionSaved,
   type DocumentSession,
   type FileMetadata
@@ -14,6 +15,7 @@ export function markDocumentAfterSuccessfulWrite(
     return markDocumentSessionSaved(
       {
         ...document,
+        lineEnding: detectLineEnding(savedText),
         rawText: savedText
       },
       metadata
@@ -24,6 +26,7 @@ export function markDocumentAfterSuccessfulWrite(
     ...document,
     lastSavedMetadata: metadata,
     lastSavedText: savedText,
+    lineEnding: detectLineEnding(savedText),
     saveState: document.rawText === savedText ? "idle" : "dirty"
   };
 }

@@ -30,7 +30,12 @@ describe("readAppSettings", () => {
 
       await expect(readAppSettings(settingsPath)).resolves.toEqual({
         autosaveEnabled: false,
+        defaultLineEnding: "system",
+        richEditorDensity: "comfortable",
+        richEditorWidth: "default",
+        sourceEditorWidth: "default",
         spellcheckEnabled: true,
+        splitViewOrder: "rich-source",
         themePreference: "dark"
       });
     } finally {
@@ -56,8 +61,46 @@ describe("readAppSettings", () => {
 
       await expect(readAppSettings(settingsPath)).resolves.toEqual({
         autosaveEnabled: true,
+        defaultLineEnding: "system",
+        richEditorDensity: "comfortable",
+        richEditorWidth: "default",
+        sourceEditorWidth: "default",
         spellcheckEnabled: false,
+        splitViewOrder: "rich-source",
         themePreference: "system"
+      });
+    } finally {
+      await rm(directoryPath, { force: true, recursive: true });
+    }
+  });
+
+  it("loads editor settings from persisted settings", async () => {
+    const directoryPath = await mkdtemp(path.join(tmpdir(), "pluma-settings-"));
+
+    try {
+      const settingsPath = path.join(directoryPath, "settings.json");
+
+      await writeFile(
+        settingsPath,
+        JSON.stringify({
+          autosaveEnabled: true,
+          defaultLineEnding: "crlf",
+          richEditorDensity: "compact",
+          richEditorWidth: "wide",
+          sourceEditorWidth: "full",
+          spellcheckEnabled: true,
+          splitViewOrder: "source-rich",
+          themePreference: "system"
+        }),
+        "utf8"
+      );
+
+      await expect(readAppSettings(settingsPath)).resolves.toMatchObject({
+        defaultLineEnding: "crlf",
+        richEditorDensity: "compact",
+        richEditorWidth: "wide",
+        sourceEditorWidth: "full",
+        splitViewOrder: "source-rich"
       });
     } finally {
       await rm(directoryPath, { force: true, recursive: true });

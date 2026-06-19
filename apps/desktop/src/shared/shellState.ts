@@ -1,4 +1,5 @@
 import type { DocumentSession } from "@pluma/core";
+import type { AppSettings } from "@pluma/ui";
 
 export type EditorMode = "rich" | "source";
 export type EditorViewMode = EditorMode | "split";
@@ -39,8 +40,9 @@ export type RendererEvent =
   | { type: "editor-command"; command: EditorCommandName }
   | { type: "find-in-folder"; path: string }
   | { type: "mode-changed"; mode: EditorViewMode }
+  | { type: "open-settings" }
   | { type: "reveal-workspace-file"; path: string }
-  | { type: "settings-changed"; spellcheckEnabled: boolean }
+  | { type: "settings-changed"; settings: AppSettings }
   | { type: "shell-snapshot"; snapshot: DesktopShellSnapshot }
   | { type: "status"; message: string };
 
@@ -62,6 +64,7 @@ export type CommandName =
   | "open-devtools"
   | "open-file"
   | "open-folder"
+  | "open-settings"
   | "reload-from-disk"
   | "save"
   | "save-as"
@@ -118,6 +121,8 @@ export function reduceShellEvent(
         status: `Editor mode switched to ${event.mode}.`,
         activity: appendActivity(current.activity, `Mode: ${event.mode}`)
       };
+    case "open-settings":
+      return current;
     case "reveal-workspace-file":
       return current;
     case "settings-changed":

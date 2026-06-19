@@ -35,4 +35,18 @@ export {
   readStoredThemePreference,
   resolveThemePreference
 } from "./theme.js";
+export {
+  defaultAppSettings,
+  isDefaultLineEnding,
+  isEditorWidthPreference,
+  isRichEditorDensity,
+  isSplitViewOrder
+} from "./settings.js";
 export type { ResolvedTheme, ThemePreference } from "./theme.js";
+export type {
+  AppSettings,
+  DefaultLineEnding,
+  EditorWidthPreference,
+  RichEditorDensity,
+  SplitViewOrder
+} from "./settings.js";

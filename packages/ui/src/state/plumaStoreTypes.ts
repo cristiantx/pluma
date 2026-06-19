@@ -1,6 +1,7 @@
 import type { DocumentSession } from "@pluma/core";
 
-import type { EditorTab } from "../adapters/tabModel.js";
+import type { EditorTab, PlumaTab } from "../adapters/tabModel.js";
+import type { AppSettings } from "../settings.js";
 import type { ExplorerNode, StatusMetric } from "../shell/types.js";
 import type { ResolvedTheme, ThemePreference } from "../theme.js";
 
@@ -18,6 +19,7 @@ export type PlumaCommandHandlers = {
     folderPath: string | null,
     options: WorkspaceSearchOptions
   ) => Promise<WorkspaceSearchMatch[]>;
+  updateSettings: (settings: Partial<AppSettings>) => Promise<AppSettings>;
   reloadFromDisk: () => void;
   setActiveTabId: (tabId: string) => void;
   setEditorViewMode: (mode: EditorViewMode) => void;
@@ -63,7 +65,7 @@ export type WorkspaceSlice = {
 
 export type TabsSlice = {
   activeTabId: string;
-  tabs: EditorTab[];
+  tabs: PlumaTab[];
 };
 
 export type DocumentSlice = {
@@ -86,6 +88,8 @@ export type LayoutSlice = {
   isSidebarVisible: boolean;
 };
 
+export type SettingsSlice = AppSettings;
+
 export type PlumaShellSnapshot = {
   activeDocument: DocumentSession | null;
   activeDocumentId: string | null;
@@ -97,7 +101,7 @@ export type PlumaShellSnapshot = {
   editorViewMode: EditorViewMode;
   paneSizes: number[];
   statusMetrics: StatusMetric[];
-  tabs: EditorTab[];
+  tabs: PlumaTab[];
   workspaceLabel: string;
   workspacePath: string;
 };
@@ -106,6 +110,7 @@ export type PlumaStoreState = {
   commands: CommandsSlice;
   document: DocumentSlice;
   layout: LayoutSlice;
+  settings: SettingsSlice;
   status: StatusSlice;
   tabs: TabsSlice;
   theme: ThemeSlice;
@@ -116,9 +121,12 @@ export type PlumaStoreState = {
 export type PlumaStoreActions = {
   closeTab: (tabId: string) => void;
   compareConflict: () => void;
+  closeSettingsTab: () => void;
   hydrateShellSnapshot: (snapshot: PlumaShellSnapshot) => void;
-  reorderTabs: (tabs: EditorTab[]) => void;
+  hydrateSettings: (settings: AppSettings) => void;
+  reorderTabs: (tabs: PlumaTab[]) => void;
   keepEditing: () => void;
+  openSettingsTab: () => void;
   openWorkspaceSearch: (folderPath: string | null) => void;
   revealWorkspaceSearchMatch: (match: WorkspaceSearchMatch) => void;
   setWorkspaceSearchHasSearched: (hasSearched: boolean) => void;
@@ -137,6 +145,7 @@ export type PlumaStoreActions = {
   setSystemPrefersDark: (matches: boolean) => void;
   setSpellcheckEnabled: (enabled: boolean) => void;
   setThemePreference: (preference: ThemePreference) => void;
+  updateSettings: (settings: Partial<AppSettings>) => Promise<void>;
   toggleTheme: () => void;
   toggleSidebar: () => void;
   triggerOpenDevTools: () => void;
@@ -176,6 +185,7 @@ export type PlumaStoreInitializer = {
   commands: CommandsSlice;
   document: DocumentSlice;
   layout: LayoutSlice;
+  settings: SettingsSlice;
   status: StatusSlice;
   tabs: TabsSlice;
   theme: ThemeSlice;

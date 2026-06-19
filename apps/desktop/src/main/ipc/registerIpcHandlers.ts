@@ -1,6 +1,6 @@
 import { ipcMain, type IpcMainInvokeEvent } from "electron";
 
-import type { AppSettings } from "../persistence/appPersistence";
+import type { AppSettings } from "@pluma/ui";
 import type {
   CommandName,
   EditorViewMode,
@@ -105,9 +105,7 @@ export function registerIpcHandlers(handlers: DesktopIpcHandlers): void {
     handlers.getSettings(event)
   );
 
-  ipcMain.handle(
-    "pluma:update-settings",
-    async (event, settings: unknown) =>
-      handlers.updateSettings(event, settings)
+  ipcMain.handle("pluma:update-settings", async (event, settings: unknown) =>
+    handlers.updateSettings(event, settings)
   );
 }

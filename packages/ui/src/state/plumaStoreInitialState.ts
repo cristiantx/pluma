@@ -2,6 +2,7 @@ import type {
   PlumaCommandHandlers,
   PlumaStoreInitializer
 } from "./plumaStoreTypes.js";
+import { defaultAppSettings } from "../settings.js";
 
 const noop = () => {};
 
@@ -15,6 +16,7 @@ export const defaultCommandHandlers: PlumaCommandHandlers = {
   openFolder: noop,
   openWorkspaceFile: noop,
   searchWorkspace: () => Promise.resolve([]),
+  updateSettings: () => Promise.resolve(defaultAppSettings),
   reloadFromDisk: noop,
   setActiveTabId: noop,
   setEditorViewMode: noop,
@@ -39,6 +41,7 @@ export const initialPlumaStoreState: PlumaStoreInitializer = {
     paneSizes: [],
     splitPaneSizesByDocumentId: {}
   },
+  settings: defaultAppSettings,
   status: {
     statusMetrics: []
   },

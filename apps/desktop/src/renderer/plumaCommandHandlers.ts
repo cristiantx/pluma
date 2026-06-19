@@ -41,6 +41,7 @@ export function createPlumaCommandHandlers({
       ),
     searchWorkspace: (query, folderPath, options) =>
       runSearchWorkspace(query, folderPath, options),
+    updateSettings: (settings) => runUpdateSettings(settings),
     reloadFromDisk: () => runCommand(setShellState, "reload-from-disk"),
     setActiveTabId: (tabId) => runSetActiveTabCommand(setShellState, tabId),
     setEditorViewMode: (mode) => runSetEditorViewMode(setShellState, mode),
@@ -64,6 +65,32 @@ export function createPlumaCommandHandlers({
       ),
     updatePaneSizes: schedulePaneSizesSave,
     toggleMode: () => runCommand(setShellState, "toggle-mode")
+  };
+}
+
+function runUpdateSettings(
+  settings: Parameters<NonNullable<typeof window.pluma>["updateSettings"]>[0]
+) {
+  if (!window.pluma) {
+    return Promise.resolve(useFallbackSettings(settings));
+  }
+
+  return window.pluma.updateSettings(settings);
+}
+
+function useFallbackSettings(
+  settings: Parameters<NonNullable<typeof window.pluma>["updateSettings"]>[0]
+) {
+  return {
+    autosaveEnabled: true,
+    defaultLineEnding: "system" as const,
+    richEditorDensity: "comfortable" as const,
+    richEditorWidth: "default" as const,
+    sourceEditorWidth: "default" as const,
+    spellcheckEnabled: true,
+    splitViewOrder: "rich-source" as const,
+    themePreference: "system" as const,
+    ...settings
   };
 }
 

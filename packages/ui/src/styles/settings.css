@@ -1,0 +1,95 @@
+.settings-view {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  background: var(--editor-bg);
+  color: var(--text-primary);
+}
+
+.settings-header {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border-default);
+  padding: 0 20px;
+}
+
+.settings-header h1 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.settings-sections {
+  width: min(860px, calc(100% - 48px));
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px 24px 56px;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border-default);
+}
+
+.settings-section h2 {
+  margin: 0;
+  padding: 10px 0 5px;
+  color: var(--text-secondary);
+  font-size: var(--font-size-status);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.settings-row {
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 18px;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 8px 0;
+}
+
+.settings-row > span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-row strong {
+  color: var(--text-primary);
+  font-size: var(--font-size-ui);
+  font-weight: 650;
+}
+
+.settings-row small {
+  color: var(--text-muted);
+  font-size: var(--font-size-status);
+  line-height: 1.35;
+}
+
+.settings-row select {
+  width: 100%;
+  height: 30px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-bg);
+  color: var(--text-primary);
+  font: inherit;
+  padding: 0 8px;
+}
+
+.settings-row-checkbox {
+  grid-template-columns: minmax(0, 1fr) 42px;
+}
+
+.settings-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  justify-self: end;
+  accent-color: var(--accent);
+}
