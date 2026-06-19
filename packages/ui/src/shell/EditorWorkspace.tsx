@@ -3,14 +3,19 @@ import { memo, useEffect, useRef } from "react";
 import {
   RichEditor,
   SourceEditor,
+  type RichEditorHandle,
   type SourceEditorHandle
 } from "@pluma/editor";
 
 import { EditorPaneLayout } from "../panes/EditorPaneLayout.js";
 import { usePlumaStore } from "../state/usePlumaStore.js";
+import { addEditorCommandEventListener } from "./editorCommandEvents.js";
+import { EditorSearchPanel } from "./EditorSearchPanel.js";
 import { TabStrip } from "./TabStrip.js";
+import { useEditorWorkspaceController } from "./useEditorWorkspaceController.js";
 
 export const EditorWorkspace = memo(function EditorWorkspace() {
+  const richEditorRef = useRef<RichEditorHandle | null>(null);
   const sourceEditorRef = useRef<SourceEditorHandle | null>(null);
   const activeDocument = usePlumaStore(
     (state) => state.document.activeDocument
@@ -34,41 +39,42 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   const updateSplitPaneSizes = usePlumaStore(
     (state) => state.updateSplitPaneSizes
   );
+  const activeDocumentId = activeDocument?.id ?? null;
+  const showRichEditor =
+    activeDocument?.capability === "rich-safe" &&
+    (editorViewMode === "rich" || editorViewMode === "split");
+  const showSource =
+    editorViewMode === "source" ||
+    editorViewMode === "split" ||
+    activeDocument?.capability === "source-only" ||
+    !showRichEditor;
+  const {
+    closeSearchPanel,
+    commitSearchQuery,
+    handleCursorAnchorChange,
+    handleEditorCommand,
+    handleScrollAnchorChange,
+    isReplaceVisible,
+    isSearchOpen,
+    runSearchCommand,
+    searchQuery,
+    searchPanelFocusRequestId,
+    searchStatus,
+    scheduleReplayAnchors,
+    setActiveEditorKind,
+    setIsReplaceVisible
+  } = useEditorWorkspaceController({
+    activeDocumentId,
+    editorViewMode,
+    richEditorRef,
+    showRichEditor,
+    showSource,
+    sourceEditorRef
+  });
 
   useEffect(() => {
-    const handleEditorCommand = (event: Event) => {
-      if (!(event instanceof CustomEvent)) {
-        return;
-      }
-
-      const command = event.detail;
-
-      if (command === "find") {
-        sourceEditorRef.current?.find();
-        return;
-      }
-
-      if (command === "find-next") {
-        sourceEditorRef.current?.findNext();
-        return;
-      }
-
-      if (command === "find-previous") {
-        sourceEditorRef.current?.findPrevious();
-        return;
-      }
-
-      if (command === "replace") {
-        sourceEditorRef.current?.replace();
-      }
-    };
-
-    window.addEventListener("pluma:editor-command", handleEditorCommand);
-
-    return () => {
-      window.removeEventListener("pluma:editor-command", handleEditorCommand);
-    };
-  }, []);
+    return addEditorCommandEventListener(handleEditorCommand);
+  }, [handleEditorCommand]);
 
   if (!activeDocument) {
     return (
@@ -90,18 +96,22 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
     );
   }
 
-  const showRichEditor =
-    activeDocument.capability === "rich-safe" &&
-    (editorViewMode === "rich" || editorViewMode === "split");
-  const showSource =
-    editorViewMode === "source" ||
-    editorViewMode === "split" ||
-    activeDocument.capability === "source-only" ||
-    !showRichEditor;
   const isSourceOnly = activeDocument.capability === "source-only";
   const sourceSearchRevealRequest =
     searchRevealRequest &&
     showSource &&
+    activeDocument.location.kind === "desktop-path" &&
+    activeDocument.location.path === searchRevealRequest.match.filePath
+      ? {
+          line: searchRevealRequest.match.line,
+          matchEnd: searchRevealRequest.match.matchEnd,
+          matchStart: searchRevealRequest.match.matchStart,
+          requestId: searchRevealRequest.requestId
+        }
+      : null;
+  const richSearchRevealRequest =
+    searchRevealRequest &&
+    showRichEditor &&
     activeDocument.location.kind === "desktop-path" &&
     activeDocument.location.path === searchRevealRequest.match.filePath
       ? {
@@ -116,8 +126,16 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
       <div className="rich-document">
         <RichEditor
           documentId={activeDocument.id}
+          onCursorAnchorChange={handleCursorAnchorChange}
+          onFocus={() => setActiveEditorKind("rich")}
+          onReady={scheduleReplayAnchors}
+          onScrollAnchorChange={(anchor, source) =>
+            handleScrollAnchorChange("rich", anchor, source)
+          }
           onChange={(rawText) => updateDocumentText(activeDocument.id, rawText)}
+          ref={richEditorRef}
           rawText={activeDocument.rawText}
+          searchRevealRequest={richSearchRevealRequest}
           spellCheck={spellcheckEnabled}
         />
       </div>
@@ -132,6 +150,12 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
       ) : null}
       <SourceEditor
         documentId={activeDocument.id}
+        onCursorAnchorChange={handleCursorAnchorChange}
+        onFocus={() => setActiveEditorKind("source")}
+        onReady={scheduleReplayAnchors}
+        onScrollAnchorChange={(anchor, source) =>
+          handleScrollAnchorChange("source", anchor, source)
+        }
         onChange={(rawText) => updateDocumentText(activeDocument.id, rawText)}
         ref={sourceEditorRef}
         rawText={activeDocument.rawText}
@@ -169,6 +193,30 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
             </button>
           </div>
         </div>
+      ) : null}
+
+      {isSearchOpen ? (
+        <EditorSearchPanel
+          focusRequestId={searchPanelFocusRequestId}
+          isReplaceVisible={isReplaceVisible}
+          onClose={closeSearchPanel}
+          onFindNext={() =>
+            runSearchCommand("find-next", { focusEditor: false })
+          }
+          onFindPrevious={() =>
+            runSearchCommand("find-previous", { focusEditor: false })
+          }
+          onQueryChange={commitSearchQuery}
+          onReplaceAll={() =>
+            runSearchCommand("replace-all", { focusEditor: false })
+          }
+          onReplaceNext={() =>
+            runSearchCommand("replace-next", { focusEditor: false })
+          }
+          onReplaceVisibilityChange={setIsReplaceVisible}
+          query={searchQuery}
+          status={searchStatus}
+        />
       ) : null}
 
       <div className="editor-panes" data-view-mode={editorViewMode}>
