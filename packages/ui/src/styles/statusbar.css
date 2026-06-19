@@ -52,7 +52,7 @@
 }
 
 .statusbar-view-switch-button {
-  min-width: 54px;
+  width: 32px;
   height: 100%;
   display: grid;
   place-items: center;
@@ -62,7 +62,13 @@
   color: var(--text-secondary);
   font: inherit;
   line-height: 1;
-  padding: 0 9px;
+  padding: 0;
+}
+
+.statusbar-view-switch-button svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2;
 }
 
 .statusbar-view-switch-button:first-child {

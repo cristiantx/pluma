@@ -1,12 +1,19 @@
+import * as Tooltip from "@radix-ui/react-tooltip";
+import { Code, Columns2, NotepadText } from "lucide-react";
 import { memo } from "react";
+import type { ComponentType, SVGProps } from "react";
 
 import type { EditorViewMode } from "../state/plumaStoreTypes.js";
 import { usePlumaStore } from "../state/usePlumaStore.js";
 
-const editorViewModes: { label: string; mode: EditorViewMode }[] = [
-  { label: "Source", mode: "source" },
-  { label: "Split", mode: "split" },
-  { label: "Rich", mode: "rich" }
+const editorViewModes: {
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  label: string;
+  mode: EditorViewMode;
+}[] = [
+  { icon: Code, label: "Code view", mode: "source" },
+  { icon: NotepadText, label: "Rich view", mode: "rich" },
+  { icon: Columns2, label: "Split view", mode: "split" }
 ];
 
 export const StatusBar = memo(function StatusBar() {
@@ -25,19 +32,38 @@ export const StatusBar = memo(function StatusBar() {
         ))}
       </div>
       <div className="statusbar-group">
-        <div className="statusbar-view-switch" aria-label="Editor view mode">
-          {editorViewModes.map((item) => (
-            <button
-              aria-pressed={editorViewMode === item.mode}
-              className="statusbar-view-switch-button"
-              key={item.mode}
-              onClick={() => setEditorViewMode(item.mode)}
-              type="button"
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <Tooltip.Provider delayDuration={350}>
+          <div className="statusbar-view-switch" aria-label="Editor view mode">
+            {editorViewModes.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <Tooltip.Root key={item.mode}>
+                  <Tooltip.Trigger asChild>
+                    <button
+                      aria-label={item.label}
+                      aria-pressed={editorViewMode === item.mode}
+                      className="statusbar-view-switch-button"
+                      onClick={() => setEditorViewMode(item.mode)}
+                      type="button"
+                    >
+                      <Icon aria-hidden="true" />
+                    </button>
+                  </Tooltip.Trigger>
+                  <Tooltip.Portal>
+                    <Tooltip.Content
+                      className="titlebar-button-tooltip"
+                      side="top"
+                      sideOffset={4}
+                    >
+                      {item.label}
+                    </Tooltip.Content>
+                  </Tooltip.Portal>
+                </Tooltip.Root>
+              );
+            })}
+          </div>
+        </Tooltip.Provider>
       </div>
     </footer>
   );
