@@ -209,6 +209,39 @@ describe("usePlumaStore", () => {
     expect(setActiveTabId).toHaveBeenCalledWith("settings");
   });
 
+  it("passes all tab ids when opening a tab context menu", () => {
+    const showTabContextMenu = vi.fn();
+    usePlumaStore.getState().setCommandHandlers({ showTabContextMenu });
+    usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
+    usePlumaStore.getState().openSettingsTab();
+
+    usePlumaStore.getState().showTabContextMenu("settings");
+
+    expect(showTabContextMenu).toHaveBeenCalledWith("settings", [
+      baseDocuments[0]?.id,
+      baseDocuments[1]?.id,
+      "settings"
+    ]);
+  });
+
+  it("returns to the remembered document when settings closes", () => {
+    const setActiveTabId = vi.fn();
+    usePlumaStore.getState().setCommandHandlers({ setActiveTabId });
+    usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
+    usePlumaStore.getState().openSettingsTab();
+
+    usePlumaStore.getState().closeSettingsTab();
+
+    expect(usePlumaStore.getState().tabs.activeTabId).toBe(
+      baseDocuments[0]?.id
+    );
+    expect(usePlumaStore.getState().tabs.tabs.map((tab) => tab.id)).toEqual([
+      baseDocuments[0]?.id,
+      baseDocuments[1]?.id
+    ]);
+    expect(setActiveTabId).toHaveBeenLastCalledWith(baseDocuments[0]?.id);
+  });
+
   it("notifies the shell when a tab is closed", () => {
     const closeTab = vi.fn();
     usePlumaStore.getState().setCommandHandlers({ closeTab });

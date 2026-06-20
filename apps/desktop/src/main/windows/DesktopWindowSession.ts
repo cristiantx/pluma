@@ -410,7 +410,18 @@ export class DesktopWindowSession {
     this.emitShellSnapshot();
   }
 
-  showTabContextMenu(documentId: string): void {
+  showTabContextMenu(tabId: string, tabIds: unknown): void {
+    const openTabIds = Array.isArray(tabIds)
+      ? tabIds.filter((candidate) => typeof candidate === "string")
+      : [];
+    const hasSettingsTab = openTabIds.includes("settings");
+
+    if (tabId === "settings") {
+      this.showSettingsTabContextMenu(openTabIds);
+      return;
+    }
+
+    const documentId = tabId;
     const document = this.getDocumentById(documentId);
 
     if (!document) {
@@ -432,8 +443,8 @@ export class DesktopWindowSession {
         document.location.path
       );
     const menu = buildTabContextMenu({
-      canCloseAll: this.shellData.documents.length > 0,
-      canCloseOthers: otherDocuments.length > 0,
+      canCloseAll: this.shellData.documents.length > 0 || hasSettingsTab,
+      canCloseOthers: otherDocuments.length > 0 || hasSettingsTab,
       canCloseSavedTabs: savedDocuments.length > 0,
       canCopyPath: hasDesktopPath,
       canRename: hasDesktopPath,
@@ -445,8 +456,50 @@ export class DesktopWindowSession {
           "Closed document tab."
         ),
       onCloseOthers: () =>
-        void this.closeDocumentsWithProtection(
+        void this.closeDocumentsAndMaybeSettings(
           otherDocuments,
+          hasSettingsTab,
+          "Closed other tabs."
+        ),
+      onCloseSavedTabs: () =>
+        void this.closeDocumentsWithProtection(
+          savedDocuments,
+          "Closed saved document tabs."
+        ),
+      onCloseAll: () =>
+        void this.closeDocumentsAndMaybeSettings(
+          this.shellData.documents,
+          hasSettingsTab,
+          "Closed all tabs."
+        ),
+      onRename: () => void this.renameDocument(document.id),
+      onCopyPath: () =>
+        this.getWorkspaceFileActions().copyDocumentPath(document.id),
+      onShowInFolder: () =>
+        this.getWorkspaceFileActions().showDocumentInFolder(document.id),
+      onRevealInWorkspace: () => this.revealDocumentInWorkspace(document)
+    });
+
+    menu.popup({ window: this.window });
+  }
+
+  private showSettingsTabContextMenu(openTabIds: string[]): void {
+    const savedDocuments = this.shellData.documents.filter(
+      (candidate) => candidate.saveState === "idle"
+    );
+    const menu = buildTabContextMenu({
+      canCloseAll: openTabIds.length > 0,
+      canCloseOthers: this.shellData.documents.length > 0,
+      canCloseSavedTabs: savedDocuments.length > 0,
+      canCopyPath: false,
+      canRename: false,
+      canRevealInWorkspace: false,
+      canShowInFolder: false,
+      includeFileActions: false,
+      onClose: () => this.emitCloseSettingsTab(),
+      onCloseOthers: () =>
+        void this.closeDocumentsWithProtection(
+          this.shellData.documents,
           "Closed other document tabs."
         ),
       onCloseSavedTabs: () =>
@@ -455,16 +508,15 @@ export class DesktopWindowSession {
           "Closed saved document tabs."
         ),
       onCloseAll: () =>
-        void this.closeDocumentsWithProtection(
+        void this.closeDocumentsAndMaybeSettings(
           this.shellData.documents,
-          "Closed all document tabs."
+          true,
+          "Closed all tabs."
         ),
-      onRename: () => void this.renameDocument(document.id),
-      onCopyPath: () =>
-        this.getWorkspaceFileActions().copyDocumentPath(document.id),
-      onShowInFolder: () =>
-        this.getWorkspaceFileActions().showDocumentInFolder(document.id),
-      onRevealInWorkspace: () => this.revealDocumentInWorkspace(document)
+      onCopyPath: () => undefined,
+      onRename: () => undefined,
+      onRevealInWorkspace: () => undefined,
+      onShowInFolder: () => undefined
     });
 
     menu.popup({ window: this.window });
@@ -978,10 +1030,10 @@ export class DesktopWindowSession {
   private async closeDocumentsWithProtection(
     documents: DocumentSession[],
     status: string
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (documents.length === 0) {
       this.emitToRenderer({ type: "status", message: "No tabs to close." });
-      return;
+      return true;
     }
 
     const protectedDocuments = documents.filter(
@@ -991,7 +1043,7 @@ export class DesktopWindowSession {
     if (!(await this.confirmDiscardDocumentsSequentially(protectedDocuments))) {
       this.emitToRenderer({ type: "status", message: "Close tab cancelled." });
       this.emitShellSnapshot();
-      return;
+      return false;
     }
 
     this.closeDocumentSessions(
@@ -1000,6 +1052,26 @@ export class DesktopWindowSession {
     );
     this.persistSessionStateSoon();
     this.emitShellSnapshot();
+    return true;
+  }
+
+  private async closeDocumentsAndMaybeSettings(
+    documents: DocumentSession[],
+    shouldCloseSettings: boolean,
+    status: string
+  ): Promise<void> {
+    const didCloseDocuments =
+      documents.length === 0
+        ? true
+        : await this.closeDocumentsWithProtection(documents, status);
+
+    if (didCloseDocuments && shouldCloseSettings) {
+      this.emitCloseSettingsTab();
+    }
+  }
+
+  private emitCloseSettingsTab(): void {
+    this.emitToRenderer({ type: "close-settings-tab" });
   }
 
   private async confirmDiscardProtectedDocuments(

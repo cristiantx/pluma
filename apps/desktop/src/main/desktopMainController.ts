@@ -591,8 +591,8 @@ function registerDesktopIpcHandlers(): void {
     closeTab: async (event, tabId) => {
       await getSessionForEvent(event)?.closeTab(tabId);
     },
-    showTabContextMenu: (event, tabId) => {
-      getSessionForEvent(event)?.showTabContextMenu(tabId);
+    showTabContextMenu: (event, tabId, tabIds) => {
+      getSessionForEvent(event)?.showTabContextMenu(tabId, tabIds);
     },
     showWorkspaceContextMenu: (event, targetPath, kind) => {
       getSessionForEvent(event)?.showWorkspaceContextMenu(targetPath, kind);

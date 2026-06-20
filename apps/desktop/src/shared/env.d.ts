@@ -21,7 +21,7 @@ declare global {
       setActiveDocument(documentId: string): Promise<void>;
       setActiveTab(tabId: string): Promise<void>;
       setEditorMode(mode: EditorViewMode): Promise<void>;
-      showTabContextMenu(tabId: string): Promise<void>;
+      showTabContextMenu(tabId: string, tabIds: string[]): Promise<void>;
       showWorkspaceContextMenu(
         path: string,
         kind: "file" | "folder"

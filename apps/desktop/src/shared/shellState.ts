@@ -41,6 +41,7 @@ export type RendererEvent =
   | { type: "editor-command"; command: EditorCommandName }
   | { type: "find-in-folder"; path: string }
   | { type: "mode-changed"; mode: EditorViewMode }
+  | { type: "close-settings-tab" }
   | { type: "open-settings" }
   | { type: "reveal-workspace-file"; path: string }
   | { type: "settings-changed"; settings: AppSettings }
@@ -124,6 +125,8 @@ export function reduceShellEvent(
         status: `Editor mode switched to ${event.mode}.`,
         activity: appendActivity(current.activity, `Mode: ${event.mode}`)
       };
+    case "close-settings-tab":
+      return current;
     case "open-settings":
       return current;
     case "reveal-workspace-file":

@@ -48,9 +48,7 @@ export function TabButton({
         onContextMenu={(event) => {
           event.preventDefault();
           onActiveTabChange(tab.id);
-          if (tab.kind !== "settings") {
-            onContextMenu(tab.id);
-          }
+          onContextMenu(tab.id);
         }}
         ref={sortable.handleRef}
         role="tab"

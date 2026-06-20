@@ -49,8 +49,8 @@ const api = {
   setActiveTab(tabId: string) {
     return ipcRenderer.invoke("pluma:set-active-tab", tabId);
   },
-  showTabContextMenu(tabId: string) {
-    return ipcRenderer.invoke("pluma:show-tab-context-menu", tabId);
+  showTabContextMenu(tabId: string, tabIds: string[]) {
+    return ipcRenderer.invoke("pluma:show-tab-context-menu", tabId, tabIds);
   },
   showWorkspaceContextMenu(path: string, kind: string) {
     return ipcRenderer.invoke("pluma:show-workspace-context-menu", path, kind);

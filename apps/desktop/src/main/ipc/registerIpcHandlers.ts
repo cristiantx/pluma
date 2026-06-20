@@ -31,7 +31,11 @@ export type DesktopIpcHandlers = {
   setActiveTab: (event: IpcMainInvokeEvent, tabId: unknown) => void;
   setEditorMode: (event: IpcMainInvokeEvent, mode: unknown) => void;
   resetSettings: (event: IpcMainInvokeEvent) => Promise<AppSettings>;
-  showTabContextMenu: (event: IpcMainInvokeEvent, tabId: string) => void;
+  showTabContextMenu: (
+    event: IpcMainInvokeEvent,
+    tabId: string,
+    tabIds: unknown
+  ) => void;
   showWorkspaceContextMenu: (
     event: IpcMainInvokeEvent,
     targetPath: unknown,
@@ -87,9 +91,12 @@ export function registerIpcHandlers(handlers: DesktopIpcHandlers): void {
     await handlers.closeTab(event, tabId);
   });
 
-  ipcMain.handle("pluma:show-tab-context-menu", (event, tabId: string) => {
-    handlers.showTabContextMenu(event, tabId);
-  });
+  ipcMain.handle(
+    "pluma:show-tab-context-menu",
+    (event, tabId: string, tabIds: unknown) => {
+      handlers.showTabContextMenu(event, tabId, tabIds);
+    }
+  );
 
   ipcMain.handle(
     "pluma:show-workspace-context-menu",

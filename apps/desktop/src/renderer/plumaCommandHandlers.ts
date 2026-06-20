@@ -58,11 +58,11 @@ export function createPlumaCommandHandlers({
     resetSettings: () => runResetSettings(),
     setActiveTabId: (tabId) => runSetActiveTabCommand(setShellState, tabId),
     setEditorViewMode: (mode) => runSetEditorViewMode(setShellState, mode),
-    showTabContextMenu: (tabId) =>
+    showTabContextMenu: (tabId, tabIds) =>
       invokePlumaOrSetStatus(
         setShellState,
         `Cannot show tab menu for "${tabId}" because IPC is unavailable.`,
-        (pluma) => void pluma.showTabContextMenu(tabId)
+        (pluma) => void pluma.showTabContextMenu(tabId, tabIds)
       ),
     showWorkspaceContextMenu: (path, kind) =>
       invokePlumaOrSetStatus(

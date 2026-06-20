@@ -82,6 +82,10 @@ export function App() {
         usePlumaStore.getState().openSettingsTab();
       }
 
+      if (event.type === "close-settings-tab") {
+        usePlumaStore.getState().closeSettingsTab();
+      }
+
       if (event.type === "settings-changed") {
         hydrateSettings(event.settings);
       }

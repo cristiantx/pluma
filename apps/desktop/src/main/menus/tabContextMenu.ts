@@ -8,6 +8,7 @@ export type TabContextMenuOptions = {
   canRevealInWorkspace: boolean;
   canShowInFolder: boolean;
   canCloseSavedTabs: boolean;
+  includeFileActions?: boolean;
   onClose: () => void;
   onCloseAll: () => void;
   onCloseOthers: () => void;
@@ -38,7 +39,14 @@ export function buildTabContextMenu(options: TabContextMenuOptions): Menu {
       enabled: options.canCloseAll,
       label: "Close all tabs",
       click: options.onCloseAll
-    },
+    }
+  ];
+
+  if (options.includeFileActions === false) {
+    return Menu.buildFromTemplate(template);
+  }
+
+  template.push(
     { type: "separator" },
     {
       enabled: options.canRename,
@@ -60,7 +68,7 @@ export function buildTabContextMenu(options: TabContextMenuOptions): Menu {
       label: "Reveal in Workspace",
       click: options.onRevealInWorkspace
     }
-  ];
+  );
 
   return Menu.buildFromTemplate(template);
 }

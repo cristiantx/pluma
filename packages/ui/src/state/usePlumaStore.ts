@@ -28,13 +28,15 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   },
 
   closeSettingsTab: () => {
+    let nextActiveTabId = "";
+
     set((state) => {
       if (!state.tabs.tabs.some((tab) => tab.id === "settings")) {
         return state;
       }
 
       const nextTabs = state.tabs.tabs.filter((tab) => tab.id !== "settings");
-      const nextActiveTabId =
+      nextActiveTabId =
         state.tabs.activeTabId === "settings"
           ? (state.document.activeDocument?.id ?? nextTabs[0]?.id ?? "")
           : state.tabs.activeTabId;
@@ -46,6 +48,10 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
         }
       };
     });
+
+    if (nextActiveTabId) {
+      get().commands.commandHandlers.setActiveTabId(nextActiveTabId);
+    }
   },
 
   hydrateShellSnapshot: (snapshot: PlumaShellSnapshot) => {
@@ -298,7 +304,10 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   },
 
   showTabContextMenu: (tabId) => {
-    get().commands.commandHandlers.showTabContextMenu(tabId);
+    get().commands.commandHandlers.showTabContextMenu(
+      tabId,
+      get().tabs.tabs.map((tab) => tab.id)
+    );
   },
 
   showWorkspaceContextMenu: (path, kind) => {
