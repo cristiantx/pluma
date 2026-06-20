@@ -242,6 +242,28 @@ describe("usePlumaStore", () => {
     expect(setActiveTabId).toHaveBeenLastCalledWith(baseDocuments[0]?.id);
   });
 
+  it("clears a stale active settings tab when settings has already been removed", () => {
+    usePlumaStore.getState().hydrateShellSnapshot({
+      ...baseSnapshot,
+      activeDocument: null,
+      activeDocumentId: null,
+      activeTabId: null,
+      documents: [],
+      tabs: []
+    });
+    usePlumaStore.setState((state) => ({
+      tabs: {
+        ...state.tabs,
+        activeTabId: "settings"
+      }
+    }));
+
+    usePlumaStore.getState().closeSettingsTab();
+
+    expect(usePlumaStore.getState().tabs.activeTabId).toBe("");
+    expect(usePlumaStore.getState().tabs.tabs).toEqual([]);
+  });
+
   it("notifies the shell when a tab is closed", () => {
     const closeTab = vi.fn();
     usePlumaStore.getState().setCommandHandlers({ closeTab });

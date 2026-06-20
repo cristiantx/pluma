@@ -31,8 +31,20 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     let nextActiveTabId = "";
 
     set((state) => {
+      nextActiveTabId =
+        state.tabs.activeTabId === "settings"
+          ? (state.document.activeDocument?.id ?? "")
+          : state.tabs.activeTabId;
+
       if (!state.tabs.tabs.some((tab) => tab.id === "settings")) {
-        return state;
+        return state.tabs.activeTabId === "settings"
+          ? {
+              tabs: {
+                activeTabId: nextActiveTabId,
+                tabs: state.tabs.tabs
+              }
+            }
+          : state;
       }
 
       const nextTabs = state.tabs.tabs.filter((tab) => tab.id !== "settings");

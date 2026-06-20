@@ -947,6 +947,14 @@ export class DesktopWindowSession {
   }
 
   private closeDocumentSessions(documentIds: string[], status: string): void {
+    this.closeDocumentSessionsWithOptions(documentIds, status);
+  }
+
+  private closeDocumentSessionsWithOptions(
+    documentIds: string[],
+    status: string,
+    options: { clearSettingsTab?: boolean } = {}
+  ): void {
     const documentIdSet = new Set(documentIds);
 
     for (const documentId of documentIdSet) {
@@ -972,9 +980,12 @@ export class DesktopWindowSession {
 
     this.updateShellData({
       activeDocumentId,
-      activeTabId: documentIdSet.has(this.shellData.activeTabId ?? "")
-        ? activeDocumentId
-        : this.shellData.activeTabId,
+      activeTabId:
+        options.clearSettingsTab && this.shellData.activeTabId === "settings"
+          ? activeDocumentId
+          : documentIdSet.has(this.shellData.activeTabId ?? "")
+            ? activeDocumentId
+            : this.shellData.activeTabId,
       documents: nextDocuments,
       status
     });
@@ -1029,7 +1040,8 @@ export class DesktopWindowSession {
 
   private async closeDocumentsWithProtection(
     documents: DocumentSession[],
-    status: string
+    status: string,
+    options: { clearSettingsTab?: boolean } = {}
   ): Promise<boolean> {
     if (documents.length === 0) {
       this.emitToRenderer({ type: "status", message: "No tabs to close." });
@@ -1046,9 +1058,10 @@ export class DesktopWindowSession {
       return false;
     }
 
-    this.closeDocumentSessions(
+    this.closeDocumentSessionsWithOptions(
       documents.map((document) => document.id),
-      status
+      status,
+      options
     );
     this.persistSessionStateSoon();
     this.emitShellSnapshot();
@@ -1063,7 +1076,9 @@ export class DesktopWindowSession {
     const didCloseDocuments =
       documents.length === 0
         ? true
-        : await this.closeDocumentsWithProtection(documents, status);
+        : await this.closeDocumentsWithProtection(documents, status, {
+            clearSettingsTab: shouldCloseSettings
+          });
 
     if (didCloseDocuments && shouldCloseSettings) {
       this.emitCloseSettingsTab();
