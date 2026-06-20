@@ -65,6 +65,7 @@ function createDraftStorage(): AppDraftStorage {
 }
 
 function createSession(files: Record<string, string>) {
+  const onMenuStateChange = vi.fn();
   const send = vi.fn();
   const session = new DesktopWindowSession({
     appDocumentsPath: "/tmp",
@@ -76,7 +77,7 @@ function createSession(files: Record<string, string>) {
     getOpenExportedFile: () => false,
     getWorkspaceShowHiddenFiles: () => true,
     isDevelopment: false,
-    onMenuStateChange: vi.fn(),
+    onMenuStateChange,
     onPersistSessionState: vi.fn(),
     selfWritePaths: new Set(),
     window: {
@@ -87,7 +88,7 @@ function createSession(files: Record<string, string>) {
     } as never
   });
 
-  return { send, session };
+  return { onMenuStateChange, send, session };
 }
 
 function getMetadata(filePath: string, text: string): FileMetadata {
@@ -186,5 +187,29 @@ describe("DesktopWindowSession", () => {
         type: "shell-snapshot"
       })
     );
+  });
+
+  it("does not treat the remembered document as active when settings is selected", async () => {
+    const { onMenuStateChange, session } = createSession({
+      "/workspace/notes.md": "# Notes\n"
+    });
+
+    await session.restorePersistedState({
+      activeDocumentPath: "/workspace/notes.md",
+      documentPaths: ["/workspace/notes.md"],
+      editorMode: "source",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+
+    expect(session.hasActiveDocument()).toBe(true);
+
+    session.setActiveTab("settings");
+
+    expect(session.hasActiveDocument()).toBe(false);
+    expect(session.getPersistedState().activeDocumentPath).toBe(
+      "/workspace/notes.md"
+    );
+    expect(onMenuStateChange).toHaveBeenCalled();
   });
 });

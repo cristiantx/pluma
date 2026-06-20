@@ -28,6 +28,7 @@ export type WorkspaceSearchOptions = {
 
 export type DesktopShellSnapshot = {
   activeDocumentId: string | null;
+  activeTabId: string | null;
   documents: DocumentSession[];
   isDevelopment: boolean;
   paneSizes: number[];
@@ -77,6 +78,7 @@ export type ShellState = DesktopShellSnapshot & {
 
 export const initialShellState: ShellState = {
   activeDocumentId: null,
+  activeTabId: null,
   activity: [],
   documents: [],
   isDevelopment: false,
@@ -96,6 +98,7 @@ function normalizeDesktopShellSnapshot(
 ): DesktopShellSnapshot {
   return {
     activeDocumentId: snapshot.activeDocumentId ?? null,
+    activeTabId: snapshot.activeTabId ?? snapshot.activeDocumentId ?? null,
     documents: snapshot.documents ?? [],
     isDevelopment: snapshot.isDevelopment ?? false,
     paneSizes: snapshot.paneSizes ?? [],

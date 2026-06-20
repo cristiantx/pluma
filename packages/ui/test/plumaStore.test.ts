@@ -53,6 +53,7 @@ const baseDocuments: DocumentSession[] = [
 const baseSnapshot: PlumaShellSnapshot = {
   activeDocument: baseDocuments[0] ?? null,
   activeDocumentId: baseDocuments[0]?.id ?? null,
+  activeTabId: baseDocuments[0]?.id ?? null,
   documents: baseDocuments,
   explorerNodes: [
     { depth: 0, id: "guides", kind: "folder", label: "Guides" },
@@ -192,6 +193,20 @@ describe("usePlumaStore", () => {
         .workspace.explorerNodes.find((node) => node.id === "syntax")?.isActive
     ).toBe(true);
     expect(setActiveTabId).toHaveBeenCalledWith(baseDocuments[1]?.id);
+  });
+
+  it("keeps the active document remembered when settings is the active tab", () => {
+    const setActiveTabId = vi.fn();
+    usePlumaStore.getState().setCommandHandlers({ setActiveTabId });
+    usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
+
+    usePlumaStore.getState().setActiveTabId("settings");
+
+    expect(usePlumaStore.getState().tabs.activeTabId).toBe("settings");
+    expect(usePlumaStore.getState().document.activeDocument?.id).toBe(
+      baseDocuments[0]?.id
+    );
+    expect(setActiveTabId).toHaveBeenCalledWith("settings");
   });
 
   it("notifies the shell when a tab is closed", () => {
@@ -350,9 +365,7 @@ describe("usePlumaStore", () => {
     usePlumaStore.getState().setWorkspaceSearchQuery("target");
     usePlumaStore.getState().setWorkspaceSearchHasSearched(true);
     usePlumaStore.getState().setWorkspaceSearchResults([match]);
-    usePlumaStore
-      .getState()
-      .toggleWorkspaceSearchResultFile(match.filePath);
+    usePlumaStore.getState().toggleWorkspaceSearchResultFile(match.filePath);
     usePlumaStore.getState().openWorkspaceSearch("/tmp/old-folder");
     usePlumaStore.getState().revealWorkspaceSearchMatch(match);
 

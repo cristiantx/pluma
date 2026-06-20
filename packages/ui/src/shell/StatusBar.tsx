@@ -20,14 +20,17 @@ export const StatusBar = memo(function StatusBar() {
   const activeDocument = usePlumaStore(
     (state) => state.document.activeDocument
   );
+  const activeTabId = usePlumaStore((state) => state.tabs.activeTabId);
   const editorViewMode = usePlumaStore((state) => state.layout.editorViewMode);
   const metrics = usePlumaStore((state) => state.status.statusMetrics);
   const setEditorViewMode = usePlumaStore((state) => state.setEditorViewMode);
+  const hasActiveDocumentTab =
+    activeDocument !== null && activeTabId === activeDocument.id;
 
   return (
     <footer className="statusbar">
       <div className="statusbar-group">
-        {activeDocument
+        {hasActiveDocumentTab
           ? metrics.map((metric) => (
               <span className="status-metric" key={metric.label}>
                 <span className="status-metric-label">{metric.label}</span>
@@ -37,7 +40,7 @@ export const StatusBar = memo(function StatusBar() {
           : null}
       </div>
       <div className="statusbar-group">
-        {activeDocument ? (
+        {hasActiveDocumentTab ? (
           <Tooltip.Provider delayDuration={350}>
             <div
               className="statusbar-view-switch"

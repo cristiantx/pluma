@@ -582,6 +582,9 @@ function registerDesktopIpcHandlers(): void {
     setActiveDocument: (event, documentId) => {
       getSessionForEvent(event)?.setActiveDocument(documentId);
     },
+    setActiveTab: (event, tabId) => {
+      getSessionForEvent(event)?.setActiveTab(tabId);
+    },
     openWorkspaceFile: async (event, filePath) => {
       await getSessionForEvent(event)?.openWorkspaceFile(filePath);
     },

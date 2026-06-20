@@ -110,6 +110,7 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
         }
       };
     });
+    get().commands.commandHandlers.setActiveTabId("settings");
   },
 
   openAppDataFolder: () => {
@@ -232,6 +233,7 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
           activeTabId: "settings"
         }
       }));
+      get().commands.commandHandlers.setActiveTabId(tabId);
       return;
     }
 

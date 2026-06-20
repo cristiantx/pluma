@@ -170,6 +170,15 @@ function runSetActiveTabCommand(
   setShellState: ShellStateSetter,
   tabId: string
 ): void {
+  if (tabId === "settings") {
+    setShellState((current) => ({
+      ...current,
+      activeTabId: "settings"
+    }));
+    void window.pluma?.setActiveTab(tabId);
+    return;
+  }
+
   setShellState((current) => {
     if (!current.documents.some((document) => document.id === tabId)) {
       return current;
@@ -177,7 +186,8 @@ function runSetActiveTabCommand(
 
     return {
       ...current,
-      activeDocumentId: tabId
+      activeDocumentId: tabId,
+      activeTabId: tabId
     };
   });
 
@@ -185,7 +195,7 @@ function runSetActiveTabCommand(
     return;
   }
 
-  void window.pluma.setActiveDocument(tabId);
+  void window.pluma.setActiveTab(tabId);
 }
 
 function invokePlumaOrSetStatus(

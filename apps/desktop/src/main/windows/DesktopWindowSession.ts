@@ -97,6 +97,7 @@ export class DesktopWindowSession {
   constructor(private readonly dependencies: DesktopWindowSessionDependencies) {
     this.shellData = {
       activeDocumentId: null,
+      activeTabId: null,
       documents: [],
       isDevelopment: dependencies.isDevelopment,
       paneSizes: [],
@@ -178,7 +179,7 @@ export class DesktopWindowSession {
   }
 
   hasActiveDocument(): boolean {
-    return this.getActiveDocument() !== null;
+    return this.getActiveDocumentForActiveTab() !== null;
   }
 
   async restorePersistedState(
@@ -211,6 +212,7 @@ export class DesktopWindowSession {
 
     this.updateShellData({
       activeDocumentId: activeDocument?.id ?? null,
+      activeTabId: activeDocument?.id ?? null,
       documents,
       paneSizes: persistedState.paneSizes ?? [],
       status:
@@ -283,6 +285,7 @@ export class DesktopWindowSession {
         await this.openFolderFromDialog();
         return;
       case "open-settings":
+        this.updateShellData({ activeTabId: "settings" });
         this.emitToRenderer({ type: "open-settings" });
         return;
       case "reload-from-disk":
@@ -350,11 +353,24 @@ export class DesktopWindowSession {
       return;
     }
 
-    this.updateShellData({ activeDocumentId: documentId });
+    this.updateShellData({
+      activeDocumentId: documentId,
+      activeTabId: documentId
+    });
     this.clampEditorModeForActiveDocument();
     this.updateActiveFileWatcher();
     this.persistSessionStateSoon();
     this.emitShellSnapshot();
+  }
+
+  setActiveTab(tabId: unknown): void {
+    if (tabId === "settings") {
+      this.updateShellData({ activeTabId: "settings" });
+      this.emitShellSnapshot();
+      return;
+    }
+
+    this.setActiveDocument(tabId);
   }
 
   async openWorkspaceFile(filePath: unknown): Promise<void> {
@@ -511,7 +527,7 @@ export class DesktopWindowSession {
   }
 
   convertActiveDocumentLineEndings(target: "crlf" | "lf"): void {
-    const activeDocument = this.getActiveDocument();
+    const activeDocument = this.getActiveDocumentForActiveTab();
 
     if (!activeDocument) {
       this.emitToRenderer({
@@ -647,6 +663,17 @@ export class DesktopWindowSession {
     );
   }
 
+  private getActiveDocumentForActiveTab(): DocumentSession | null {
+    if (
+      !this.shellData.activeDocumentId ||
+      this.shellData.activeTabId !== this.shellData.activeDocumentId
+    ) {
+      return null;
+    }
+
+    return this.getActiveDocument();
+  }
+
   private getAllowedEditorMode(mode: EditorViewMode): EditorViewMode {
     return mode !== "source" &&
       this.getActiveDocumentCapability() === "source-only"
@@ -701,7 +728,7 @@ export class DesktopWindowSession {
   private async exportActiveDocument(
     format: ExportDocumentFormat
   ): Promise<void> {
-    const activeDocument = this.getActiveDocument();
+    const activeDocument = this.getActiveDocumentForActiveTab();
 
     if (!activeDocument) {
       this.emitToRenderer({
@@ -807,6 +834,7 @@ export class DesktopWindowSession {
 
     this.updateShellData({
       activeDocumentId: nextSession.id,
+      activeTabId: nextSession.id,
       documents: [nextSession, ...remainingDocuments]
     });
     this.clampEditorModeForActiveDocument();
@@ -822,6 +850,10 @@ export class DesktopWindowSession {
         this.shellData.activeDocumentId === documentId
           ? nextSession.id
           : this.shellData.activeDocumentId,
+      activeTabId:
+        this.shellData.activeTabId === documentId
+          ? nextSession.id
+          : this.shellData.activeTabId,
       documents: this.shellData.documents.map((document) =>
         document.id === documentId ? nextSession : document
       )
@@ -848,6 +880,10 @@ export class DesktopWindowSession {
 
     this.updateShellData({
       activeDocumentId,
+      activeTabId:
+        this.shellData.activeTabId === documentId
+          ? activeDocumentId
+          : this.shellData.activeTabId,
       documents: nextDocuments,
       status:
         nextDocuments.length === 0
@@ -884,6 +920,9 @@ export class DesktopWindowSession {
 
     this.updateShellData({
       activeDocumentId,
+      activeTabId: documentIdSet.has(this.shellData.activeTabId ?? "")
+        ? activeDocumentId
+        : this.shellData.activeTabId,
       documents: nextDocuments,
       status
     });
@@ -909,7 +948,7 @@ export class DesktopWindowSession {
   }
 
   private async closeActiveDocumentSession(): Promise<void> {
-    const activeDocument = this.getActiveDocument();
+    const activeDocument = this.getActiveDocumentForActiveTab();
 
     if (!activeDocument) {
       this.emitToRenderer({
@@ -1108,6 +1147,7 @@ export class DesktopWindowSession {
     if (openDocument) {
       this.updateShellData({
         activeDocumentId: openDocument.id,
+        activeTabId: openDocument.id,
         status: `Switched to ${path.basename(filePath)}.`
       });
       this.clampEditorModeForActiveDocument();
@@ -1159,6 +1199,7 @@ export class DesktopWindowSession {
 
     this.updateShellData({
       activeDocumentId: null,
+      activeTabId: null,
       documents: [],
       status: `Opened workspace ${path.basename(directoryPath)}.`,
       workspaceEntries,
@@ -1173,7 +1214,7 @@ export class DesktopWindowSession {
   }
 
   private async saveActiveDocument(): Promise<void> {
-    const activeDocument = this.getActiveDocument();
+    const activeDocument = this.getActiveDocumentForActiveTab();
 
     if (!activeDocument) {
       this.emitToRenderer({
@@ -1209,7 +1250,7 @@ export class DesktopWindowSession {
   }
 
   private async saveActiveDocumentAs(): Promise<void> {
-    const activeDocument = this.getActiveDocument();
+    const activeDocument = this.getActiveDocumentForActiveTab();
 
     if (!activeDocument) {
       this.emitToRenderer({
@@ -1439,6 +1480,10 @@ export class DesktopWindowSession {
         this.shellData.activeDocumentId === document.id
           ? renamedDocument.id
           : this.shellData.activeDocumentId,
+      activeTabId:
+        this.shellData.activeTabId === document.id
+          ? renamedDocument.id
+          : this.shellData.activeTabId,
       documents: this.shellData.documents.map((candidate) =>
         candidate.id === document.id ? renamedDocument : candidate
       ),
@@ -1615,7 +1660,7 @@ export class DesktopWindowSession {
   }
 
   private async reloadActiveDocumentFromDisk(): Promise<void> {
-    const activeDocument = this.getActiveDocument();
+    const activeDocument = this.getActiveDocumentForActiveTab();
 
     if (!activeDocument || activeDocument.location.kind !== "desktop-path") {
       this.emitToRenderer({
@@ -1682,7 +1727,7 @@ export class DesktopWindowSession {
   }
 
   private async keepEditingActiveDocument(): Promise<void> {
-    const activeDocument = this.getActiveDocument();
+    const activeDocument = this.getActiveDocumentForActiveTab();
 
     if (!activeDocument) {
       return;
@@ -1711,7 +1756,7 @@ export class DesktopWindowSession {
   }
 
   private showManualCompareStatus(): void {
-    const activeDocument = this.getActiveDocument();
+    const activeDocument = this.getActiveDocumentForActiveTab();
 
     this.emitToRenderer({
       type: "status",
@@ -1740,6 +1785,7 @@ export class DesktopWindowSession {
 
     this.updateShellData({
       activeDocumentId: document.id,
+      activeTabId: document.id,
       status: `Revealed ${path.basename(document.location.path)} in workspace.`
     });
     this.updateActiveFileWatcher();

@@ -19,6 +19,7 @@ declare global {
       runCommand(command: CommandName): Promise<void>;
       resetSettings(): Promise<AppSettings>;
       setActiveDocument(documentId: string): Promise<void>;
+      setActiveTab(tabId: string): Promise<void>;
       setEditorMode(mode: EditorViewMode): Promise<void>;
       showTabContextMenu(tabId: string): Promise<void>;
       showWorkspaceContextMenu(

@@ -118,6 +118,7 @@ export function getShellSnapshot(
   return {
     activeDocument: getActiveDocument(shellState),
     activeDocumentId: shellState.activeDocumentId,
+    activeTabId: shellState.activeTabId,
     documents: getDocuments(shellState),
     explorerNodes: getExplorerNodes(shellState),
     hasWorkspace: Boolean(shellState.workspacePath),

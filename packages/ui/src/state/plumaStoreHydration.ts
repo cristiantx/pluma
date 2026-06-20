@@ -37,9 +37,10 @@ export function hydratePlumaShellSnapshot(
   const settingsTab = state.tabs.tabs.find((tab) => tab.id === "settings");
   const tabs = settingsTab ? [...snapshot.tabs, settingsTab] : snapshot.tabs;
   const activeTabId =
-    state.tabs.activeTabId === "settings"
+    snapshot.activeTabId ??
+    (state.tabs.activeTabId === "settings"
       ? "settings"
-      : (snapshot.activeDocumentId ?? "");
+      : (snapshot.activeDocumentId ?? ""));
 
   return {
     document: {

@@ -46,6 +46,9 @@ const api = {
   setActiveDocument(documentId: string) {
     return ipcRenderer.invoke("pluma:set-active-document", documentId);
   },
+  setActiveTab(tabId: string) {
+    return ipcRenderer.invoke("pluma:set-active-tab", tabId);
+  },
   showTabContextMenu(tabId: string) {
     return ipcRenderer.invoke("pluma:show-tab-context-menu", tabId);
   },

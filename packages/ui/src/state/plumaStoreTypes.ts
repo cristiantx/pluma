@@ -96,6 +96,7 @@ export type SettingsSlice = AppSettings;
 export type PlumaShellSnapshot = {
   activeDocument: DocumentSession | null;
   activeDocumentId: string | null;
+  activeTabId: string | null;
   documents: DocumentSession[];
   explorerNodes: ExplorerNode[];
   hasWorkspace: boolean;
