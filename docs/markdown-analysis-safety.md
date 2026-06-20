@@ -11,6 +11,11 @@ Core Markdown parsing lives in `packages/core/src/markdownPipeline.ts` and uses:
 - `remark-gfm` for tables, task lists, strikethrough, autolinks, and footnotes.
 - `remark-frontmatter` for YAML frontmatter.
 
+The compatibility test suite imports the official CommonMark `0.31.2` examples
+from `commonmark-spec`. Pluma parses every fixture as source input, keeps raw
+HTML fixtures source-only when they produce HTML nodes, and compares selected
+render-safe fixtures against the expected HTML.
+
 ## Rich-mode eligibility
 
 Documents are `rich-safe` when every parsed mdast node is in Pluma's supported
