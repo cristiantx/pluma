@@ -1,5 +1,5 @@
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { Code, Columns2, NotepadText } from "lucide-react";
+import { Code, NotepadText } from "lucide-react";
 import { memo } from "react";
 import type { ComponentType, SVGProps } from "react";
 
@@ -12,8 +12,7 @@ const editorViewModes: {
   mode: EditorViewMode;
 }[] = [
   { icon: Code, label: "Code view", mode: "source" },
-  { icon: NotepadText, label: "Rich view", mode: "rich" },
-  { icon: Columns2, label: "Split view", mode: "split" }
+  { icon: NotepadText, label: "Rich view", mode: "rich" }
 ];
 
 export const FloatingEditorViewSwitch = memo(

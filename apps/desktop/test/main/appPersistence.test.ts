@@ -43,7 +43,6 @@ describe("readAppSettings", () => {
         sourceEditorWordWrap: true,
         sourceEditorWidth: "default",
         spellcheckEnabled: true,
-        splitViewOrder: "rich-source",
         themePreference: "dark",
         workspaceSearchCaseSensitive: false,
         workspaceSearchRegexp: false,
@@ -86,7 +85,6 @@ describe("readAppSettings", () => {
         sourceEditorWordWrap: true,
         sourceEditorWidth: "default",
         spellcheckEnabled: false,
-        splitViewOrder: "rich-source",
         themePreference: "system",
         workspaceSearchCaseSensitive: false,
         workspaceSearchRegexp: false,
@@ -144,12 +142,14 @@ describe("readAppSettings", () => {
         sourceEditorTabSize: 4,
         sourceEditorWordWrap: false,
         sourceEditorWidth: "full",
-        splitViewOrder: "source-rich",
         workspaceSearchCaseSensitive: true,
         workspaceSearchRegexp: true,
         workspaceSearchWholeWord: true,
         workspaceShowHiddenFiles: false
       });
+      await expect(readAppSettings(settingsPath)).resolves.not.toHaveProperty(
+        "splitViewOrder"
+      );
     } finally {
       await rm(directoryPath, { force: true, recursive: true });
     }
@@ -196,7 +196,7 @@ describe("normalizePersistedSessionState", () => {
     });
   });
 
-  it("drops empty windows and normalizes the active index", () => {
+  it("drops empty windows, normalizes legacy split mode, and normalizes the active index", () => {
     expect(
       normalizePersistedSessionState({
         activeWindowIndex: 8,
@@ -222,7 +222,7 @@ describe("normalizePersistedSessionState", () => {
         {
           activeDocumentPath: "/tmp/pluma/b.md",
           documentPaths: ["/tmp/pluma/b.md"],
-          editorMode: "split",
+          editorMode: "source",
           workspacePath: null
         }
       ]

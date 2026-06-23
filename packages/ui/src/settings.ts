@@ -2,7 +2,6 @@ import type { ThemePreference } from "./theme.js";
 
 export type EditorWidthPreference = "default" | "full" | "narrow" | "wide";
 export type RichEditorDensity = "comfortable" | "compact";
-export type SplitViewOrder = "rich-source" | "source-rich";
 export type DefaultLineEnding = "crlf" | "lf" | "system";
 export type SourceEditorFontSize = 12 | 13 | 14 | 15 | 16 | 18;
 export type SourceEditorFontFamily = "mono" | "system";
@@ -27,7 +26,6 @@ export type AppSettings = {
   sourceEditorTabSize: SourceEditorTabSize;
   sourceEditorWordWrap: boolean;
   spellcheckEnabled: boolean;
-  splitViewOrder: SplitViewOrder;
   themePreference: ThemePreference;
   workspaceSearchCaseSensitive: boolean;
   workspaceSearchRegexp: boolean;
@@ -50,7 +48,6 @@ export const defaultAppSettings: AppSettings = {
   sourceEditorWordWrap: true,
   sourceEditorWidth: "default",
   spellcheckEnabled: true,
-  splitViewOrder: "rich-source",
   themePreference: "system",
   workspaceSearchCaseSensitive: false,
   workspaceSearchRegexp: false,
@@ -73,10 +70,6 @@ export function isRichEditorDensity(
   value: unknown
 ): value is RichEditorDensity {
   return value === "comfortable" || value === "compact";
-}
-
-export function isSplitViewOrder(value: unknown): value is SplitViewOrder {
-  return value === "rich-source" || value === "source-rich";
 }
 
 export function isDefaultLineEnding(

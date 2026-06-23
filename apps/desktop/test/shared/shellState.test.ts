@@ -31,15 +31,15 @@ describe("reduceShellEvent", () => {
     });
   });
 
-  it("accepts split as a renderer mode event", () => {
+  it("updates rich mode when the renderer receives a mode event", () => {
     expect(
       reduceShellEvent(initialShellState, {
         type: "mode-changed",
-        mode: "split"
+        mode: "rich"
       })
     ).toMatchObject({
-      mode: "split",
-      status: "Editor mode switched to split."
+      mode: "rich",
+      status: "Editor mode switched to rich."
     });
   });
 

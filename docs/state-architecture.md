@@ -66,7 +66,7 @@ This keeps the desktop app focused on OS integration while the shared shell rema
 The current store covers shell coordination. Later phases can add:
 
 - `editor`
-  - Rich/source/split mode
+  - Rich/source mode
   - Active document session linkage
 - `ui`
   - Pane visibility and pane sizes

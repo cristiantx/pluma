@@ -7,7 +7,6 @@ import {
   type SourceEditorHandle
 } from "@pluma/editor";
 
-import { EditorPaneLayout } from "../panes/EditorPaneLayout.js";
 import { usePlumaStore } from "../state/usePlumaStore.js";
 import { addEditorCommandEventListener } from "./editorCommandEvents.js";
 import { EditorSearchPanel } from "./EditorSearchPanel.js";
@@ -50,9 +49,6 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   const sourceEditorWordWrap = usePlumaStore(
     (state) => state.settings.sourceEditorWordWrap
   );
-  const splitViewOrder = usePlumaStore(
-    (state) => state.settings.splitViewOrder
-  );
   const hasWorkspace = usePlumaStore((state) => state.workspace.hasWorkspace);
   const compareConflict = usePlumaStore((state) => state.compareConflict);
   const keepEditing = usePlumaStore((state) => state.keepEditing);
@@ -63,21 +59,13 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   const spellcheckEnabled = usePlumaStore(
     (state) => state.writing.spellcheckEnabled
   );
-  const splitPaneSizes = usePlumaStore(
-    (state) =>
-      state.layout.splitPaneSizesByDocumentId[state.tabs.activeTabId] ?? null
-  );
   const updateDocumentText = usePlumaStore((state) => state.updateDocumentText);
-  const updateSplitPaneSizes = usePlumaStore(
-    (state) => state.updateSplitPaneSizes
-  );
   const activeDocumentId = activeDocument?.id ?? null;
   const showRichEditor =
     activeDocument?.capability === "rich-safe" &&
-    (editorViewMode === "rich" || editorViewMode === "split");
+    editorViewMode === "rich";
   const showSource =
     editorViewMode === "source" ||
-    editorViewMode === "split" ||
     activeDocument?.capability === "source-only" ||
     !showRichEditor;
   const {
@@ -170,9 +158,7 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
           onCursorAnchorChange={handleCursorAnchorChange}
           onFocus={() => setActiveEditorKind("rich")}
           onReady={scheduleReplayAnchors}
-          onScrollAnchorChange={(anchor, source) =>
-            handleScrollAnchorChange("rich", anchor, source)
-          }
+          onScrollAnchorChange={handleScrollAnchorChange}
           onChange={(rawText) => updateDocumentText(activeDocument.id, rawText)}
           ref={richEditorRef}
           rawText={activeDocument.rawText}
@@ -198,9 +184,7 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
         onCursorAnchorChange={handleCursorAnchorChange}
         onFocus={() => setActiveEditorKind("source")}
         onReady={scheduleReplayAnchors}
-        onScrollAnchorChange={(anchor, source) =>
-          handleScrollAnchorChange("source", anchor, source)
-        }
+        onScrollAnchorChange={handleScrollAnchorChange}
         onChange={(rawText) => updateDocumentText(activeDocument.id, rawText)}
         ref={sourceEditorRef}
         rawText={activeDocument.rawText}
@@ -274,22 +258,8 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
         data-rich-density={richEditorDensity}
         data-rich-width={richEditorWidth}
         data-source-width={sourceEditorWidth}
-        data-view-mode={editorViewMode}
       >
-        {richPane && sourcePane ? (
-          <EditorPaneLayout
-            key={activeDocument.id}
-            onPaneSizesChange={(paneSizes) =>
-              updateSplitPaneSizes(activeDocument.id, paneSizes)
-            }
-            {...(splitPaneSizes ? { paneSizes: splitPaneSizes } : {})}
-            rich={richPane}
-            splitViewOrder={splitViewOrder}
-            source={sourcePane}
-          />
-        ) : (
-          (richPane ?? sourcePane)
-        )}
+        {richPane ?? sourcePane}
       </div>
     </section>
   );

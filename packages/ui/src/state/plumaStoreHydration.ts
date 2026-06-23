@@ -26,14 +26,6 @@ export function hydratePlumaShellSnapshot(
       state.workspace.workspacePath !== snapshot.workspacePath);
   const hasWorkspaceChanged =
     state.workspace.workspacePath !== snapshot.workspacePath;
-  const openDocumentIds = new Set(
-    snapshot.documents.map((document) => document.id)
-  );
-  const splitPaneSizesByDocumentId = Object.fromEntries(
-    Object.entries(state.layout.splitPaneSizesByDocumentId).filter(
-      ([documentId]) => openDocumentIds.has(documentId)
-    )
-  );
   const settingsTab = state.tabs.tabs.find((tab) => tab.id === "settings");
   const tabs = settingsTab ? [...snapshot.tabs, settingsTab] : snapshot.tabs;
   const activeTabId =
@@ -52,8 +44,7 @@ export function hydratePlumaShellSnapshot(
       isSidebarVisible: snapshot.hasWorkspace
         ? isNewWorkspace || state.layout.isSidebarVisible
         : false,
-      paneSizes: snapshot.paneSizes,
-      splitPaneSizesByDocumentId
+      paneSizes: snapshot.paneSizes
     },
     status: {
       statusMetrics: snapshot.statusMetrics

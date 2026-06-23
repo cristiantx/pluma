@@ -18,7 +18,6 @@ import {
   isSourceEditorFontFamily,
   isSourceEditorFontSize,
   isSourceEditorTabSize,
-  isSplitViewOrder,
   isThemePreference,
   type AppSettings,
   type DefaultLineEnding
@@ -360,9 +359,6 @@ function getAppSettingsUpdate(settings: unknown): Partial<AppSettings> {
       : {}),
     ...(isRichEditorDensity(settings.richEditorDensity)
       ? { richEditorDensity: settings.richEditorDensity }
-      : {}),
-    ...(isSplitViewOrder(settings.splitViewOrder)
-      ? { splitViewOrder: settings.splitViewOrder }
       : {}),
     ...(isDefaultLineEnding(settings.defaultLineEnding)
       ? { defaultLineEnding: settings.defaultLineEnding }

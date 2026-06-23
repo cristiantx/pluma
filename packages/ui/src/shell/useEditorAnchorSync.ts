@@ -3,16 +3,14 @@ import type { RefObject } from "react";
 
 import type {
   EditorCursorAnchor,
-  EditorKind,
   EditorScrollAnchor,
-  EditorScrollSyncSource,
   RichEditorHandle,
   SourceEditorHandle
 } from "@pluma/editor";
 
 type EditorAnchorSyncOptions = {
   activeDocumentId: string | null;
-  editorViewMode: "rich" | "source" | "split";
+  editorViewMode: "rich" | "source";
   richEditorRef: RefObject<RichEditorHandle | null>;
   sourceEditorRef: RefObject<SourceEditorHandle | null>;
 };
@@ -25,37 +23,10 @@ export function useEditorAnchorSync({
 }: EditorAnchorSyncOptions) {
   const latestCursorAnchorRef = useRef<EditorCursorAnchor | null>(null);
   const latestScrollAnchorRef = useRef<EditorScrollAnchor | null>(null);
-  const mirrorFrameRef = useRef<number | null>(null);
 
-  const handleScrollAnchorChange = useCallback(
-    (
-      kind: EditorKind,
-      anchor: EditorScrollAnchor,
-      source: EditorScrollSyncSource
-    ) => {
-      latestScrollAnchorRef.current = anchor;
-
-      if (
-        editorViewMode !== "split" ||
-        source !== "user" ||
-        mirrorFrameRef.current !== null
-      ) {
-        return;
-      }
-
-      mirrorFrameRef.current = window.requestAnimationFrame(() => {
-        mirrorFrameRef.current = null;
-
-        if (kind === "source") {
-          richEditorRef.current?.applyScrollAnchor(anchor);
-          return;
-        }
-
-        sourceEditorRef.current?.applyScrollAnchor(anchor);
-      });
-    },
-    [editorViewMode, richEditorRef, sourceEditorRef]
-  );
+  const handleScrollAnchorChange = useCallback((anchor: EditorScrollAnchor) => {
+    latestScrollAnchorRef.current = anchor;
+  }, []);
 
   const handleCursorAnchorChange = useCallback((anchor: EditorCursorAnchor) => {
     latestCursorAnchorRef.current = anchor;
@@ -89,10 +60,7 @@ export function useEditorAnchorSync({
 
     if (editorViewMode === "rich") {
       richEditorRef.current?.applyScrollAnchor(scrollAnchor);
-    } else if (editorViewMode === "source") {
-      sourceEditorRef.current?.applyScrollAnchor(scrollAnchor);
     } else {
-      richEditorRef.current?.applyScrollAnchor(scrollAnchor);
       sourceEditorRef.current?.applyScrollAnchor(scrollAnchor);
     }
   }, [activeDocumentId, editorViewMode, richEditorRef, sourceEditorRef]);
@@ -108,14 +76,6 @@ export function useEditorAnchorSync({
       window.cancelAnimationFrame(frame);
     };
   }, [replayAnchors]);
-
-  useEffect(() => {
-    return () => {
-      if (mirrorFrameRef.current !== null) {
-        window.cancelAnimationFrame(mirrorFrameRef.current);
-      }
-    };
-  }, []);
 
   return {
     handleCursorAnchorChange,

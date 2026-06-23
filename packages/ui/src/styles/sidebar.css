@@ -231,7 +231,7 @@
   gap: 6px;
   padding: 3px 8px 3px
     calc(var(--tree-indent-base) + var(--depth) * var(--tree-indent-step));
-  margin-inline: 4px;
+  margin: 0 4px 1px;
   color: var(--text-secondary);
   text-align: left;
   font-size: inherit;

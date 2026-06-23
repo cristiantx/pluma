@@ -139,8 +139,6 @@ function toModeMetricValue(mode: ShellState["mode"]): string {
       return "Rich";
     case "source":
       return "Source";
-    case "split":
-      return "Split";
   }
 }
 

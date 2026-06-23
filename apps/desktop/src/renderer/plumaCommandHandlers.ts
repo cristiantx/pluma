@@ -117,7 +117,6 @@ function useFallbackSettings(
     sourceEditorWordWrap: true,
     sourceEditorWidth: "default" as const,
     spellcheckEnabled: true,
-    splitViewOrder: "rich-source" as const,
     themePreference: "system" as const,
     workspaceSearchCaseSensitive: false,
     workspaceSearchRegexp: false,

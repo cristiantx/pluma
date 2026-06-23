@@ -41,8 +41,7 @@ export const initialPlumaStoreState: PlumaStoreInitializer = {
   layout: {
     editorViewMode: "source",
     isSidebarVisible: true,
-    paneSizes: [],
-    splitPaneSizesByDocumentId: {}
+    paneSizes: []
   },
   settings: defaultAppSettings,
   status: {

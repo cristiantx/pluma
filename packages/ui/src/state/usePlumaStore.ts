@@ -459,18 +459,6 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     get().commands.commandHandlers.updatePaneSizes(paneSizes);
   },
 
-  updateSplitPaneSizes: (documentId, paneSizes) => {
-    set((state) => ({
-      layout: {
-        ...state.layout,
-        splitPaneSizesByDocumentId: {
-          ...state.layout.splitPaneSizesByDocumentId,
-          [documentId]: paneSizes
-        }
-      }
-    }));
-  },
-
   updateSettings: async (settings) => {
     const nextSettings =
       await get().commands.commandHandlers.updateSettings(settings);

@@ -33,7 +33,7 @@ export type PlumaCommandHandlers = {
   toggleMode: () => void;
 };
 
-export type EditorViewMode = "source" | "rich" | "split";
+export type EditorViewMode = "source" | "rich";
 export type SidebarView = "workspace" | "search";
 
 export type ThemeSlice = {
@@ -87,7 +87,6 @@ export type CommandsSlice = {
 export type LayoutSlice = {
   editorViewMode: EditorViewMode;
   paneSizes: number[];
-  splitPaneSizesByDocumentId: Record<string, number[]>;
   isSidebarVisible: boolean;
 };
 
@@ -162,7 +161,6 @@ export type PlumaStoreActions = {
   triggerOpenWorkspaceFile: (path: string) => void;
   updateDocumentText: (documentId: string, rawText: string) => void;
   updatePaneSizes: (paneSizes: number[]) => void;
-  updateSplitPaneSizes: (documentId: string, paneSizes: number[]) => void;
   triggerToggleMode: () => void;
 };
 

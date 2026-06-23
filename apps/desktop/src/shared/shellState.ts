@@ -2,7 +2,7 @@ import type { DocumentSession } from "@pluma/core";
 import type { AppSettings } from "@pluma/ui";
 
 type EditorMode = "rich" | "source";
-export type EditorViewMode = EditorMode | "split";
+export type EditorViewMode = EditorMode;
 
 export type WorkspaceTreeEntry = {
   depth: number;

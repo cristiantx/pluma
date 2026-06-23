@@ -12,7 +12,7 @@ import { useEditorSearchController } from "./useEditorSearchController.js";
 
 type EditorWorkspaceControllerOptions = {
   activeDocumentId: string | null;
-  editorViewMode: "rich" | "source" | "split";
+  editorViewMode: "rich" | "source";
   richEditorRef: RefObject<RichEditorHandle | null>;
   showRichEditor: boolean;
   showSource: boolean;

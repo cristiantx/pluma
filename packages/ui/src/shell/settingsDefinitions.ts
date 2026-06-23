@@ -145,16 +145,6 @@ export const settingsSections: readonly SettingsSectionDefinition[] = [
           { label: "Compact", value: "compact" }
         ],
         title: "Rich editor density"
-      },
-      {
-        description: "Choose which editor appears on the left.",
-        key: "splitViewOrder",
-        kind: "select",
-        options: [
-          { label: "Rich left, source right", value: "rich-source" },
-          { label: "Source left, rich right", value: "source-rich" }
-        ],
-        title: "Split view order"
       }
     ],
     id: "settings-editor",

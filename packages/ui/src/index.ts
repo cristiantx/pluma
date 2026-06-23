@@ -43,8 +43,7 @@ export {
   isSourceEditorColorScheme,
   isSourceEditorFontFamily,
   isSourceEditorFontSize,
-  isSourceEditorTabSize,
-  isSplitViewOrder
+  isSourceEditorTabSize
 } from "./settings.js";
 export type { ResolvedTheme, ThemePreference } from "./theme.js";
 export type {
@@ -55,6 +54,5 @@ export type {
   SourceEditorColorScheme,
   SourceEditorFontFamily,
   SourceEditorFontSize,
-  SourceEditorTabSize,
-  SplitViewOrder
+  SourceEditorTabSize
 } from "./settings.js";

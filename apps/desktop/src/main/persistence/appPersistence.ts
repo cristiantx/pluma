@@ -9,7 +9,6 @@ import {
   isSourceEditorFontFamily,
   isSourceEditorFontSize,
   isSourceEditorTabSize,
-  isSplitViewOrder,
   isThemePreference,
   type AppSettings
 } from "@pluma/ui";
@@ -29,6 +28,8 @@ export type PersistedDocumentReference =
       path: string;
     };
 
+type PersistedEditorMode = EditorViewMode | "split";
+
 type PersistedSessionState = {
   activeDocumentRef?: PersistedDocumentReference | null;
   activeDocumentPath: string | null;
@@ -46,8 +47,20 @@ export type PersistedMultiWindowSessionState = {
   windows: PersistedWindowSessionState[];
 };
 
+type PersistedSessionStateCandidate = Omit<
+  PersistedSessionState,
+  "editorMode"
+> & {
+  editorMode: PersistedEditorMode;
+};
+
+type PersistedMultiWindowSessionStateCandidate = {
+  activeWindowIndex: number;
+  windows: PersistedSessionStateCandidate[];
+};
+
 export function isEditorViewMode(value: unknown): value is EditorViewMode {
-  return value === "source" || value === "rich" || value === "split";
+  return value === "source" || value === "rich";
 }
 
 export async function readAppSettings(filePath: string): Promise<AppSettings> {
@@ -57,10 +70,7 @@ export async function readAppSettings(filePath: string): Promise<AppSettings> {
     return defaultAppSettings;
   }
 
-  return {
-    ...defaultAppSettings,
-    ...parsedSettings
-  };
+  return normalizeAppSettings(parsedSettings);
 }
 
 export async function writeAppSettings(
@@ -89,8 +99,11 @@ export function normalizePersistedSessionState(
   value: unknown
 ): PersistedMultiWindowSessionState | null {
   if (isPersistedMultiWindowSessionState(value)) {
-    const activeWindow = value.windows[value.activeWindowIndex] ?? null;
-    const windows = value.windows.filter(isMeaningfulPersistedWindowState);
+    const normalizedWindows = value.windows.map(
+      normalizePersistedWindowSessionState
+    );
+    const activeWindow = normalizedWindows[value.activeWindowIndex] ?? null;
+    const windows = normalizedWindows.filter(isMeaningfulPersistedWindowState);
     const activeWindowIndex = activeWindow
       ? windows.indexOf(activeWindow)
       : value.activeWindowIndex;
@@ -105,10 +118,12 @@ export function normalizePersistedSessionState(
   }
 
   if (isPersistedSessionState(value)) {
-    return isMeaningfulPersistedWindowState(value)
+    const windowState = normalizePersistedWindowSessionState(value);
+
+    return isMeaningfulPersistedWindowState(windowState)
       ? {
           activeWindowIndex: 0,
-          windows: [value]
+          windows: [windowState]
         }
       : {
           activeWindowIndex: 0,
@@ -189,8 +204,6 @@ function isAppSettings(value: unknown): value is AppSettings {
       typeof candidate.sourceEditorWordWrap === "boolean") &&
     (candidate.richEditorDensity === undefined ||
       isRichEditorDensity(candidate.richEditorDensity)) &&
-    (candidate.splitViewOrder === undefined ||
-      isSplitViewOrder(candidate.splitViewOrder)) &&
     (candidate.defaultLineEnding === undefined ||
       isDefaultLineEnding(candidate.defaultLineEnding)) &&
     (candidate.openExportedFile === undefined ||
@@ -210,14 +223,65 @@ function isAppSettings(value: unknown): value is AppSettings {
   );
 }
 
+function normalizeAppSettings(settings: Partial<AppSettings>): AppSettings {
+  return {
+    autosaveEnabled:
+      settings.autosaveEnabled ?? defaultAppSettings.autosaveEnabled,
+    defaultLineEnding:
+      settings.defaultLineEnding ?? defaultAppSettings.defaultLineEnding,
+    openExportedFile:
+      settings.openExportedFile ?? defaultAppSettings.openExportedFile,
+    richEditorDensity:
+      settings.richEditorDensity ?? defaultAppSettings.richEditorDensity,
+    richEditorWidth:
+      settings.richEditorWidth ?? defaultAppSettings.richEditorWidth,
+    restorePreviousSession:
+      settings.restorePreviousSession ??
+      defaultAppSettings.restorePreviousSession,
+    sourceEditorColorScheme:
+      settings.sourceEditorColorScheme ??
+      defaultAppSettings.sourceEditorColorScheme,
+    sourceEditorFontFamily:
+      settings.sourceEditorFontFamily ??
+      defaultAppSettings.sourceEditorFontFamily,
+    sourceEditorFontSize:
+      settings.sourceEditorFontSize ?? defaultAppSettings.sourceEditorFontSize,
+    sourceEditorLineNumbers:
+      settings.sourceEditorLineNumbers ??
+      defaultAppSettings.sourceEditorLineNumbers,
+    sourceEditorTabSize:
+      settings.sourceEditorTabSize ?? defaultAppSettings.sourceEditorTabSize,
+    sourceEditorWordWrap:
+      settings.sourceEditorWordWrap ?? defaultAppSettings.sourceEditorWordWrap,
+    sourceEditorWidth:
+      settings.sourceEditorWidth ?? defaultAppSettings.sourceEditorWidth,
+    spellcheckEnabled:
+      settings.spellcheckEnabled ?? defaultAppSettings.spellcheckEnabled,
+    themePreference:
+      settings.themePreference ?? defaultAppSettings.themePreference,
+    workspaceSearchCaseSensitive:
+      settings.workspaceSearchCaseSensitive ??
+      defaultAppSettings.workspaceSearchCaseSensitive,
+    workspaceSearchRegexp:
+      settings.workspaceSearchRegexp ??
+      defaultAppSettings.workspaceSearchRegexp,
+    workspaceSearchWholeWord:
+      settings.workspaceSearchWholeWord ??
+      defaultAppSettings.workspaceSearchWholeWord,
+    workspaceShowHiddenFiles:
+      settings.workspaceShowHiddenFiles ??
+      defaultAppSettings.workspaceShowHiddenFiles
+  };
+}
+
 function isPersistedSessionState(
   value: unknown
-): value is PersistedSessionState {
+): value is PersistedSessionStateCandidate {
   if (!value || typeof value !== "object") {
     return false;
   }
 
-  const candidate = value as Partial<PersistedSessionState>;
+  const candidate = value as Partial<PersistedSessionStateCandidate>;
 
   return (
     (candidate.activeDocumentPath === null ||
@@ -232,7 +296,7 @@ function isPersistedSessionState(
     (candidate.documentRefs === undefined ||
       (Array.isArray(candidate.documentRefs) &&
         candidate.documentRefs.every(isPersistedDocumentReference))) &&
-    isEditorViewMode(candidate.editorMode) &&
+    isPersistedEditorMode(candidate.editorMode) &&
     (candidate.paneSizes === undefined ||
       (Array.isArray(candidate.paneSizes) &&
         candidate.paneSizes.every(
@@ -268,7 +332,7 @@ function isPersistedDocumentReference(
 
 function isPersistedMultiWindowSessionState(
   value: unknown
-): value is PersistedMultiWindowSessionState {
+): value is PersistedMultiWindowSessionStateCandidate {
   if (!value || typeof value !== "object") {
     return false;
   }
@@ -280,6 +344,25 @@ function isPersistedMultiWindowSessionState(
     Array.isArray(candidate.windows) &&
     candidate.windows.every(isPersistedSessionState)
   );
+}
+
+function isPersistedEditorMode(value: unknown): value is PersistedEditorMode {
+  return isEditorViewMode(value) || value === "split";
+}
+
+function normalizePersistedEditorMode(
+  editorMode: PersistedEditorMode
+): EditorViewMode {
+  return editorMode === "split" ? "source" : editorMode;
+}
+
+function normalizePersistedWindowSessionState(
+  state: PersistedSessionStateCandidate
+): PersistedWindowSessionState {
+  return {
+    ...state,
+    editorMode: normalizePersistedEditorMode(state.editorMode)
+  };
 }
 
 function normalizeActiveWindowIndex(

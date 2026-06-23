@@ -304,7 +304,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ### Search Decisions
 
-- [x] `Cmd+F` searches only the focused editor pane in split mode.
+- [x] `Cmd+F` searches the active editor pane.
 - [x] Ship replace together with active-file search.
 - [x] Scope workspace search to Markdown files for the MVP.
 - [x] Use `@vscode/ripgrep` for workspace search.
