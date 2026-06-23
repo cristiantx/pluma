@@ -24,10 +24,6 @@ function getTreeItemStyle(depth: number): CSSProperties {
   return { "--depth": depth } as CSSProperties;
 }
 
-function getRenderedTreeItemDepth(depth: number): number {
-  return Math.max(0, depth - 1);
-}
-
 export function SidebarTree({
   nodes,
   revealRequestId,
@@ -135,9 +131,7 @@ export function SidebarTree({
               .filter(Boolean)
               .join(" ")}
             key={item.getId()}
-            style={getTreeItemStyle(
-              getRenderedTreeItemDepth(item.getItemMeta().level)
-            )}
+            style={getTreeItemStyle(item.getItemMeta().level)}
             type="button"
             data-tree-item-id={item.getId()}
             {...itemProps}

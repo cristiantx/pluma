@@ -220,7 +220,8 @@
 
 .tree-item {
   --tree-indent-step: 22px;
-  --tree-indent-base: 12px;
+  --tree-indent-base: 8px;
+  --tree-guide-left: calc(var(--tree-indent-base) - 13px);
   --tree-guide-width: calc(var(--depth) * var(--tree-indent-step));
   position: relative;
   width: calc(100% - 8px);
@@ -246,7 +247,7 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: -2px;
+  left: var(--tree-guide-left);
   width: var(--tree-guide-width);
   opacity: 0;
   pointer-events: none;
