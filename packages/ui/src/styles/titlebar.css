@@ -5,7 +5,7 @@
   align-items: center;
   height: var(--titlebar-height);
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--titlebar-bg);
+  background: var(--surface-bg);
   -webkit-app-region: drag;
   user-select: none;
 }
@@ -36,7 +36,11 @@ button {
   margin: 0 auto;
 }
 
-.titlebar-path span:nth-child(2) {
+.titlebar-path {
+  font-weight: 750;
+}
+
+.titlebar-path span {
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
@@ -73,20 +77,17 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: var(--radius-control);
   color: var(--text-secondary);
   font-size: inherit;
   transition:
     background-color 140ms ease,
-    border-color 140ms ease,
     color 140ms ease;
 }
 
 .titlebar-button:hover,
-.titlebar-button.is-active,
-.titlebar-button[aria-pressed="true"] {
-  border-color: var(--border-default);
+.titlebar-button:focus-visible {
   background: var(--active-control);
   color: var(--text-primary);
 }

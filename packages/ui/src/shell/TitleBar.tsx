@@ -1,4 +1,4 @@
-import { Bug, Folder, PanelLeft, Settings } from "lucide-react";
+import { Bug, PanelLeft } from "lucide-react";
 import { memo } from "react";
 
 import { usePlumaStore } from "../state/usePlumaStore.js";
@@ -11,32 +11,32 @@ export const TitleBar = memo(function TitleBar() {
     (state) => state.workspace.isBridgeAvailable
   );
   const isDevelopment = usePlumaStore((state) => state.workspace.isDevelopment);
-  const workspacePath = usePlumaStore((state) => state.workspace.workspacePath);
+  const workspaceLabel = usePlumaStore(
+    (state) => state.workspace.workspaceLabel
+  );
   const isSidebarVisible = usePlumaStore(
     (state) => state.layout.isSidebarVisible
   );
   const triggerOpenDevTools = usePlumaStore(
     (state) => state.triggerOpenDevTools
   );
-  const openSettingsTab = usePlumaStore((state) => state.openSettingsTab);
   const toggleSidebar = usePlumaStore((state) => state.toggleSidebar);
+  const shouldShowSidebarRestore = hasWorkspace && !isSidebarVisible;
 
   return (
     <header className={`titlebar ${hasWorkspace ? "with-workspace" : ""}`}>
-      {hasWorkspace ? (
+      {shouldShowSidebarRestore ? (
         <TitleBarButton
-          aria-label={isSidebarVisible ? "Hide sidebar" : "Show sidebar"}
+          aria-label="Show sidebar"
           className="titlebar-sidebar-toggle"
           icon={PanelLeft}
-          isPressed={isSidebarVisible}
           onClick={toggleSidebar}
         />
       ) : null}
 
       {hasWorkspace ? (
         <div className="titlebar-path">
-          <Folder aria-hidden="true" />
-          <span>{workspacePath}</span>
+          <span>{workspaceLabel}</span>
         </div>
       ) : (
         <div className="titlebar-brand">
@@ -49,11 +49,6 @@ export const TitleBar = memo(function TitleBar() {
         {!isBridgeAvailable ? (
           <span className="bridge-warning">Offline</span>
         ) : null}
-        <TitleBarButton
-          aria-label="Open settings"
-          icon={Settings}
-          onClick={openSettingsTab}
-        />
         {isDevelopment ? (
           <TitleBarButton
             aria-label="Open DevTools"

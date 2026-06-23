@@ -1,0 +1,44 @@
+.floating-editor-view-switch {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 4;
+  height: 30px;
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--surface-bg) 94%, transparent);
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.18),
+    0 1px 0 color-mix(in srgb, var(--text-primary) 8%, transparent) inset;
+}
+
+.floating-editor-view-switch-button {
+  width: 34px;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border-left: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  line-height: 1;
+  padding: 0;
+}
+
+.floating-editor-view-switch-button:first-child {
+  border-left: 0;
+}
+
+.floating-editor-view-switch-button svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2;
+}
+
+.floating-editor-view-switch-button:hover,
+.floating-editor-view-switch-button:focus-visible,
+.floating-editor-view-switch-button[aria-pressed="true"] {
+  background: var(--active-control);
+  color: var(--text-primary);
+}

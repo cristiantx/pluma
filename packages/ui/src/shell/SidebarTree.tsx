@@ -16,7 +16,6 @@ type SidebarTreeProps = {
   nodes: ExplorerNode[];
   revealRequestId: number;
   revealWorkspacePath: string | null;
-  rootLabel: string;
   onOpenWorkspaceFile: (path: string) => void;
   onShowContextMenu: (path: string, kind: ExplorerNode["kind"]) => void;
 };
@@ -25,17 +24,20 @@ function getTreeItemStyle(depth: number): CSSProperties {
   return { "--depth": depth } as CSSProperties;
 }
 
+function getRenderedTreeItemDepth(depth: number): number {
+  return Math.max(0, depth - 1);
+}
+
 export function SidebarTree({
   nodes,
   revealRequestId,
   revealWorkspacePath,
-  rootLabel,
   onOpenWorkspaceFile,
   onShowContextMenu
 }: SidebarTreeProps) {
   const treeData = useMemo(
-    () => buildSidebarTreeData(rootLabel, nodes, revealWorkspacePath),
-    [nodes, revealWorkspacePath, rootLabel]
+    () => buildSidebarTreeData("Files", nodes, revealWorkspacePath),
+    [nodes, revealWorkspacePath]
   );
   const [expandedItems, setExpandedItems] = useState(treeData.expandedItems);
   const [focusedItem, setFocusedItem] = useState<string | null>(null);
@@ -116,6 +118,10 @@ export function SidebarTree({
   return (
     <div {...tree.getContainerProps("Files")} className="tree-list" role="tree">
       {tree.getItems().map((item) => {
+        if (item.getId() === treeData.rootItemId) {
+          return null;
+        }
+
         const itemProps = item.getProps();
         const itemData = item.getItemData();
 
@@ -129,7 +135,9 @@ export function SidebarTree({
               .filter(Boolean)
               .join(" ")}
             key={item.getId()}
-            style={getTreeItemStyle(item.getItemMeta().level)}
+            style={getTreeItemStyle(
+              getRenderedTreeItemDepth(item.getItemMeta().level)
+            )}
             type="button"
             data-tree-item-id={item.getId()}
             {...itemProps}

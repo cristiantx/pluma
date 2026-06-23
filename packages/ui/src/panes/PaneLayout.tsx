@@ -55,8 +55,9 @@ export function PaneLayout({
       defaultSizes={initialSizes}
       {...(onPaneSizesChange ? { onChange: onPaneSizesChange } : {})}
       vertical={false}
+      separator={false}
     >
-      <Pane className="primary" minSize={160} preferredSize={178}>
+      <Pane className="primary" minSize={220} preferredSize={178}>
         {primary}
       </Pane>
       <Pane className="main" minSize={420}>

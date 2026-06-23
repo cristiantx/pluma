@@ -33,10 +33,9 @@
   --shadow-window: 0 22px 70px rgba(22, 33, 44, 0.12);
   --titlebar-height: 36px;
   --tabbar-height: 36px;
-  --statusbar-height: 36px;
   --sidebar-width: 178px;
   --radius-window: 6px;
-  --radius-control: 4px;
+  --radius-control: 8px;
 }
 
 :root[data-theme="dark"] {

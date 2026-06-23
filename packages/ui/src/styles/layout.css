@@ -1,14 +1,11 @@
 .shell {
   height: 100vh;
   min-height: 100vh;
-  display: grid;
-  grid-template-rows: var(--titlebar-height) minmax(0, 1fr) var(
-      --statusbar-height
-    );
+  display: flex;
   overflow: hidden;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-window);
-  background: var(--surface-bg);
+  background: var(--sidebar-bg);
   box-shadow: var(--shadow-window);
   font-family: var(--font-ui);
   font-size: var(--font-size-ui);
@@ -16,12 +13,50 @@
 
 .pane-layout,
 .pane-layout > *,
+.main-shell-panel,
 .main,
 .primary,
 .secondary {
   min-height: 0;
   height: 100%;
   overflow: hidden;
+}
+
+.pane-layout [class*="allotment-module_splitViewView"]:has(> .main) {
+  overflow: hidden;
+  border-radius: 15px;
+  box-shadow: 0 14px 42px color-mix(in srgb, #000 18%, transparent);
+}
+
+:root[data-theme="dark"]
+  .pane-layout
+  [class*="allotment-module_splitViewView"]:has(> .main) {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #fff 18%, transparent),
+    0 16px 48px color-mix(in srgb, #000 34%, transparent);
+}
+
+.main-shell-panel {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: var(--titlebar-height) minmax(0, 1fr);
+  overflow: hidden;
+  border-radius: 12px 0 0 12px;
+  background: var(--surface-bg);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.1);
+}
+
+/* .shell[data-sidebar-visible="true"] .main-shell-panel {
+  height: calc(100% - 14px);
+  margin: 7px 0 7px 0; */
+/* } */
+
+.shell[data-sidebar-visible="false"] .main-shell-panel {
+  width: 100%;
+  border-width: 0;
+  border-radius: var(--radius-window);
+  box-shadow: none;
 }
 
 .shell-content {
@@ -34,5 +69,13 @@
   min-height: 0;
   height: 100%;
   overflow: hidden;
-  background: var(--surface-bg);
+  background: transparent;
+}
+
+.allotment > .split-view-view {
+  background: transparent;
+}
+
+.split-view-sash {
+  background: transparent;
 }

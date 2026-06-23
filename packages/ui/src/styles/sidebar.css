@@ -7,6 +7,32 @@
   color: var(--text-secondary);
 }
 
+.sidebar-titlebar {
+  height: var(--titlebar-height);
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.sidebar-window-control-spacer {
+  width: 72px;
+  height: 100%;
+  flex: 0 0 auto;
+}
+
+.sidebar-titlebar-toggle {
+  margin-left: auto;
+  -webkit-app-region: no-drag;
+}
+
+.sidebar-titlebar-view-toggle {
+  -webkit-app-region: no-drag;
+}
+
 .workspace-search {
   flex: 1 1 auto;
   min-height: 0;
@@ -209,7 +235,7 @@
   color: var(--text-secondary);
   text-align: left;
   font-size: inherit;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   transition:
     background-color 120ms ease,
     box-shadow 120ms ease,
@@ -297,47 +323,47 @@
 
 .sidebar-footer {
   flex: 0 0 auto;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
   padding: 8px;
   border-top: 1px solid var(--border-subtle);
 }
 
-.sidebar-tab-button {
+.sidebar-settings-button {
+  width: 100%;
   min-width: 0;
   height: 30px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 6px;
-  padding: 0;
+  padding: 0 8px;
   border-radius: var(--radius-control);
   color: var(--text-secondary);
   font-size: inherit;
-  line-height: 1;
+  line-height: 1.5;
   transition:
     background-color 120ms ease,
     color 120ms ease;
 }
 
-.sidebar-tab-button svg {
+.sidebar-settings-button svg {
   width: 15px;
   height: 15px;
   flex: 0 0 auto;
 }
 
-.sidebar-tab-button span {
-  display: none;
+.sidebar-settings-button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.sidebar-tab-button:hover,
-.sidebar-tab-button:focus-visible,
-.sidebar-tab-button[aria-pressed="true"] {
+.sidebar-settings-button:hover,
+.sidebar-settings-button:focus-visible {
   background: var(--active-control);
   color: var(--text-primary);
 }
 
-.sidebar-tab-button:active {
+.sidebar-settings-button:active {
   background: color-mix(in srgb, var(--active-control) 72%, var(--accent) 8%);
 }
