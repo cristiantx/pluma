@@ -57,16 +57,16 @@ export function PaneLayout({
       vertical={false}
       separator={false}
     >
-      <Pane className="primary" minSize={220} preferredSize={178}>
+      <Allotment.Pane className="primary" minSize={200} preferredSize={220}>
         {primary}
-      </Pane>
-      <Pane className="main" minSize={420}>
+      </Allotment.Pane>
+      <Allotment.Pane className="main" minSize={420}>
         {main}
-      </Pane>
+      </Allotment.Pane>
       {secondary ? (
-        <Pane className="secondary" minSize={200} preferredSize={260}>
+        <Allotment.Pane className="secondary" minSize={200} preferredSize={260}>
           {secondary}
-        </Pane>
+        </Allotment.Pane>
       ) : null}
     </Allotment>
   );

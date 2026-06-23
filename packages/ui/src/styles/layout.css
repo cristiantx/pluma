@@ -22,15 +22,13 @@
   overflow: hidden;
 }
 
-.pane-layout [class*="allotment-module_splitViewView"]:has(> .main) {
+.pane-layout .main {
   overflow: hidden;
   border-radius: 15px;
   box-shadow: 0 14px 42px color-mix(in srgb, #000 18%, transparent);
 }
 
-:root[data-theme="dark"]
-  .pane-layout
-  [class*="allotment-module_splitViewView"]:has(> .main) {
+:root[data-theme="dark"] .pane-layout .main {
   box-shadow:
     0 0 0 1px color-mix(in srgb, #fff 18%, transparent),
     0 16px 48px color-mix(in srgb, #000 34%, transparent);
