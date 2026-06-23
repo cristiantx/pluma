@@ -9,7 +9,7 @@ export type EditorTab = {
   title: string;
 };
 
-export type SettingsTab = {
+type SettingsTab = {
   id: "settings";
   kind: "settings";
   title: "Settings";

@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@pluma/core": "workspace:*",
-    "@pluma/editor": "workspace:*",
     "@pluma/ui": "workspace:*",
     "@vscode/ripgrep": "^1.18.0",
     "electron-squirrel-startup": "^1.0.1",

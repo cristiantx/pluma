@@ -6,7 +6,7 @@ import { defaultAppSettings } from "../settings.js";
 
 const noop = () => {};
 
-export const defaultCommandHandlers: PlumaCommandHandlers = {
+const defaultCommandHandlers: PlumaCommandHandlers = {
   closeTab: noop,
   compareConflict: noop,
   keepEditing: noop,

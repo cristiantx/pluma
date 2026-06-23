@@ -1,6 +1,6 @@
 import type { DocumentSession } from "@pluma/core";
 
-import type { EditorTab, PlumaTab } from "../adapters/tabModel.js";
+import type { PlumaTab } from "../adapters/tabModel.js";
 import type { AppSettings } from "../settings.js";
 import type { ExplorerNode, StatusMetric } from "../shell/types.js";
 import type { ResolvedTheme, ThemePreference } from "../theme.js";
@@ -42,7 +42,7 @@ export type ThemeSlice = {
   systemPrefersDark: boolean;
 };
 
-export type WritingSlice = {
+type WritingSlice = {
   spellcheckEnabled: boolean;
 };
 
@@ -91,7 +91,7 @@ export type LayoutSlice = {
   isSidebarVisible: boolean;
 };
 
-export type SettingsSlice = AppSettings;
+type SettingsSlice = AppSettings;
 
 export type PlumaShellSnapshot = {
   activeDocument: DocumentSession | null;

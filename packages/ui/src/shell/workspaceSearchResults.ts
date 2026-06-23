@@ -30,7 +30,7 @@ export function groupWorkspaceSearchMatches(
   return [...groups.values()];
 }
 
-export function getWorkspaceRelativeLabel(
+function getWorkspaceRelativeLabel(
   filePath: string,
   workspacePath: string
 ): string {

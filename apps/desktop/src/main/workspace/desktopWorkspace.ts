@@ -31,7 +31,7 @@ export function isPathInsideDirectory(
   );
 }
 
-export function toDesktopFileLocation(filePath: string): DesktopFileLocation {
+function toDesktopFileLocation(filePath: string): DesktopFileLocation {
   return {
     kind: "desktop-path",
     path: filePath

@@ -1,6 +1,6 @@
 import type { FileLocation } from "@pluma/core";
 
-export type SidebarTreeNode = {
+type SidebarTreeNode = {
   children?: string[];
   kind: "folder" | "file";
   label: string;

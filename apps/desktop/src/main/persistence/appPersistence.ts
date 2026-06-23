@@ -29,7 +29,7 @@ export type PersistedDocumentReference =
       path: string;
     };
 
-export type PersistedSessionState = {
+type PersistedSessionState = {
   activeDocumentRef?: PersistedDocumentReference | null;
   activeDocumentPath: string | null;
   documentRefs?: PersistedDocumentReference[];

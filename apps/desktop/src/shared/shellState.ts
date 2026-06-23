@@ -1,7 +1,7 @@
 import type { DocumentSession } from "@pluma/core";
 import type { AppSettings } from "@pluma/ui";
 
-export type EditorMode = "rich" | "source";
+type EditorMode = "rich" | "source";
 export type EditorViewMode = EditorMode | "split";
 
 export type WorkspaceTreeEntry = {
@@ -48,11 +48,7 @@ export type RendererEvent =
   | { type: "shell-snapshot"; snapshot: DesktopShellSnapshot }
   | { type: "status"; message: string };
 
-export type EditorCommandName =
-  | "find"
-  | "find-next"
-  | "find-previous"
-  | "replace";
+type EditorCommandName = "find" | "find-next" | "find-previous" | "replace";
 
 export type CommandName =
   | "close-active-tab"

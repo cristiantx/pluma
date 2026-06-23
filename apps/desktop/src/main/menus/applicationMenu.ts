@@ -2,7 +2,7 @@ import { app, Menu, type MenuItemConstructorOptions } from "electron";
 
 import type { CommandName } from "../../shared/shellState";
 
-export type ApplicationMenuCommandAvailability = {
+type ApplicationMenuCommandAvailability = {
   hasActiveDocument: boolean;
 };
 

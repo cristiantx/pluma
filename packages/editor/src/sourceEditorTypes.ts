@@ -20,7 +20,7 @@ export type SourceEditorProps = {
   ) => void;
   onChange: (rawText: string) => void;
   rawText: string;
-  searchRevealRequest?: SourceSearchRevealRequest | null;
+  searchRevealRequest?: (SourceSearchMatch & { requestId: number }) | null;
   sourceFontFamily?: "mono" | "system";
   sourceFontSize?: number;
   sourceLineNumbers?: boolean;
@@ -48,8 +48,4 @@ export type SourceSearchMatch = {
   line: number;
   matchEnd: number;
   matchStart: number;
-};
-
-export type SourceSearchRevealRequest = SourceSearchMatch & {
-  requestId: number;
 };
