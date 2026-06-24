@@ -13,6 +13,7 @@ const defaultCommandHandlers: PlumaCommandHandlers = {
   newFile: noop,
   openDevTools: noop,
   openAppDataFolder: noop,
+  openExternalUrl: noop,
   openFile: noop,
   openFolder: noop,
   openSettingsFile: noop,

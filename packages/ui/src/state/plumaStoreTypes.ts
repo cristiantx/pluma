@@ -14,6 +14,7 @@ export type PlumaCommandHandlers = {
   openAppDataFolder: () => void;
   openFile: () => void;
   openFolder: () => void;
+  openExternalUrl: (url: string) => void;
   openSettingsFile: () => void;
   openWorkspaceFile: (path: string) => void;
   searchWorkspace: (
@@ -133,6 +134,7 @@ export type PlumaStoreActions = {
   keepEditing: () => void;
   openSettingsTab: () => void;
   openAppDataFolder: () => void;
+  openExternalUrl: (url: string) => void;
   openSettingsFile: () => void;
   openWorkspaceSearch: (folderPath: string | null) => void;
   revealWorkspaceSearchMatch: (match: WorkspaceSearchMatch) => void;

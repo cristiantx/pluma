@@ -19,6 +19,9 @@ const api = {
   openAppDataFolder() {
     return ipcRenderer.invoke("pluma:open-app-data-folder");
   },
+  openExternalUrl(url: string) {
+    return ipcRenderer.invoke("pluma:open-external-url", url);
+  },
   openSettingsFile() {
     return ipcRenderer.invoke("pluma:open-settings-file");
   },

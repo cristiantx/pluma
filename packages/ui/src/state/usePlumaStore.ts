@@ -135,6 +135,10 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     get().commands.commandHandlers.openAppDataFolder();
   },
 
+  openExternalUrl: (url) => {
+    get().commands.commandHandlers.openExternalUrl(url);
+  },
+
   openSettingsFile: () => {
     get().commands.commandHandlers.openSettingsFile();
   },

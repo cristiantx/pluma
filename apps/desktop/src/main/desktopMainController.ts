@@ -620,6 +620,14 @@ function registerDesktopIpcHandlers(): void {
     openAppDataFolder: async () => {
       await shell.openPath(app.getPath("userData"));
     },
+    openExternalUrl: async (_event, url) => {
+      if (!isExternalWebUrl(url)) {
+        getLatestFocusedSession()?.emitStatus("External URL open was ignored.");
+        return;
+      }
+
+      await shell.openExternal(url);
+    },
     openSettingsFile: async () => {
       await writeAppSettings(
         getAppSettingsPath(),
@@ -632,6 +640,20 @@ function registerDesktopIpcHandlers(): void {
       return updateStoredAppSettings(getAppSettingsUpdate(settings));
     }
   });
+}
+
+function isExternalWebUrl(url: unknown): url is string {
+  if (typeof url !== "string") {
+    return false;
+  }
+
+  try {
+    const parsedUrl = new URL(url);
+
+    return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 async function installDevelopmentExtensions(): Promise<void> {

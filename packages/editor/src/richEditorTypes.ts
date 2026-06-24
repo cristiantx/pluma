@@ -25,6 +25,7 @@ export type RichEditorProps = {
   resolvedTheme?: "dark" | "light";
   onCursorAnchorChange?: (anchor: EditorCursorAnchor) => void;
   onFocus?: () => void;
+  onOpenLinkRequest?: (url: string) => void;
   onReady?: () => void;
   onScrollAnchorChange?: (
     anchor: EditorScrollAnchor,

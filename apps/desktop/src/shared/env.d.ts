@@ -9,6 +9,7 @@ declare global {
       closeTab(tabId: string): Promise<void>;
       getSettings(): Promise<AppSettings>;
       openAppDataFolder(): Promise<void>;
+      openExternalUrl(url: string): Promise<void>;
       openSettingsFile(): Promise<void>;
       openWorkspaceFile(path: string): Promise<void>;
       searchWorkspace(

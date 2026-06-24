@@ -39,6 +39,7 @@ import {
   setSourceSearchQuery
 } from "./sourceEditorInterop.js";
 import { markdownCommandKeymap } from "./markdownCommands.js";
+import { getRichEditorModifiedClickLinkUrl } from "./richEditorLinkClicks.js";
 import { plumaRichEditorTheme } from "./richEditorTheme.js";
 import { resolveRichEditorImageUrls } from "./richEditorImageUrls.js";
 import type { RichEditorHandle, RichEditorProps } from "./richEditorTypes.js";
@@ -56,6 +57,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
       imageBaseUrl,
       onCursorAnchorChange,
       onFocus,
+      onOpenLinkRequest,
       onReady,
       onScrollAnchorChange,
       onChange,
@@ -70,6 +72,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
     const onCursorAnchorChangeRef = useRef(onCursorAnchorChange);
     const onChangeRef = useRef(onChange);
     const onFocusRef = useRef(onFocus);
+    const onOpenLinkRequestRef = useRef(onOpenLinkRequest);
     const onReadyRef = useRef(onReady);
     const onScrollAnchorChangeRef = useRef(onScrollAnchorChange);
     const imageBaseUrlRef = useRef(imageBaseUrl);
@@ -120,9 +123,16 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
     useEffect(() => {
       onCursorAnchorChangeRef.current = onCursorAnchorChange;
       onFocusRef.current = onFocus;
+      onOpenLinkRequestRef.current = onOpenLinkRequest;
       onReadyRef.current = onReady;
       onScrollAnchorChangeRef.current = onScrollAnchorChange;
-    }, [onCursorAnchorChange, onFocus, onReady, onScrollAnchorChange]);
+    }, [
+      onCursorAnchorChange,
+      onFocus,
+      onOpenLinkRequest,
+      onReady,
+      onScrollAnchorChange
+    ]);
 
     useEffect(() => {
       const parent = containerRef.current;
@@ -197,11 +207,24 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
             onScrollAnchorChangeRef.current?.(anchor, scrollSourceRef.current);
           }
         };
+        const handleClick = (event: MouseEvent) => {
+          const linkUrl = getRichEditorModifiedClickLinkUrl(event);
+
+          if (!linkUrl) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          onOpenLinkRequestRef.current?.(linkUrl);
+        };
 
         view.dom.addEventListener("focusin", handleFocusIn);
         view.dom.addEventListener("focusout", handleSelectionChange);
         view.dom.addEventListener("keyup", handleSelectionChange);
         view.dom.addEventListener("mouseup", handleSelectionChange);
+        view.dom.addEventListener("click", handleClick, { capture: true });
         view.scrollDOM.addEventListener("scroll", handleScroll, {
           passive: true
         });
@@ -225,6 +248,9 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
           view.dom.removeEventListener("focusout", handleSelectionChange);
           view.dom.removeEventListener("keyup", handleSelectionChange);
           view.dom.removeEventListener("mouseup", handleSelectionChange);
+          view.dom.removeEventListener("click", handleClick, {
+            capture: true
+          });
           view.scrollDOM.removeEventListener("scroll", handleScroll);
         };
       });

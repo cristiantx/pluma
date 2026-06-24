@@ -1,8 +1,9 @@
-import { memo, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 
 import {
   RichEditor,
   SourceEditor,
+  type EditorCursorAnchor,
   type RichEditorHandle,
   type SourceEditorHandle
 } from "@pluma/editor";
@@ -11,13 +12,21 @@ import { usePlumaStore } from "../state/usePlumaStore.js";
 import { addEditorCommandEventListener } from "./editorCommandEvents.js";
 import { getDesktopDocumentAssetBaseUrl } from "./desktopAssetUrls.js";
 import { EditorSearchPanel } from "./EditorSearchPanel.js";
+import { findMarkdownHeadingAnchorPosition } from "./markdownHeadingAnchors.js";
+import { getRichLinkTargetAction } from "./richLinkTargets.js";
 import { SettingsView } from "./SettingsView.js";
 import { TabStrip } from "./TabStrip.js";
 import { useEditorWorkspaceController } from "./useEditorWorkspaceController.js";
 
+type PendingLinkReveal = {
+  filePath: string;
+  fragment: string;
+};
+
 export const EditorWorkspace = memo(function EditorWorkspace() {
   const richEditorRef = useRef<RichEditorHandle | null>(null);
   const sourceEditorRef = useRef<SourceEditorHandle | null>(null);
+  const pendingLinkRevealRef = useRef<PendingLinkReveal | null>(null);
   const activeDocument = usePlumaStore(
     (state) => state.document.activeDocument
   );
@@ -52,8 +61,10 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
     (state) => state.settings.sourceEditorWordWrap
   );
   const hasWorkspace = usePlumaStore((state) => state.workspace.hasWorkspace);
+  const workspacePath = usePlumaStore((state) => state.workspace.workspacePath);
   const compareConflict = usePlumaStore((state) => state.compareConflict);
   const keepEditing = usePlumaStore((state) => state.keepEditing);
+  const openExternalUrl = usePlumaStore((state) => state.openExternalUrl);
   const reloadFromDisk = usePlumaStore((state) => state.reloadFromDisk);
   const searchRevealRequest = usePlumaStore(
     (state) => state.workspace.searchRevealRequest
@@ -61,8 +72,15 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   const spellcheckEnabled = usePlumaStore(
     (state) => state.writing.spellcheckEnabled
   );
+  const triggerOpenWorkspaceFile = usePlumaStore(
+    (state) => state.triggerOpenWorkspaceFile
+  );
   const updateDocumentText = usePlumaStore((state) => state.updateDocumentText);
   const activeDocumentId = activeDocument?.id ?? null;
+  const activeDocumentPath =
+    activeDocument?.location.kind === "desktop-path"
+      ? activeDocument.location.path
+      : null;
   const showRichEditor =
     activeDocument?.modeConstraint !== "source-only" &&
     editorViewMode === "rich";
@@ -94,9 +112,90 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
     sourceEditorRef
   });
 
+  const revealPendingLinkAnchor = useCallback(() => {
+    const pendingReveal = pendingLinkRevealRef.current;
+
+    if (
+      !pendingReveal ||
+      !activeDocument ||
+      activeDocument.location.kind !== "desktop-path" ||
+      activeDocument.location.path !== pendingReveal.filePath
+    ) {
+      return;
+    }
+
+    const position = findMarkdownHeadingAnchorPosition(
+      activeDocument.rawText,
+      pendingReveal.fragment
+    );
+    pendingLinkRevealRef.current = null;
+
+    if (position === null) {
+      return;
+    }
+
+    const anchor: EditorCursorAnchor = {
+      documentId: activeDocument.id,
+      kind: "source",
+      position,
+      visibleOffset: null
+    };
+
+    window.requestAnimationFrame(() => {
+      if (editorViewMode === "rich") {
+        richEditorRef.current?.applyCursorAnchor(anchor);
+      } else {
+        sourceEditorRef.current?.applyCursorAnchor(anchor);
+      }
+    });
+  }, [activeDocument, editorViewMode]);
+
+  const handleOpenLinkRequest = useCallback(
+    (linkUrl: string) => {
+      const action = getRichLinkTargetAction({
+        activeDocumentPath,
+        linkUrl,
+        workspacePath: hasWorkspace ? workspacePath : null
+      });
+
+      if (action.kind === "external-url") {
+        openExternalUrl(action.url);
+        return;
+      }
+
+      if (action.kind !== "workspace-markdown") {
+        return;
+      }
+
+      pendingLinkRevealRef.current = action.fragment
+        ? {
+            filePath: action.filePath,
+            fragment: action.fragment
+          }
+        : null;
+      triggerOpenWorkspaceFile(action.filePath);
+
+      if (action.filePath === activeDocumentPath && action.fragment) {
+        window.requestAnimationFrame(revealPendingLinkAnchor);
+      }
+    },
+    [
+      activeDocumentPath,
+      hasWorkspace,
+      openExternalUrl,
+      revealPendingLinkAnchor,
+      triggerOpenWorkspaceFile,
+      workspacePath
+    ]
+  );
+
   useEffect(() => {
     return addEditorCommandEventListener(handleEditorCommand);
   }, [handleEditorCommand]);
+
+  useEffect(() => {
+    revealPendingLinkAnchor();
+  }, [revealPendingLinkAnchor]);
 
   if (activeTabId === "settings") {
     return (
@@ -164,6 +263,7 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
           imageBaseUrl={imageBaseUrl}
           onCursorAnchorChange={handleCursorAnchorChange}
           onFocus={() => setActiveEditorKind("rich")}
+          onOpenLinkRequest={handleOpenLinkRequest}
           onReady={scheduleReplayAnchors}
           onScrollAnchorChange={handleScrollAnchorChange}
           onChange={(rawText) => updateDocumentText(activeDocument.id, rawText)}

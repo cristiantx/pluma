@@ -37,6 +37,12 @@ export function createPlumaCommandHandlers({
         "Cannot open app data because IPC is unavailable.",
         (pluma) => void pluma.openAppDataFolder()
       ),
+    openExternalUrl: (url) =>
+      invokePlumaOrSetStatus(
+        setShellState,
+        `Cannot open "${url}" because IPC is unavailable.`,
+        (pluma) => void pluma.openExternalUrl(url)
+      ),
     openFile: () => runCommand(setShellState, "open-file"),
     openFolder: () => runCommand(setShellState, "open-folder"),
     openSettingsFile: () =>
