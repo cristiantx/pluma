@@ -21,6 +21,7 @@
   border: 0;
   border-radius: 999px;
   background: var(--editor-view-switch-surface);
+  outline: 1px solid var(--border-subtle);
   box-shadow:
     0 18px 42px rgba(0, 0, 0, 0.22),
     0 3px 10px rgba(0, 0, 0, 0.1);
@@ -28,15 +29,21 @@
 }
 
 :root[data-theme="dark"] .floating-editor-view-switch {
-  --editor-view-switch-surface: #ffffff;
-  --editor-view-switch-track: transparent;
+  --editor-view-switch-surface: color-mix(
+    in srgb,
+    var(--surface-bg) 92%,
+    var(--text-primary) 8%
+  );
   --editor-view-switch-active: color-mix(
     in srgb,
-    #eef1f4 88%,
-    var(--text-primary) 12%
+    var(--active-control) 82%,
+    var(--accent) 18%
   );
-  --editor-view-switch-icon: #5d6a78;
-  --editor-view-switch-icon-active: #263241;
+  --editor-view-switch-icon: var(--text-muted);
+  --editor-view-switch-icon-active: var(--text-primary);
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.42),
+    0 3px 10px rgba(0, 0, 0, 0.26);
 }
 
 .floating-editor-view-switch::before {
