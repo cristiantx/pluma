@@ -2,7 +2,7 @@ import path from "node:path";
 
 import {
   createDocumentSession,
-  getMarkdownDocumentCapability,
+  getMarkdownDocumentModeConstraint,
   markdownPipeline,
   type DesktopFileLocation,
   type DocumentSession,
@@ -51,13 +51,13 @@ export async function createSessionForFilePath(
 
   const rawText = await fileSystem.readText(fileLocation);
   const analysis = markdownPipeline.analyze(markdownPipeline.parse(rawText));
-  const capability = getMarkdownDocumentCapability(analysis);
+  const modeConstraint = getMarkdownDocumentModeConstraint(analysis);
 
   return createDocumentSession({
-    capability,
     location: fileLocation,
     metadata,
-    mode: capability === "rich-safe" ? "rich" : "source",
+    mode: modeConstraint === "source-only" ? "source" : "rich",
+    modeConstraint,
     rawText
   });
 }

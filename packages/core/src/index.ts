@@ -1,7 +1,7 @@
 export type {
   CreateDocumentSessionInput,
-  DocumentCapability,
   DocumentMode,
+  DocumentModeConstraint,
   DocumentSaveState,
   DocumentSession
 } from "./documentSession.js";
@@ -82,8 +82,7 @@ export type {
 export {
   analyzeMarkdownParseResult,
   analyzeMarkdownText,
-  getMarkdownDocumentCapability,
-  guardMarkdownRoundTrip,
+  getMarkdownDocumentModeConstraint,
   markdownPipeline,
   parseMarkdown,
   serializeMarkdownSession

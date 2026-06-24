@@ -67,7 +67,7 @@ describe("CommonMark compatibility", () => {
     expect(failures, summarizeExamples(failures)).toEqual([]);
   });
 
-  it("keeps official CommonMark HTML examples out of rich mode when they parse as raw HTML", () => {
+  it("keeps official CommonMark HTML examples source-only when they parse as raw HTML", () => {
     const htmlExamples = examples.filter(
       (example) =>
         policyDifferenceSections.has(example.section) &&
@@ -75,7 +75,8 @@ describe("CommonMark compatibility", () => {
     );
     const failures = htmlExamples.filter(
       (example) =>
-        analyzeMarkdownText(expandSpecTabs(example.markdown)).supportsRichMode
+        analyzeMarkdownText(expandSpecTabs(example.markdown)).modeConstraint !==
+        "source-only"
     );
 
     expect(htmlExamples.length).toBeGreaterThan(0);

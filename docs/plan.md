@@ -2,7 +2,7 @@
 
 ## Summary
 
-Build Pluma as an Electron + TypeScript + React desktop app with a shared core so a future browser version can reuse document, parsing, and file-session logic. For the editor engine, use Milkdown, based on ProseMirror and Remark, for rich Markdown editing and CodeMirror 6 for source mode. Keep the file on disk as plain `.md`; no database, no sync layer, no server.
+Build Pluma as an Electron + TypeScript + React desktop app with a shared core so a future browser version can reuse document, parsing, and file-session logic. For the editor engine, use Draftly on CodeMirror 6 for rich Markdown editing and CodeMirror 6 for source mode. Keep the file on disk as plain `.md`; no database, no sync layer, no server.
 
 Choose Electron for the MVP because it gives predictable cross-platform file opening, packaging, and OS integration now. Revisit Tauri later only if bundle size or startup time becomes a real product problem.
 
@@ -29,15 +29,15 @@ Choose Electron for the MVP because it gives predictable cross-platform file ope
   - `FileSystemAdapter`
   - `DesktopFileSystemAdapter` now
   - `BrowserFileSystemAdapter` later
-- Build order should prioritize shared shell extraction, core file/document foundations, and real workspace navigation before the editor-engine phases, so CodeMirror and Milkdown land on top of real file-backed sessions.
+- Build order should prioritize shared shell extraction, core file/document foundations, and real workspace navigation before the editor-engine phases, so Draftly and CodeMirror land on top of real file-backed sessions.
 
 ### 2. Editor Engine And UX
 
 - Rich mode is primary; source mode is always available and first-class.
-- Use Milkdown as the rich editor base because it is Markdown-oriented and already sits on ProseMirror + Remark, with CommonMark/GFM support.
+- Use Draftly as the rich editor base because it keeps Markdown source text as the live editor state.
 - Use CodeMirror 6 for source mode.
 - Theme app chrome separately from editor syntax colors.
-- Map CodeMirror and Milkdown visuals into Pluma-owned theme tokens rather than relying on stock themes as the product identity.
+- Map CodeMirror and Draftly visuals into Pluma-owned theme tokens rather than relying on stock themes as the product identity.
 - Use the design foundation phase to define typography, density, custom title-bar patterns, sidebar patterns, top-right utility actions, status-bar patterns, and Radix styling rules before applying them in later editor and workspace phases.
 - Extract the renderer shell, sidebar UI, status bar UI, empty states, and similar app-level presentation into `packages/ui` early so the future browser app can reuse the same app surfaces.
 - Keep pane layout and file-tree presentation in shared renderer code so the future browser shell can reuse the same workspace UI structure.
@@ -77,7 +77,7 @@ Choose Electron for the MVP because it gives predictable cross-platform file ope
   - absolute path
   - current raw text
   - parsed block map
-  - rich/source capability flags
+  - rich/source mode constraints
   - dirty state
   - last-known `mtime`
   - external-change state
@@ -184,7 +184,7 @@ Choose Electron for the MVP because it gives predictable cross-platform file ope
 
 - Electron app lifecycle and file-open handling: <https://www.electronjs.org/docs/latest/api/app>
 - Electron Forge packaging and makers: <https://www.electronforge.io/>
-- Milkdown overview and GFM support: <https://milkdown.dev/>
+- Draftly fork used by Pluma: <https://github.com/cristiantx/draftly>
 - Tiptap Markdown docs note the Markdown extension is beta: <https://tiptap.dev/docs/editor/markdown>
 - Tauri tradeoffs and prerequisites: <https://v2.tauri.app/start/>
 - MDN File System Access API picker support: <https://developer.mozilla.org/docs/Web/API/Window/showOpenFilePicker>

@@ -1,5 +1,18 @@
-import { Crepe } from "@milkdown/crepe";
-import type { EditorView } from "@milkdown/prose/view";
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import {
+  findNext,
+  findPrevious,
+  replaceAll,
+  replaceNext,
+  search
+} from "@codemirror/search";
+import type { Extension } from "@codemirror/state";
+import {
+  drawSelection,
+  dropCursor,
+  EditorView,
+  keymap
+} from "@codemirror/view";
 import {
   forwardRef,
   useEffect,
@@ -8,36 +21,30 @@ import {
   useState
 } from "react";
 import type { RefObject } from "react";
-
-import { formatMarkdownText } from "@pluma/core";
+import type * as DraftlyEditor from "draftly/editor";
+import type * as DraftlyPlugins from "draftly/plugins";
 
 import type {
   EditorCursorAnchor,
-  EditorScrollSyncSource,
-  EditorSearchQuery
+  EditorScrollSyncSource
 } from "./editorTypes.js";
-import { createEmptyEditorSearchQuery } from "./editorSearch.js";
 import {
-  applyRichScrollAnchor,
-  getRichScrollAnchor,
-  getRichScroller
-} from "./richEditorScroll.js";
-import {
-  applyRichCursorAnchor,
-  focusRichEditor,
-  getRichCursorAnchor,
-  getRichSearchStatus,
-  replaceAllRichSearchMatches,
-  replaceNextRichSearchMatch,
-  revealRichSearchMatch,
-  selectRichSearchMatch,
-  updateRichSearchDecorations
-} from "./richEditorSearch.js";
+  applySourceCursorAnchor,
+  applySourceScrollAnchor,
+  getSourceCursorAnchor,
+  getSourceScrollAnchor,
+  getSourceSearchStatus,
+  revealSourceSearchMatch,
+  runSourceEditorCommand,
+  setSourceSearchQuery
+} from "./sourceEditorInterop.js";
+import { markdownCommandKeymap } from "./markdownCommands.js";
+import { plumaRichEditorTheme } from "./richEditorTheme.js";
 import type { RichEditorHandle, RichEditorProps } from "./richEditorTypes.js";
+import { sourceSearchDecorations } from "./sourceSearchDecorations.js";
 
-type MilkdownContextLookup = {
-  get: <Value, Name extends string>(name: Name) => Value;
-};
+type DraftlyModule = typeof DraftlyEditor;
+type DraftlyPluginsModule = typeof DraftlyPlugins;
 
 export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
   function RichEditor(
@@ -51,89 +58,60 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
       onScrollAnchorChange,
       onChange,
       rawText,
+      resolvedTheme = "light",
       searchRevealRequest = null,
       spellCheck = true
     },
     ref
   ) {
-    const editorRef = useRef<Crepe | null>(null);
-    const lastAppliedMarkdownRef = useRef(rawText);
-    const markdownUpdateRevisionRef = useRef(0);
+    const containerRef = useRef<HTMLDivElement | null>(null);
     const onCursorAnchorChangeRef = useRef(onCursorAnchorChange);
     const onChangeRef = useRef(onChange);
     const onFocusRef = useRef(onFocus);
     const onReadyRef = useRef(onReady);
     const onScrollAnchorChangeRef = useRef(onScrollAnchorChange);
-    const rootRef = useRef<HTMLDivElement | null>(null);
+    const rawTextRef = useRef(rawText);
     const scrollSourceRef = useRef<EditorScrollSyncSource>("user");
-    const searchQueryRef = useRef<EditorSearchQuery>(
-      createEmptyEditorSearchQuery()
-    );
     const viewRef = useRef<EditorView | null>(null);
-    const [editorRevision, setEditorRevision] = useState(0);
     const [isReady, setIsReady] = useState(false);
 
     useImperativeHandle(ref, () => ({
       findNext: (options) =>
-        selectRichSearchMatch(
-          viewRef.current,
-          searchQueryRef.current,
-          "next",
-          options
-        ),
+        runSourceEditorCommand(viewRef.current, findNext, options),
       findPrevious: (options) =>
-        selectRichSearchMatch(
-          viewRef.current,
-          searchQueryRef.current,
-          "previous",
-          options
-        ),
-      focus: () => focusRichEditor(viewRef.current),
-      getCursorAnchor: () => getRichCursorAnchor(viewRef.current, documentId),
+        runSourceEditorCommand(viewRef.current, findPrevious, options),
+      focus: () => viewRef.current?.focus(),
+      getCursorAnchor: () =>
+        getSourceCursorAnchor(viewRef.current, documentId, "rich"),
       getScrollAnchor: () =>
-        getRichScrollAnchor(
-          viewRef.current,
-          getRichScroller(rootRef.current),
-          documentId
-        ),
-      getSearchStatus: () =>
-        getRichSearchStatus(viewRef.current, searchQueryRef.current),
+        getSourceScrollAnchor(viewRef.current, documentId, "rich"),
+      getSearchStatus: () => getSourceSearchStatus(viewRef.current),
       applyCursorAnchor: (anchor) =>
-        applyRichCursorAnchor(viewRef.current, anchor),
+        applySourceCursorAnchor(viewRef.current, anchor),
       applyScrollAnchor: (anchor) => {
         scrollSourceRef.current = "programmatic";
-        applyRichScrollAnchor(
-          viewRef.current,
-          getRichScroller(rootRef.current),
-          anchor
-        );
+        applySourceScrollAnchor(viewRef.current, anchor);
         window.requestAnimationFrame(() => {
           scrollSourceRef.current = "user";
         });
       },
       replaceAll: (options) =>
-        replaceAllRichSearchMatches(
-          viewRef.current,
-          searchQueryRef.current,
-          options
-        ),
+        runSourceEditorCommand(viewRef.current, replaceAll, options),
       replaceNext: (options) =>
-        replaceNextRichSearchMatch(
-          viewRef.current,
-          searchQueryRef.current,
-          options
-        ),
+        runSourceEditorCommand(viewRef.current, replaceNext, options),
       revealSearchMatch: (match) =>
-        revealRichSearchMatch(viewRef.current, match),
-      setSearchQuery: (query) => {
-        searchQueryRef.current = query;
-        updateRichSearchDecorations(viewRef.current, query);
-      }
+        revealSourceSearchMatch(viewRef.current, match),
+      setSearchQuery: (query) => setSourceSearchQuery(viewRef.current, query)
     }));
 
     useEffect(() => {
       onChangeRef.current = onChange;
+      rawTextRef.current = rawText;
     }, [onChange]);
+
+    useEffect(() => {
+      rawTextRef.current = rawText;
+    }, [rawText]);
 
     useEffect(() => {
       onCursorAnchorChangeRef.current = onCursorAnchorChange;
@@ -143,76 +121,136 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
     }, [onCursorAnchorChange, onFocus, onReady, onScrollAnchorChange]);
 
     useEffect(() => {
-      const root = rootRef.current;
+      const parent = containerRef.current;
 
-      if (!root) {
+      if (!parent) {
         return;
       }
 
       let isDisposed = false;
-      // Crepe registers Milkdown's CommonMark and GFM presets internally.
-      const editor = new Crepe({
-        defaultValue: rawText,
-        root
-      });
+      let initializedView: EditorView | null = null;
+      let teardownListeners: (() => void) | null = null;
 
-      editor.on((api) => {
-        api.markdownUpdated((_, markdown) => {
-          const updateRevision = markdownUpdateRevisionRef.current + 1;
-          markdownUpdateRevisionRef.current = updateRevision;
-
-          void formatMarkdownText(markdown).then((formatResult) => {
-            if (
-              isDisposed ||
-              updateRevision !== markdownUpdateRevisionRef.current
-            ) {
-              return;
-            }
-
-            lastAppliedMarkdownRef.current = formatResult.markdown;
-            onChangeRef.current(formatResult.markdown);
-          });
-        });
-      });
-
-      void editor.create().then(() => {
+      void Promise.all([
+        import("draftly/editor") as Promise<DraftlyModule>,
+        import("draftly/plugins") as Promise<DraftlyPluginsModule>
+      ]).then(([{ ThemeEnum, draftly }, draftlyPlugins]) => {
         if (isDisposed) {
-          void editor.destroy();
           return;
         }
 
-        editorRef.current = editor;
-        viewRef.current = editor.editor.action((ctx: MilkdownContextLookup) =>
-          ctx.get<EditorView, "editorView">("editorView")
-        );
-        updateRichSearchDecorations(viewRef.current, searchQueryRef.current);
-        lastAppliedMarkdownRef.current = rawText;
+        const plugins = createDraftlyPlugins(draftlyPlugins);
+        const draftlyTheme =
+          resolvedTheme === "dark" ? ThemeEnum.DARK : ThemeEnum.LIGHT;
+        const view = new EditorView({
+          doc: rawTextRef.current,
+          extensions: createRichEditorExtensions(
+            [
+              ...draftly({
+                baseStyles: true,
+                defaultKeybindings: false,
+                history: false,
+                highlightActiveLine: false,
+                indentWithTab: false,
+                plugins,
+                theme: draftlyTheme
+              })
+            ],
+            (nextText) => {
+              onChangeRef.current(nextText);
+            },
+            (updatedView) => {
+              emitRichCursorAnchor(
+                updatedView,
+                documentId,
+                onCursorAnchorChangeRef
+              );
+            }
+          ),
+          parent
+        });
+
+        view.dom.setAttribute("aria-label", ariaLabel);
+        setRichEditorSpellcheck(view, spellCheck);
+        viewRef.current = view;
+        initializedView = view;
         setIsReady(true);
         onReadyRef.current?.();
 
+        const handleFocusIn = () => {
+          onFocusRef.current?.();
+          emitRichCursorAnchor(view, documentId, onCursorAnchorChangeRef);
+        };
+        const handleSelectionChange = () => {
+          emitRichCursorAnchor(view, documentId, onCursorAnchorChangeRef);
+        };
+        const handleScroll = () => {
+          const anchor = getSourceScrollAnchor(view, documentId, "rich");
+
+          if (anchor) {
+            onScrollAnchorChangeRef.current?.(anchor, scrollSourceRef.current);
+          }
+        };
+
+        view.dom.addEventListener("focusin", handleFocusIn);
+        view.dom.addEventListener("focusout", handleSelectionChange);
+        view.dom.addEventListener("keyup", handleSelectionChange);
+        view.dom.addEventListener("mouseup", handleSelectionChange);
+        view.scrollDOM.addEventListener("scroll", handleScroll, {
+          passive: true
+        });
+
         if (autoFocus) {
-          root.querySelector<HTMLElement>(".ProseMirror")?.focus();
+          view.focus();
         }
+
+        viewRef.current = view;
+        initializedView = view;
+
+        teardownListeners = () => {
+          view.dom.removeEventListener("focusin", handleFocusIn);
+          view.dom.removeEventListener("focusout", handleSelectionChange);
+          view.dom.removeEventListener("keyup", handleSelectionChange);
+          view.dom.removeEventListener("mouseup", handleSelectionChange);
+          view.scrollDOM.removeEventListener("scroll", handleScroll);
+        };
       });
 
       return () => {
         isDisposed = true;
-        editorRef.current = null;
-        viewRef.current = null;
         setIsReady(false);
-        void editor.destroy();
+
+        const view = initializedView ?? viewRef.current;
+
+        if (view) {
+          teardownListeners?.();
+          view.destroy();
+        }
+
+        if (viewRef.current === view) {
+          viewRef.current = null;
+        }
       };
-    }, [autoFocus, documentId, editorRevision]);
+    }, [ariaLabel, autoFocus, documentId, resolvedTheme]);
 
     useEffect(() => {
-      const editor = editorRef.current;
+      setRichEditorSpellcheck(viewRef.current, spellCheck);
+    }, [spellCheck]);
 
-      if (!editor || rawText === lastAppliedMarkdownRef.current) {
+    useEffect(() => {
+      const view = viewRef.current;
+
+      if (!view || view.state.doc.toString() === rawText) {
         return;
       }
 
-      lastAppliedMarkdownRef.current = rawText;
-      setEditorRevision((current) => current + 1);
+      view.dispatch({
+        changes: {
+          from: 0,
+          to: view.state.doc.length,
+          insert: rawText
+        }
+      });
     }, [rawText]);
 
     useEffect(() => {
@@ -220,89 +258,19 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
         return;
       }
 
-      revealRichSearchMatch(viewRef.current, searchRevealRequest);
-    }, [searchRevealRequest?.requestId, searchRevealRequest]);
-
-    useEffect(() => {
-      const root = rootRef.current;
-      const scroller = getRichScroller(root);
-
-      if (!root || !scroller) {
-        return;
-      }
-
-      const handleFocusIn = () => {
-        onFocusRef.current?.();
-        emitRichCursorAnchor(
-          viewRef.current,
-          documentId,
-          onCursorAnchorChangeRef
-        );
-      };
-      const handleSelectionChange = () => {
-        emitRichCursorAnchor(
-          viewRef.current,
-          documentId,
-          onCursorAnchorChangeRef
-        );
-      };
-      const handleDocumentSelectionChange = () => {
-        if (!root.contains(root.ownerDocument.activeElement)) {
-          return;
-        }
-
-        emitRichCursorAnchor(
-          viewRef.current,
-          documentId,
-          onCursorAnchorChangeRef
-        );
-      };
-      const handleScroll = () => {
-        const anchor = getRichScrollAnchor(
-          viewRef.current,
-          scroller,
-          documentId
-        );
-
-        if (anchor) {
-          onScrollAnchorChangeRef.current?.(anchor, scrollSourceRef.current);
-        }
-      };
-
-      root.addEventListener("focusin", handleFocusIn);
-      root.addEventListener("focusout", handleSelectionChange);
-      root.addEventListener("keyup", handleSelectionChange);
-      root.addEventListener("mouseup", handleSelectionChange);
-      root.ownerDocument.addEventListener(
-        "selectionchange",
-        handleDocumentSelectionChange
-      );
-      scroller.addEventListener("scroll", handleScroll, { passive: true });
-
-      return () => {
-        root.removeEventListener("focusin", handleFocusIn);
-        root.removeEventListener("focusout", handleSelectionChange);
-        root.removeEventListener("keyup", handleSelectionChange);
-        root.removeEventListener("mouseup", handleSelectionChange);
-        root.ownerDocument.removeEventListener(
-          "selectionchange",
-          handleDocumentSelectionChange
-        );
-        scroller.removeEventListener("scroll", handleScroll);
-      };
-    }, [documentId, isReady]);
+      revealSourceSearchMatch(viewRef.current, searchRevealRequest);
+    }, [searchRevealRequest?.requestId]);
 
     return (
       <div
         className="rich-editor"
-        data-rich-editor-document-id={documentId}
-        aria-label={ariaLabel}
         data-ready={isReady}
-        spellCheck={spellCheck}
+        data-rich-editor-document-id={documentId}
       >
         <div
+          aria-label={ariaLabel}
           className="rich-editor-surface"
-          ref={rootRef}
+          ref={containerRef}
           spellCheck={spellCheck}
         />
       </div>
@@ -310,14 +278,88 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
   }
 );
 
+function createRichEditorExtensions(
+  draftlyExtensions: Extension[],
+  onChange: (rawText: string) => void,
+  onSelectionChange: (view: EditorView) => void
+): Extension[] {
+  return [
+    history(),
+    drawSelection(),
+    dropCursor(),
+    search(),
+    sourceSearchDecorations,
+    markdownCommandKeymap,
+    keymap.of([...defaultKeymap, ...historyKeymap]),
+    draftlyExtensions,
+    EditorView.updateListener.of((update) => {
+      if (update.docChanged) {
+        onChange(update.state.doc.toString());
+      }
+
+      if (update.selectionSet) {
+        onSelectionChange(update.view);
+      }
+    }),
+    plumaRichEditorTheme
+  ];
+}
+
+function createDraftlyPlugins({
+  CodePlugin,
+  EmojiPlugin,
+  HRPlugin,
+  HTMLPlugin,
+  HeadingPlugin,
+  ImagePlugin,
+  InlinePlugin,
+  LinkPlugin,
+  ListPlugin,
+  MathPlugin,
+  MermaidPlugin,
+  ParagraphPlugin,
+  QuotePlugin,
+  TablePlugin
+}: DraftlyPluginsModule) {
+  return [
+    new ParagraphPlugin(),
+    new HeadingPlugin(),
+    new InlinePlugin(),
+    new LinkPlugin(),
+    new ListPlugin(),
+    new TablePlugin(),
+    new HTMLPlugin(),
+    new ImagePlugin(),
+    new MathPlugin(),
+    new MermaidPlugin(),
+    new CodePlugin(),
+    new QuotePlugin(),
+    new HRPlugin(),
+    new EmojiPlugin()
+  ];
+}
+
 function emitRichCursorAnchor(
-  view: EditorView | null,
+  view: EditorView,
   documentId: string,
   callbackRef: RefObject<((anchor: EditorCursorAnchor) => void) | undefined>
 ): void {
-  const anchor = getRichCursorAnchor(view, documentId);
+  const anchor = getSourceCursorAnchor(view, documentId, "rich");
 
   if (anchor) {
     callbackRef.current?.(anchor);
   }
+}
+
+function setRichEditorSpellcheck(
+  view: EditorView | null,
+  enabled: boolean
+): void {
+  if (!view) {
+    return;
+  }
+
+  const value = String(enabled);
+  view.dom.setAttribute("spellcheck", value);
+  view.contentDOM.setAttribute("spellcheck", value);
 }

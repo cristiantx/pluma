@@ -1,7 +1,7 @@
 # Markdown Analysis And Safety
 
 Phase 4 establishes a conservative Markdown pipeline for deciding whether a
-document can enter rich mode without risking source loss.
+document should be constrained to source mode for product and safety reasons.
 
 ## Parser
 
@@ -16,22 +16,21 @@ from `commonmark-spec`. Pluma parses every fixture as source input, keeps raw
 HTML fixtures source-only when they produce HTML nodes, and compares selected
 render-safe fixtures against the expected HTML.
 
-## Rich-mode eligibility
+## Mode constraints
 
-Documents are `rich-safe` when every parsed mdast node is in Pluma's supported
-set. Documents become `source-only` when they contain unsupported or unsafe
-syntax.
+Documents use `modeConstraint: "none"` by default because Draftly edits the
+Markdown source text directly. Documents become `source-only` when they contain
+syntax that Pluma intentionally keeps out of rich mode.
 
 HTML nodes are currently source-only. User-authored HTML can carry event
 handlers, embedded media, scripts, or rendering semantics that a rich editor may
 change or execute accidentally. Source mode preserves the original text.
 
-## Round-trip guard
+## Source preservation
 
-Rich-mode serialization runs through `mdast-util-to-markdown` with GFM and
-frontmatter extensions. The result is compared with the original Markdown after
-normalizing line endings and trailing newlines. If serialization changes the
-document, Pluma keeps the original text and returns a fidelity warning.
+The Markdown source text is the canonical document state in both rich and source
+modes. Save writes the current source text after line-ending preparation rather
+than serializing rich-mode state through a separate Markdown formatter.
 
 ## Preview safety evaluation
 

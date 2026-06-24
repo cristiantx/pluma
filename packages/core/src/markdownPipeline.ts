@@ -1,7 +1,7 @@
-import type { DocumentCapability, DocumentSession } from "./documentSession.js";
-import { frontmatterToMarkdown } from "mdast-util-frontmatter";
-import { gfmToMarkdown } from "mdast-util-gfm";
-import { toMarkdown } from "mdast-util-to-markdown";
+import type {
+  DocumentModeConstraint,
+  DocumentSession
+} from "./documentSession.js";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
@@ -20,7 +20,7 @@ export type MarkdownUnsupportedConstruct = {
 };
 
 export type MarkdownCapabilityAnalysis = {
-  supportsRichMode: boolean;
+  modeConstraint: DocumentModeConstraint;
   unsupportedConstructs: MarkdownUnsupportedConstruct[];
 };
 
@@ -34,34 +34,6 @@ export interface MarkdownPipeline {
   parse(rawText: string): MarkdownParseResult;
   serialize(session: DocumentSession): MarkdownSerializationResult;
 }
-
-const richModeSupportedNodeTypes = new Set([
-  "blockquote",
-  "break",
-  "code",
-  "delete",
-  "emphasis",
-  "footnoteDefinition",
-  "footnoteReference",
-  "heading",
-  "image",
-  "imageReference",
-  "inlineCode",
-  "link",
-  "linkReference",
-  "list",
-  "listItem",
-  "paragraph",
-  "root",
-  "strong",
-  "table",
-  "tableCell",
-  "tableRow",
-  "text",
-  "thematicBreak",
-  "yaml",
-  "definition"
-]);
 
 const sourceOnlyNodeTypes = new Set(["html"]);
 
@@ -110,34 +82,25 @@ export function analyzeMarkdownParseResult(
 
       return;
     }
-
-    if (!richModeSupportedNodeTypes.has(node.type)) {
-      unsupportedConstructs.push({
-        detail: `Unsupported Markdown AST node "${node.type}" is preserved in source mode.`,
-        kind: node.type
-      });
-    }
   });
 
   return {
-    supportsRichMode: unsupportedConstructs.length === 0,
+    modeConstraint: unsupportedConstructs.length === 0 ? "none" : "source-only",
     unsupportedConstructs
   };
 }
 
-export function getMarkdownDocumentCapability(
+export function getMarkdownDocumentModeConstraint(
   analysis: MarkdownCapabilityAnalysis
-): DocumentCapability {
-  return analysis.supportsRichMode ? "rich-safe" : "source-only";
+): DocumentModeConstraint {
+  return analysis.modeConstraint;
 }
 
 export function serializeMarkdownSession(
   session: DocumentSession
 ): MarkdownSerializationResult {
-  const parseResult = parseMarkdown(session.rawText);
-  const analysis = analyzeMarkdownParseResult(parseResult);
-
-  if (!analysis.supportsRichMode) {
+  if (session.modeConstraint === "source-only") {
+    const analysis = analyzeMarkdownText(session.rawText);
     return {
       fidelityWarnings: analysis.unsupportedConstructs.map(
         (construct) => construct.detail
@@ -146,34 +109,8 @@ export function serializeMarkdownSession(
     };
   }
 
-  return guardMarkdownRoundTrip(parseResult);
-}
-
-export function guardMarkdownRoundTrip(
-  parseResult: MarkdownParseResult
-): MarkdownSerializationResult {
-  const markdown = toMarkdown(parseResult.ast, {
-    bullet: "-",
-    extensions: [gfmToMarkdown(), frontmatterToMarkdown(["yaml"])],
-    fences: true,
-    listItemIndent: "one"
-  });
-
-  if (normalizeMarkdown(markdown) !== normalizeMarkdown(parseResult.rawText)) {
-    return {
-      fidelityWarnings: [
-        "Markdown serialization changed the source text. Source text was preserved to avoid losing document fidelity."
-      ],
-      markdown: parseResult.rawText
-    };
-  }
-
   return {
     fidelityWarnings: [],
-    markdown
+    markdown: session.rawText
   };
-}
-
-function normalizeMarkdown(markdown: string): string {
-  return markdown.replace(/\r\n?/g, "\n").replace(/\n+$/g, "\n");
 }

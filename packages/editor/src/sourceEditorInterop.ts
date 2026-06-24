@@ -8,6 +8,7 @@ import { EditorView } from "@codemirror/view";
 import { findCurrentSearchIndex, findTextMatches } from "./editorSearch.js";
 import type {
   EditorCursorAnchor,
+  EditorKind,
   EditorScrollAnchor,
   EditorSearchActionOptions,
   EditorSearchQuery,
@@ -80,7 +81,8 @@ export function setSourceSearchQuery(
 
 export function getSourceScrollAnchor(
   view: EditorView | null,
-  documentId: string
+  documentId: string,
+  kind: EditorKind = "source"
 ): EditorScrollAnchor | null {
   if (!view) {
     return null;
@@ -92,16 +94,12 @@ export function getSourceScrollAnchor(
     scrollDOM.scrollHeight - scrollDOM.clientHeight
   );
   const ratio = maxScrollTop > 0 ? scrollDOM.scrollTop / maxScrollTop : 0;
-  const rect = scrollDOM.getBoundingClientRect();
-  const position =
-    view.posAtCoords({
-      x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2
-    }) ?? null;
+  const rect = getElementRect(scrollDOM);
+  const position = rect ? getPositionAtRect(view, rect) : null;
 
   return {
     documentId,
-    kind: "source",
+    kind,
     position,
     ratio: clampRatio(ratio)
   };
@@ -109,7 +107,8 @@ export function getSourceScrollAnchor(
 
 export function getSourceCursorAnchor(
   view: EditorView | null,
-  documentId: string
+  documentId: string,
+  kind: EditorKind = "source"
 ): EditorCursorAnchor | null {
   if (!view) {
     return null;
@@ -120,7 +119,7 @@ export function getSourceCursorAnchor(
 
   return {
     documentId,
-    kind: "source",
+    kind,
     position,
     visibleOffset: visibleOffsetFromSourceOffset(projection, position)
   };
@@ -224,4 +223,38 @@ function clampRatio(value: number): number {
   }
 
   return Math.max(0, Math.min(1, value));
+}
+
+function getElementRect(
+  element: HTMLElement
+): Pick<DOMRect, "left" | "top" | "width" | "height"> | null {
+  const rect = element.getBoundingClientRect?.();
+
+  if (
+    !rect ||
+    !Number.isFinite(rect.left) ||
+    !Number.isFinite(rect.top) ||
+    !Number.isFinite(rect.width) ||
+    !Number.isFinite(rect.height)
+  ) {
+    return null;
+  }
+
+  return rect;
+}
+
+function getPositionAtRect(
+  view: EditorView,
+  rect: Pick<DOMRect, "left" | "top" | "width" | "height">
+): number | null {
+  try {
+    return (
+      view.posAtCoords({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      }) ?? null
+    );
+  } catch {
+    return null;
+  }
 }

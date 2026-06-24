@@ -30,7 +30,7 @@ Pluma is an open-source, local-first Markdown editor. Markdown files stay as nor
 - Real folder loading and Markdown file tree hydration for workspace mode.
 - Real file opening into document sessions and shared tabs.
 - App menu commands wired for `Open File`, `Open Folder`, `Save`, `Save As`, and `Toggle Rich/Source Mode`.
-- Placeholder preview/source rendering on top of real document sessions while CodeMirror and Milkdown are still being implemented.
+- Draftly rich editing and CodeMirror source editing on top of real file-backed document sessions.
 
 State architecture is documented in [docs/state-architecture.md](./docs/state-architecture.md). The current desktop `App` now acts as an Electron/preload bridge that hydrates shared shell state for the reusable UI package.
 

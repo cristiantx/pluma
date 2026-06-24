@@ -16,13 +16,13 @@
     "@codemirror/commands": "^6.10.3",
     "@codemirror/lang-markdown": "^6.5.0",
     "@codemirror/language": "^6.12.3",
+    "@codemirror/language-data": "^6.5.2",
     "@codemirror/search": "^6.7.0",
     "@codemirror/state": "^6.6.0",
     "@codemirror/view": "^6.43.0",
     "@lezer/highlight": "^1.2.3",
-    "@milkdown/crepe": "^7.21.1",
-    "@milkdown/prose": "^7.21.1",
     "@pluma/core": "workspace:*",
+    "draftly": "github:cristiantx/draftly#d5f2496db3fac34ff533c382001ad4994e71269b&path:/packages/draftly",
     "react": "^19.1.0"
   }
 }

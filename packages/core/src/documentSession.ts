@@ -2,7 +2,7 @@ import type { FileLocation } from "./index.js";
 import type { FileMetadata } from "./fileSystemAdapter.js";
 import { detectLineEnding, type LineEnding } from "./lineEndings.js";
 
-export type DocumentCapability = "rich-safe" | "source-only" | "unknown";
+export type DocumentModeConstraint = "none" | "source-only";
 export type DocumentMode = "rich" | "source";
 export type DocumentSaveState =
   | "conflict"
@@ -13,37 +13,39 @@ export type DocumentSaveState =
   | "saving";
 
 export type DocumentSession = {
-  capability: DocumentCapability;
   id: string;
   lastSavedMetadata: FileMetadata | null;
   lastSavedText: string;
   lineEnding: LineEnding;
   location: FileLocation;
   mode: DocumentMode;
+  modeConstraint: DocumentModeConstraint;
   rawText: string;
   saveState: DocumentSaveState;
 };
 
 export type CreateDocumentSessionInput = {
-  capability?: DocumentCapability;
   lineEnding?: LineEnding;
   location: FileLocation;
   metadata: FileMetadata | null;
   mode?: DocumentMode;
+  modeConstraint?: DocumentModeConstraint;
   rawText: string;
 };
 
 export function createDocumentSession(
   input: CreateDocumentSessionInput
 ): DocumentSession {
+  const modeConstraint = input.modeConstraint ?? "none";
+
   return {
-    capability: input.capability ?? "unknown",
     id: getDocumentSessionId(input.location),
     lastSavedMetadata: input.metadata,
     lastSavedText: input.rawText,
     lineEnding: input.lineEnding ?? detectLineEnding(input.rawText),
     location: input.location,
-    mode: input.mode ?? "source",
+    mode: modeConstraint === "source-only" ? "source" : (input.mode ?? "rich"),
+    modeConstraint,
     rawText: input.rawText,
     saveState: "idle"
   };

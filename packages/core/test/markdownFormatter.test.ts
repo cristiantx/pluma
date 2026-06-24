@@ -72,10 +72,9 @@ const value = 1
     ).resolves.toBe("<aside>Keep exact</aside>\n");
   });
 
-  it("produces output that can pass the rich-mode round-trip guard", async () => {
+  it("can still be serialized as current source text", async () => {
     const formatResult = await formatMarkdownText("- [ ] One\n\n- [x] Two\n");
     const session = createDocumentSession({
-      capability: "rich-safe",
       location: {
         kind: "desktop-path",
         path: "/tmp/pluma/tasks.md"

@@ -117,7 +117,7 @@
 }
 
 .rich-pane {
-  overflow: auto;
+  overflow: hidden;
   background: var(--editor-bg);
 }
 
@@ -132,200 +132,21 @@
 }
 
 .rich-editor-surface {
+  height: 100%;
+  min-height: 0;
+}
+
+.rich-editor .cm-editor {
+  height: 100%;
   min-height: 100%;
 }
 
-.rich-editor .milkdown {
+.rich-editor .cm-content {
   min-height: 100%;
-  --crepe-color-background: var(--editor-bg);
-  --crepe-color-on-background: var(--text-primary);
-  --crepe-color-surface: var(--surface-bg);
-  --crepe-color-surface-low: var(--editor-source-bg);
-  --crepe-color-on-surface: var(--text-primary);
-  --crepe-color-on-surface-variant: var(--text-secondary);
-  --crepe-color-outline: var(--border-strong);
-  --crepe-color-primary: var(--accent);
-  --crepe-color-secondary: var(--active-control);
-  --crepe-color-on-secondary: var(--text-primary);
-  --crepe-color-inverse: var(--text-primary);
-  --crepe-color-on-inverse: var(--surface-bg);
-  --crepe-color-inline-code: var(--accent-code);
-  --crepe-color-error: var(--warning);
-  --crepe-color-hover: var(--active-row);
-  --crepe-color-selected: var(--active-control);
-  --crepe-color-inline-area: var(--editor-source-bg);
-  --crepe-font-title: var(--font-ui);
-  --crepe-font-default: var(--font-ui);
-  --crepe-font-code: var(--font-editor);
-  --crepe-shadow-1: 0 8px 28px rgba(16, 24, 32, 0.14);
-  --crepe-shadow-2: 0 16px 44px rgba(16, 24, 32, 0.18);
 }
 
-.rich-editor .ProseMirror {
-  min-height: 100%;
-  max-width: var(--rich-editor-content-width);
-  margin: 0 auto;
-  padding: 64px 92px 88px;
-}
-
-.editor-panes[data-rich-density="compact"] .rich-editor .ProseMirror {
+.editor-panes[data-rich-density="compact"] .rich-editor .cm-content {
   padding: 32px 56px 56px;
-}
-
-.editor-panes[data-rich-density="compact"] .rich-editor .ProseMirror h1 {
-  margin-bottom: 10px;
-  font-size: 1.42rem;
-}
-
-.editor-panes[data-rich-density="compact"] .rich-editor .ProseMirror h2 {
-  margin: 14px 0 7px;
-}
-
-.editor-panes[data-rich-density="compact"] .rich-editor .ProseMirror h3 {
-  margin: 12px 0 6px;
-}
-
-.editor-panes[data-rich-density="compact"] .rich-editor .ProseMirror p {
-  margin-bottom: 6px;
-}
-
-.editor-panes[data-rich-density="compact"] .rich-editor .ProseMirror ul,
-.editor-panes[data-rich-density="compact"] .rich-editor .ProseMirror ol {
-  margin-bottom: 8px;
-}
-
-.editor-panes[data-rich-density="compact"] .rich-editor .ProseMirror li {
-  margin: 2px 0;
-}
-
-.editor-panes[data-rich-density="compact"] .rich-editor .ProseMirror blockquote,
-.editor-panes[data-rich-density="compact"] .rich-editor .ProseMirror pre,
-.editor-panes[data-rich-density="compact"] .rich-editor .ProseMirror table {
-  margin-top: 8px;
-  margin-bottom: 10px;
-}
-
-.rich-editor .ProseMirror > *:first-child {
-  margin-top: 0;
-}
-
-.rich-editor .ProseMirror h1 {
-  margin: 0 0 14px;
-  font-size: 1.55rem;
-  line-height: 1.1;
-}
-
-.rich-editor .ProseMirror h2 {
-  margin: 18px 0 10px;
-  font-size: 1.12rem;
-  line-height: 1.18;
-}
-
-.rich-editor .ProseMirror h3 {
-  margin: 16px 0 8px;
-  font-size: 0.95rem;
-  line-height: 1.24;
-}
-
-.rich-editor .ProseMirror p {
-  margin: 0 0 10px;
-  color: var(--text-secondary);
-}
-
-.rich-editor .ProseMirror ul,
-.rich-editor .ProseMirror ol {
-  margin: 0 0 12px;
-  padding-left: 22px;
-  color: var(--text-secondary);
-}
-
-.rich-editor .ProseMirror li {
-  margin: 4px 0;
-}
-
-.rich-editor .milkdown-list-item-block {
-  margin: 2px 0;
-  padding: 0;
-}
-
-.rich-editor .milkdown-list-item-block > .list-item {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  margin: 0;
-  list-style: none;
-}
-
-.rich-editor .milkdown-list-item-block > .list-item::marker {
-  content: "";
-}
-
-.rich-editor .milkdown-list-item-block .label-wrapper {
-  flex: 0 0 24px;
-  height: 28px;
-  color: var(--text-muted);
-}
-
-.rich-editor .milkdown-list-item-block .label-wrapper svg {
-  fill: currentColor;
-}
-
-.rich-editor .milkdown-list-item-block .children {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.rich-editor .milkdown-list-item-block .children > :first-child {
-  margin-top: 0;
-}
-
-.rich-editor .milkdown-list-item-block .children > :last-child {
-  margin-bottom: 0;
-}
-
-.rich-editor .ProseMirror blockquote {
-  margin: 12px 0;
-  padding-left: 14px;
-  border-left: 3px solid var(--border-strong);
-  color: var(--text-secondary);
-}
-
-.rich-editor .ProseMirror code {
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-control);
-  background: var(--editor-source-bg);
-  color: var(--accent-code);
-  font-family: var(--font-editor);
-  font-size: 0.9em;
-}
-
-.rich-editor .ProseMirror pre {
-  margin: 12px 0 16px;
-  padding: 12px;
-  overflow: auto;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-control);
-  background: var(--editor-source-bg);
-}
-
-.rich-editor .ProseMirror pre code {
-  border: 0;
-  background: transparent;
-  color: var(--text-secondary);
-}
-
-.rich-editor .ProseMirror table {
-  width: 100%;
-  margin: 12px 0;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.rich-editor .ProseMirror th,
-.rich-editor .ProseMirror td {
-  padding: 6px 8px;
-  border: 1px solid var(--border-default);
-  text-align: left;
 }
 
 .source-pane {
@@ -390,14 +211,14 @@
 }
 
 .pluma-source-editor .pluma-source-search-match,
-.rich-document .pluma-rich-search-match {
+.rich-editor .pluma-source-search-match {
   border-radius: 2px;
   background: color-mix(in srgb, var(--accent) 46%, transparent);
   box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--accent) 86%, white);
 }
 
 .pluma-source-editor .pluma-source-search-match-active,
-.rich-document .pluma-rich-search-match-active {
+.rich-editor .pluma-source-search-match-active {
   background: color-mix(in srgb, var(--accent) 76%, white);
   color: var(--chrome-bg);
   outline: 1px solid color-mix(in srgb, var(--accent) 90%, white);

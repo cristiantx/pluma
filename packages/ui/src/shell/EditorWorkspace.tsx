@@ -28,6 +28,7 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   const richEditorWidth = usePlumaStore(
     (state) => state.settings.richEditorWidth
   );
+  const resolvedTheme = usePlumaStore((state) => state.theme.resolvedTheme);
   const sourceEditorWidth = usePlumaStore(
     (state) => state.settings.sourceEditorWidth
   );
@@ -62,11 +63,11 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   const updateDocumentText = usePlumaStore((state) => state.updateDocumentText);
   const activeDocumentId = activeDocument?.id ?? null;
   const showRichEditor =
-    activeDocument?.capability === "rich-safe" &&
+    activeDocument?.modeConstraint !== "source-only" &&
     editorViewMode === "rich";
   const showSource =
     editorViewMode === "source" ||
-    activeDocument?.capability === "source-only" ||
+    activeDocument?.modeConstraint === "source-only" ||
     !showRichEditor;
   const {
     closeSearchPanel,
@@ -125,7 +126,7 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
     );
   }
 
-  const isSourceOnly = activeDocument.capability === "source-only";
+  const isSourceOnly = activeDocument.modeConstraint === "source-only";
   const sourceSearchRevealRequest =
     searchRevealRequest &&
     showSource &&
@@ -162,6 +163,7 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
           onChange={(rawText) => updateDocumentText(activeDocument.id, rawText)}
           ref={richEditorRef}
           rawText={activeDocument.rawText}
+          resolvedTheme={resolvedTheme}
           searchRevealRequest={richSearchRevealRequest}
           spellCheck={spellcheckEnabled}
         />

@@ -2,16 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   analyzeMarkdownText,
-  getMarkdownDocumentCapability,
-  guardMarkdownRoundTrip,
+  getMarkdownDocumentModeConstraint,
   markdownPipeline,
-  parseMarkdown,
   serializeMarkdownSession
 } from "../src/index.js";
 import { createDocumentSession } from "../src/documentSession.js";
 
 describe("markdownPipeline", () => {
-  it("parses CommonMark basics as rich-mode safe", () => {
+  it("allows CommonMark basics in rich mode", () => {
     const analysis = analyzeMarkdownText(`# Title
 
 This is **bold**, _emphasized_, and [linked](./guide.md).
@@ -21,56 +19,56 @@ This is **bold**, _emphasized_, and [linked](./guide.md).
 `);
 
     expect(analysis).toEqual({
-      supportsRichMode: true,
+      modeConstraint: "none",
       unsupportedConstructs: []
     });
-    expect(getMarkdownDocumentCapability(analysis)).toBe("rich-safe");
+    expect(getMarkdownDocumentModeConstraint(analysis)).toBe("none");
   });
 
-  it("parses GFM tables as rich-mode safe", () => {
+  it("allows GFM tables in rich mode", () => {
     const parseResult = markdownPipeline.parse(`| Name | Value |
 | --- | ---: |
 | Alpha | 1 |
 `);
 
-    expect(markdownPipeline.analyze(parseResult).supportsRichMode).toBe(true);
+    expect(markdownPipeline.analyze(parseResult).modeConstraint).toBe("none");
   });
 
-  it("parses task lists as rich-mode safe", () => {
+  it("allows task lists in rich mode", () => {
     expect(
       analyzeMarkdownText(`- [x] Draft
 - [ ] Review
-`).supportsRichMode
-    ).toBe(true);
+`).modeConstraint
+    ).toBe("none");
   });
 
-  it("parses fenced code blocks as rich-mode safe", () => {
+  it("allows fenced code blocks in rich mode", () => {
     expect(
       analyzeMarkdownText(`\`\`\`ts
 const name = "Pluma";
 \`\`\`
-`).supportsRichMode
-    ).toBe(true);
+`).modeConstraint
+    ).toBe("none");
   });
 
-  it("parses YAML frontmatter as rich-mode safe", () => {
+  it("allows YAML frontmatter in rich mode", () => {
     expect(
       analyzeMarkdownText(`---
 title: Draft
 ---
 
 # Heading
-`).supportsRichMode
-    ).toBe(true);
+`).modeConstraint
+    ).toBe("none");
   });
 
-  it("keeps relative links and images rich-mode safe", () => {
+  it("allows relative links and images in rich mode", () => {
     expect(
       analyzeMarkdownText(`[Guide](../guide.md)
 
 ![Logo](./images/logo.png)
-`).supportsRichMode
-    ).toBe(true);
+`).modeConstraint
+    ).toBe("none");
   });
 
   it("marks HTML as source-only so unsafe syntax is not destroyed", () => {
@@ -85,58 +83,53 @@ title: Draft
         path: "/Users/me/Documents/unsafe.md"
       },
       metadata: null,
+      modeConstraint: "source-only",
       rawText
     });
 
     const result = serializeMarkdownSession(session);
 
     expect(analyzeMarkdownText(rawText)).toMatchObject({
-      supportsRichMode: false,
+      modeConstraint: "source-only",
       unsupportedConstructs: [{ kind: "html" }]
     });
-    expect(getMarkdownDocumentCapability(analyzeMarkdownText(rawText))).toBe(
-      "source-only"
-    );
+    expect(
+      getMarkdownDocumentModeConstraint(analyzeMarkdownText(rawText))
+    ).toBe("source-only");
     expect(result.markdown).toBe(rawText);
     expect(result.fidelityWarnings.length).toBeGreaterThan(0);
   });
 
-  it("preserves original source when serialization changes formatting", () => {
+  it("preserves source text instead of round-trip formatting", () => {
     const rawText = "* one\n* two\n";
-    const result = guardMarkdownRoundTrip(parseMarkdown(rawText));
-
-    expect(result.markdown).toBe(rawText);
-    expect(result.fidelityWarnings).toEqual([
-      "Markdown serialization changed the source text. Source text was preserved to avoid losing document fidelity."
-    ]);
-  });
-
-  it("allows rich saves only when Markdown can round-trip without content loss", () => {
-    const safeSession = createDocumentSession({
-      capability: "rich-safe",
+    const session = createDocumentSession({
       location: {
         kind: "desktop-path",
-        path: "/Users/me/Documents/safe.md"
+        path: "/Users/me/Documents/bullets.md"
       },
       metadata: null,
       mode: "rich",
-      rawText: "# Safe\n"
+      rawText
     });
+
+    expect(serializeMarkdownSession(session)).toEqual({
+      fidelityWarnings: [],
+      markdown: rawText
+    });
+  });
+
+  it("returns policy warnings only for source-only documents", () => {
     const sourceOnlySession = createDocumentSession({
-      capability: "source-only",
       location: {
         kind: "desktop-path",
         path: "/Users/me/Documents/source-only.md"
       },
       metadata: null,
       mode: "source",
+      modeConstraint: "source-only",
       rawText: "<aside>Keep exact</aside>\n"
     });
 
-    expect(serializeMarkdownSession(safeSession)).toEqual({
-      fidelityWarnings: [],
-      markdown: "# Safe\n"
-    });
     expect(serializeMarkdownSession(sourceOnlySession)).toEqual({
       fidelityWarnings: [
         "Inline or block HTML is preserved in source mode because rich editing could change execution or rendering semantics."

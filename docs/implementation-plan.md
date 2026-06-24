@@ -14,7 +14,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 - [ ] Support semantic app theming with `system`, `light`, and `dark` modes.
 - [ ] Use a custom title bar and frameless desktop shell with a VS Code-inspired workspace layout.
 - [ ] Keep Markdown source text as the canonical document format.
-- [ ] Use Milkdown for rich Markdown editing when a document is safe for rich mode.
+- [x] Use Draftly for rich Markdown editing over canonical Markdown source text.
 - [ ] Use CodeMirror 6 for source mode.
 - [ ] Treat source mode as a first-class editor, not just an escape hatch.
 - [ ] Preserve unsupported Markdown by avoiding destructive rich-mode saves.
@@ -25,7 +25,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 ## Future Evaluation Notes
 
 - Keep editor engine logic isolated from Electron and app-shell UI.
-- Continue with Milkdown for rich mode and CodeMirror 6 for source mode unless implementation evidence shows a stronger reason to switch.
+- Continue with Draftly for rich mode and CodeMirror 6 for source mode unless implementation evidence shows a stronger reason to switch.
 - Library candidates worth evaluating during their relevant phases:
   - `chokidar` for active-file and folder watching.
   - `@vscode/ripgrep` for fast workspace search.
@@ -146,9 +146,9 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
   - [x] `remark-frontmatter`
 - [x] Evaluate `dompurify` before any user-authored Markdown is rendered as HTML.
 - [x] Evaluate `github-markdown-css` as a compatibility reference for preview defaults.
-- [x] Implement Markdown capability analysis.
-- [x] Detect whether a document is eligible for rich mode.
-- [x] Implement a round-trip guard for rich-mode saves.
+- [x] Implement Markdown mode-constraint analysis.
+- [x] Detect whether a document must be constrained to source mode.
+- [x] Preserve source text directly for rich-mode saves.
 - [x] Define unsupported or unsafe syntax behavior.
 - [x] Add fixture tests for:
   - [x] CommonMark basics
@@ -172,12 +172,12 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 
 ## Phase 6: Rich Editor
 
-- [x] Add Milkdown wrapper in `packages/editor`.
+- [x] Add Draftly wrapper in `packages/editor`.
 - [x] Apply the Pluma design system to rich-mode chrome and controls.
-- [x] Theme Milkdown through Pluma theme tokens for light and dark modes.
+- [x] Theme Draftly through Pluma theme tokens for light and dark modes.
 - [x] Enable CommonMark support.
 - [x] Enable GFM support.
-- [x] Add basic rich editing controls through Crepe's built-in floating toolbar, top bar, block menu, and block handles for:
+- [x] Add rich editing behavior through Draftly and Pluma editor commands for:
   - [x] heading levels
   - [x] bold
   - [x] italic
@@ -191,9 +191,9 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
   - [x] table insertion
   - [x] link insertion
   - [x] image link insertion
-- [x] Synchronize Milkdown output back to `DocumentSession`.
-- [x] Block rich-mode save when the round-trip guard fails.
-- [x] Route unsupported documents to source mode with preview.
+- [x] Synchronize Draftly source text back to `DocumentSession`.
+- [x] Save rich-mode source text directly.
+- [x] Route source-constrained documents to source mode with notice.
 - [x] Add tests for rich/source switching without content loss.
 
 ## Phase 7: Pluma Markdown Formatter And Linting
@@ -352,7 +352,7 @@ Pluma is an open-source, local-first Markdown editor. The MVP should feel polish
 ### Rendering Decisions
 
 - [x] Target KaTeX, Mermaid, and emoji shortcodes as the initial extension set.
-- [x] Keep unsupported extensions source-only until round-trip safety is proven.
+- [x] Keep explicitly unsafe constructs source-only by policy.
 - [x] Keep math and diagrams editable as source blocks only.
 
 ### Rendering Candidate Work

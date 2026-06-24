@@ -6,19 +6,17 @@ import {
   createDocumentSession,
   applyLineEnding,
   detectLineEnding,
-  formatMarkdownText,
   getFileLocationName,
   markDocumentSessionConflict,
   markDocumentSessionExternalChange,
   markDocumentSessionSaveError,
   markDocumentSessionSaved,
   markDocumentSessionSaving,
-  serializeMarkdownSession,
   shouldProtectDocumentSessionClose,
   updateDocumentSessionText,
   type AppDraftFileLocation,
   type DesktopFileLocation,
-  type DocumentCapability,
+  type DocumentModeConstraint,
   type DocumentSession,
   type FileSystemAdapter
 } from "@pluma/core";
@@ -699,12 +697,12 @@ export class DesktopWindowSession {
     return document.location.path;
   }
 
-  private getActiveDocumentCapability(): DocumentCapability | null {
+  private getActiveDocumentModeConstraint(): DocumentModeConstraint | null {
     const activeDocument = this.shellData.documents.find(
       (document) => document.id === this.shellData.activeDocumentId
     );
 
-    return activeDocument?.capability ?? null;
+    return activeDocument?.modeConstraint ?? null;
   }
 
   private getActiveDocument(): DocumentSession | null {
@@ -728,7 +726,7 @@ export class DesktopWindowSession {
 
   private getAllowedEditorMode(mode: EditorViewMode): EditorViewMode {
     return mode !== "source" &&
-      this.getActiveDocumentCapability() === "source-only"
+      this.getActiveDocumentModeConstraint() === "source-only"
       ? "source"
       : mode;
   }
@@ -1637,38 +1635,10 @@ export class DesktopWindowSession {
 
     this.autosaveScheduler.clear(activeDocument.id);
 
-    const shouldFormatRichSave =
-      trigger === "manual" && this.currentMode === "rich";
-    const formattedText = shouldFormatRichSave
-      ? (await formatMarkdownText(activeDocument.rawText)).markdown
-      : activeDocument.rawText;
-    const textToSave = this.prepareTextForSave(activeDocument, formattedText);
-
-    if (shouldFormatRichSave) {
-      const serialized = serializeMarkdownSession({
-        ...activeDocument,
-        rawText: textToSave
-      });
-
-      if (serialized.fidelityWarnings.length > 0) {
-        const fidelityWarning =
-          serialized.fidelityWarnings[0] ??
-          "Rich-mode save was blocked to avoid losing Markdown fidelity.";
-
-        this.updateShellData({
-          documents: this.shellData.documents.map((document) =>
-            document.id === activeDocument.id
-              ? { ...document, capability: "source-only", mode: "source" }
-              : document
-          ),
-          status: fidelityWarning
-        });
-        this.currentMode = "source";
-        this.emitToRenderer({ type: "mode-changed", mode: this.currentMode });
-        this.emitShellSnapshot();
-        return;
-      }
-    }
+    const textToSave = this.prepareTextForSave(
+      activeDocument,
+      activeDocument.rawText
+    );
 
     this.updateShellData({
       documents: this.shellData.documents.map((document) =>

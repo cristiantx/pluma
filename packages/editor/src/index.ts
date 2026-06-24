@@ -18,7 +18,7 @@ export type { RichEditorHandle, RichEditorProps } from "./richEditorTypes.js";
 export type {
   RichSearchMatch,
   RichSearchRevealRequest
-} from "./richEditorSearch.js";
+} from "./richEditorTypes.js";
 export { plumaSourceEditorTheme } from "./sourceEditorTheme.js";
 export type {
   SourceEditorHandle,

@@ -6,15 +6,22 @@ import type {
   EditorSearchQuery,
   EditorSearchStatus
 } from "./editorTypes.js";
-import type {
-  RichSearchMatch,
-  RichSearchRevealRequest
-} from "./richEditorSearch.js";
+
+export type RichSearchMatch = {
+  line: number;
+  matchEnd: number;
+  matchStart: number;
+};
+
+export type RichSearchRevealRequest = RichSearchMatch & {
+  requestId?: number;
+};
 
 export type RichEditorProps = {
   "aria-label"?: string;
   autoFocus?: boolean;
   documentId: string;
+  resolvedTheme?: "dark" | "light";
   onCursorAnchorChange?: (anchor: EditorCursorAnchor) => void;
   onFocus?: () => void;
   onReady?: () => void;
