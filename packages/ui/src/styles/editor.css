@@ -167,6 +167,8 @@
   --string: #2f7658;
   --active-control: #e7edf4;
   --active-row: #edf3f8;
+  --selection-bg: #c8e7f6;
+  --selection-text: var(--text-primary);
 }
 
 .source-pane[data-source-color-scheme="pluma-dark"] {
@@ -179,6 +181,8 @@
   --string: #83d0a6;
   --active-control: #122436;
   --active-row: #102030;
+  --selection-bg: #1f5f7e;
+  --selection-text: var(--text-primary);
 }
 
 .source-only-notice {

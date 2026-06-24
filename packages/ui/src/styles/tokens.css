@@ -25,6 +25,8 @@
   --accent: #0074a6;
   --accent-strong: #005f8c;
   --focus-ring: color-mix(in srgb, var(--accent) 70%, transparent);
+  --selection-bg: #c8e7f6;
+  --selection-text: var(--text-primary);
   --accent-code: #147cb0;
   --keyword: #8a3ffc;
   --string: #4f8f33;
@@ -57,6 +59,8 @@
   --accent: #5cc8ff;
   --accent-strong: #79d4ff;
   --focus-ring: color-mix(in srgb, var(--accent) 78%, transparent);
+  --selection-bg: #1f5f7e;
+  --selection-text: var(--text-primary);
   --accent-code: #56c8ff;
   --keyword: #d389ff;
   --string: #9ddb7b;
