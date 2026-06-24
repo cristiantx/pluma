@@ -1,0 +1,45 @@
+name: Feature request
+description: Discuss product ideas before implementation.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Pluma is alpha-stage software. Feature requests are useful for discussion, but may be closed when they are outside the current roadmap.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed direction
+      description: Describe the smallest version that would solve the problem.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Editing
+        - Markdown behavior
+        - Workspace/files
+        - macOS desktop app
+        - Packaging/releases
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: discussion
+    attributes:
+      label: Contribution note
+      options:
+        - label: I understand this should be discussed before implementation.
+          required: true

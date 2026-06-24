@@ -1,4 +1,9 @@
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab
+} from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import {
   bracketMatching,
@@ -277,6 +282,7 @@ function createSourceEditorExtensions(
     search(),
     sourceSearchDecorations,
     markdownCommandKeymap,
+    keymap.of([indentWithTab]),
     keymap.of([...defaultKeymap, ...historyKeymap]),
     settings.wordWrap ? EditorView.lineWrapping : [],
     EditorView.updateListener.of((update) => {

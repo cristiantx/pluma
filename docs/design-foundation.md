@@ -122,17 +122,17 @@ Rules:
 
 ## Reference States
 
-Phase 1.1 establishes these reference states in the shell:
+The shell should continue to support these reference states:
 
 - empty state: no file or folder selected, shell layout still visible
 - file-opened state: current file label visible in the editor stage
 - folder/workspace state: explorer entries and workspace label visible in the title bar
-- editor-mode state: Source/Rich/Split switch visible as a floating editor control when a document tab is active
+- editor-mode state: Source/Rich switch visible as a floating editor control when a document tab is active
 - sidebar-search state: sidebar title control flips between Search and Files while preserving the full-height shell structure
 
 ## Implementation Rules
 
 - New renderer surfaces should consume semantic tokens before introducing new raw colors
 - Layout changes should preserve the full-height sidebar / rounded editor pane / titlebar-inside-editor hierarchy
-- Editor-specific theming work in later phases should map into this foundation rather than replacing it
+- Editor-specific theming work should map into this foundation rather than replacing it
 - Avoid generic card-heavy dashboard patterns even when using Radix primitives

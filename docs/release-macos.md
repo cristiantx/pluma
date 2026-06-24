@@ -1,6 +1,7 @@
 # macOS Release Notes
 
-Pluma ships macOS artifacts first. Windows and Linux packaging stay out of the MVP release path.
+Pluma ships macOS artifacts first. Windows and Linux packaging stay outside the
+current alpha release path.
 
 ## Local Artifact Build
 
@@ -20,7 +21,7 @@ If the Forge icon configuration points at a macOS `.icon` asset bundle, packagin
 
 Electron Forge writes release artifacts under `apps/desktop/out/make`.
 
-Expected MVP artifacts:
+Expected alpha artifacts:
 
 - `dmg`
 - `zip`

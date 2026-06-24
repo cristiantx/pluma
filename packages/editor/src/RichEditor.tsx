@@ -1,4 +1,9 @@
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab
+} from "@codemirror/commands";
 import {
   findNext,
   findPrevious,
@@ -338,6 +343,7 @@ function createRichEditorExtensions(
     search(),
     sourceSearchDecorations,
     markdownCommandKeymap,
+    keymap.of([indentWithTab]),
     keymap.of([...defaultKeymap, ...historyKeymap]),
     draftlyExtensions,
     EditorView.updateListener.of((update) => {

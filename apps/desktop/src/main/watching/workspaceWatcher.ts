@@ -29,7 +29,7 @@ export class WorkspaceWatcher {
     try {
       this.watcher = watch(
         workspacePath,
-        // MVP targets macOS, where recursive fs.watch is supported.
+        // Pluma currently targets macOS, where recursive fs.watch is supported.
         { persistent: false, recursive: true },
         () => {
           this.scheduleRefresh();

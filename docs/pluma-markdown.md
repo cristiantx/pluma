@@ -36,6 +36,20 @@ Pluma does not claim pure CommonMark output for constructs where product policy
 intentionally differs from the spec fixture HTML. The main intentional
 differences are YAML frontmatter handling and sanitized HTML export.
 
+## Rendering Safety
+
+Markdown source text is the canonical document state in both rich and source
+modes. Save writes the current source text after line-ending preparation rather
+than serializing rich-mode state through a separate document format.
+
+HTML nodes are source-only. User-authored HTML can carry event handlers,
+embedded media, scripts, or rendering semantics that a rich editor may change or
+execute accidentally. Source mode preserves the original text.
+
+Any future user-authored Markdown preview or HTML rendering path should sanitize
+output before display. Markdown rendering defaults should map through Pluma's
+desktop design tokens instead of importing a third-party visual theme wholesale.
+
 ## Canonical Formatting
 
 Prettier owns automatic formatting for Pluma Markdown.

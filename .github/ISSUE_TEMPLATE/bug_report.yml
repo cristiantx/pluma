@@ -1,0 +1,54 @@
+name: Bug report
+description: Report reproducible behavior that is not working as expected.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please keep security-sensitive details out of public issues.
+  - type: input
+    id: version
+    attributes:
+      label: Pluma version or commit
+      description: Use the release version, commit SHA, or branch you tested.
+      placeholder: v0.1.0 or main@abc1234
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: System
+      description: Include macOS version and architecture.
+      placeholder: macOS 15, Apple Silicon
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest reliable sequence that reproduces the issue.
+      placeholder: |
+        1. Open Pluma
+        2. Open this Markdown file
+        3. Run this command
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add logs, screenshots, sample Markdown, or notes if useful.

@@ -1,0 +1,33 @@
+name: Small fix proposal
+description: Propose a focused docs, test, maintenance, or small bug fix.
+title: "[Fix]: "
+labels:
+  - small-fix
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Small fixes are welcome. Larger features or architecture changes should use the feature request template first.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What should change?
+      description: Describe the current problem or ambiguity.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed fix
+      description: Keep the scope narrow and specific.
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This is a focused docs, test, maintenance, or small bug fix.
+          required: true
+        - label: This does not introduce a broad UI redesign, platform port, sync, accounts, or a new editor engine.
+          required: true
