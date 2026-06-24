@@ -1,5 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("electron", () => ({
+  dialog: {
+    showMessageBox: vi.fn(),
+    showOpenDialog: vi.fn(),
+    showSaveDialog: vi.fn()
+  },
+  shell: {
+    openExternal: vi.fn(),
+    openPath: vi.fn()
+  }
+}));
+
+import { dialog } from "electron";
+
 import type {
   DesktopFileLocation,
   FileMetadata,
@@ -100,6 +114,56 @@ function getMetadata(filePath: string, text: string): FileMetadata {
 }
 
 describe("DesktopWindowSession", () => {
+  it("restores and switches editor mode per document", async () => {
+    const { send, session } = createSession({
+      "/workspace/rich.md": "# Rich\n",
+      "/workspace/source.md": "# Source\n"
+    });
+
+    await session.restorePersistedState({
+      activeDocumentPath: "/workspace/rich.md",
+      activeDocumentRef: {
+        editorMode: "rich",
+        kind: "desktop-path",
+        path: "/workspace/rich.md"
+      },
+      documentPaths: [],
+      documentRefs: [
+        {
+          editorMode: "rich",
+          kind: "desktop-path",
+          path: "/workspace/rich.md"
+        },
+        {
+          editorMode: "source",
+          kind: "desktop-path",
+          path: "/workspace/source.md"
+        }
+      ],
+      editorMode: "source",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+
+    expect(session.getPersistedState().editorMode).toBe("rich");
+
+    session.setActiveDocument("desktop:/workspace/source.md");
+
+    expect(session.getPersistedState().editorMode).toBe("source");
+    expect(send).toHaveBeenCalledWith("pluma:event", {
+      mode: "source",
+      type: "mode-changed"
+    });
+
+    session.setActiveDocument("desktop:/workspace/rich.md");
+
+    expect(session.getPersistedState().editorMode).toBe("rich");
+    expect(send).toHaveBeenCalledWith("pluma:event", {
+      mode: "rich",
+      type: "mode-changed"
+    });
+  });
+
   it("clamps restored source-only documents to source mode", async () => {
     const { session } = createSession({
       "/workspace/source-only.md": "<aside>Keep exact</aside>\n"
@@ -137,6 +201,70 @@ describe("DesktopWindowSession", () => {
       mode: "source",
       type: "mode-changed"
     });
+  });
+
+  it("saves dirty documents before allowing window close", async () => {
+    const files = {
+      "/workspace/notes.md": "# Saved\n"
+    };
+    const { session } = createSession(files);
+    vi.mocked(dialog.showMessageBox).mockResolvedValueOnce({
+      response: 0
+    } as Electron.MessageBoxReturnValue);
+
+    await session.restorePersistedState({
+      activeDocumentPath: "/workspace/notes.md",
+      documentPaths: ["/workspace/notes.md"],
+      editorMode: "rich",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+    session.updateDocumentText("desktop:/workspace/notes.md", "# Edited\n");
+
+    await expect(session.closeWindowWithProtection()).resolves.toBe(true);
+    expect(files["/workspace/notes.md"]).toBe("# Edited\n");
+  });
+
+  it("allows window close without saving when requested", async () => {
+    const files = {
+      "/workspace/notes.md": "# Saved\n"
+    };
+    const { session } = createSession(files);
+    vi.mocked(dialog.showMessageBox).mockResolvedValueOnce({
+      response: 1
+    } as Electron.MessageBoxReturnValue);
+
+    await session.restorePersistedState({
+      activeDocumentPath: "/workspace/notes.md",
+      documentPaths: ["/workspace/notes.md"],
+      editorMode: "rich",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+    session.updateDocumentText("desktop:/workspace/notes.md", "# Edited\n");
+
+    await expect(session.closeWindowWithProtection()).resolves.toBe(true);
+    expect(files["/workspace/notes.md"]).toBe("# Saved\n");
+  });
+
+  it("cancels window close when requested", async () => {
+    const { session } = createSession({
+      "/workspace/notes.md": "# Saved\n"
+    });
+    vi.mocked(dialog.showMessageBox).mockResolvedValueOnce({
+      response: 2
+    } as Electron.MessageBoxReturnValue);
+
+    await session.restorePersistedState({
+      activeDocumentPath: "/workspace/notes.md",
+      documentPaths: ["/workspace/notes.md"],
+      editorMode: "rich",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+    session.updateDocumentText("desktop:/workspace/notes.md", "# Edited\n");
+
+    await expect(session.closeWindowWithProtection()).resolves.toBe(false);
   });
 
   it("ignores workspace file opens outside the active workspace", async () => {

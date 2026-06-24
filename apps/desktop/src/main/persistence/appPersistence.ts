@@ -21,9 +21,11 @@ export type PersistedDocumentReference =
   | {
       kind: "app-draft";
       draftId: string;
+      editorMode?: EditorViewMode;
       name: string;
     }
   | {
+      editorMode?: EditorViewMode;
       kind: "desktop-path";
       path: string;
     };
@@ -317,12 +319,18 @@ function isPersistedDocumentReference(
   const candidate = value as Partial<PersistedDocumentReference>;
 
   if (candidate.kind === "desktop-path") {
-    return typeof candidate.path === "string";
+    return (
+      typeof candidate.path === "string" &&
+      (candidate.editorMode === undefined ||
+        isEditorViewMode(candidate.editorMode))
+    );
   }
 
   if (candidate.kind === "app-draft") {
     return (
       typeof candidate.draftId === "string" &&
+      (candidate.editorMode === undefined ||
+        isEditorViewMode(candidate.editorMode)) &&
       typeof candidate.name === "string"
     );
   }

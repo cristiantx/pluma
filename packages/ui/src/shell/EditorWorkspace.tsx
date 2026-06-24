@@ -9,6 +9,7 @@ import {
 
 import { usePlumaStore } from "../state/usePlumaStore.js";
 import { addEditorCommandEventListener } from "./editorCommandEvents.js";
+import { getDesktopDocumentAssetBaseUrl } from "./desktopAssetUrls.js";
 import { EditorSearchPanel } from "./EditorSearchPanel.js";
 import { SettingsView } from "./SettingsView.js";
 import { TabStrip } from "./TabStrip.js";
@@ -151,11 +152,16 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
           requestId: searchRevealRequest.requestId
         }
       : null;
+  const imageBaseUrl =
+    activeDocument.location.kind === "desktop-path"
+      ? getDesktopDocumentAssetBaseUrl(activeDocument.location.path)
+      : undefined;
   const richPane = showRichEditor ? (
     <article className="rich-pane" aria-label="Rich Markdown editor">
       <div className="rich-document">
         <RichEditor
           documentId={activeDocument.id}
+          imageBaseUrl={imageBaseUrl}
           onCursorAnchorChange={handleCursorAnchorChange}
           onFocus={() => setActiveEditorKind("rich")}
           onReady={scheduleReplayAnchors}

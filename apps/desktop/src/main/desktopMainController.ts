@@ -35,6 +35,10 @@ import {
   type PersistedWindowSessionState
 } from "./persistence/appPersistence";
 import { createAppDraftStorage } from "./persistence/appDraftStorage";
+import {
+  registerLocalAssetProtocolHandler,
+  registerLocalAssetProtocolScheme
+} from "./assets/localAssetProtocol";
 import { buildApplicationMenu } from "./menus/applicationMenu";
 import { registerIpcHandlers } from "./ipc/registerIpcHandlers";
 import {
@@ -80,6 +84,8 @@ const reactDeveloperToolsExtensionId = "fmkadmapgofadopljbjfkapdkoienihi";
 if (started) {
   app.quit();
 }
+
+registerLocalAssetProtocolScheme();
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 
@@ -665,6 +671,7 @@ export function startDesktopMainProcess(
   registerDesktopIpcHandlers();
 
   app.whenReady().then(async () => {
+    registerLocalAssetProtocolHandler(session.defaultSession);
     setApplicationIcon();
     await installDevelopmentExtensions();
     const settings = await readAppSettings(getAppSettingsPath());

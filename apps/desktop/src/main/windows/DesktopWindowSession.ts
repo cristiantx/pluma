@@ -16,7 +16,6 @@ import {
   updateDocumentSessionText,
   type AppDraftFileLocation,
   type DesktopFileLocation,
-  type DocumentModeConstraint,
   type DocumentSession,
   type FileSystemAdapter
 } from "@pluma/core";
@@ -37,6 +36,7 @@ import {
 import type { AppDraftStorage } from "../persistence/appDraftStorage";
 import { AutosaveScheduler } from "../autosave/autosaveScheduler";
 import {
+  chooseProtectedDocumentCloseAction as chooseProtectedDocumentCloseActionDialog,
   confirmDiscardDocumentsSequentially as confirmDiscardDocumentsSequentiallyDialog,
   confirmDiscardProtectedDocuments as confirmDiscardProtectedDocumentsDialog
 } from "../dialogs/documentProtection";
@@ -87,6 +87,8 @@ export type DesktopWindowSessionDependencies = {
 export class DesktopWindowSession {
   private readonly activeFileWatcher: ActiveFileWatcher;
   private readonly autosaveScheduler: AutosaveScheduler;
+  private readonly documentModes = new Map<string, EditorViewMode>();
+  private readonly replacementDocumentIds = new Map<string, string>();
   private readonly workspaceWatcher: WorkspaceWatcher;
   private currentMode: EditorViewMode = "source";
   private shellData: DesktopShellSnapshot;
@@ -96,6 +98,7 @@ export class DesktopWindowSession {
     this.shellData = {
       activeDocumentId: null,
       activeTabId: null,
+      documentViewModes: {},
       documents: [],
       isDevelopment: dependencies.isDevelopment,
       paneSizes: [],
@@ -150,14 +153,15 @@ export class DesktopWindowSession {
   getPersistedState(): PersistedWindowSessionState {
     const activeDocument = this.getActiveDocument();
     const activeDocumentRef = activeDocument
-      ? getPersistedDocumentReference(activeDocument)
+      ? this.getPersistedDocumentReferenceWithMode(activeDocument)
       : null;
 
     return {
       activeDocumentRef,
       activeDocumentPath: this.getDocumentPath(this.shellData.activeDocumentId),
       documentRefs: this.shellData.documents.flatMap((document) => {
-        const documentRef = getPersistedDocumentReference(document);
+        const documentRef =
+          this.getPersistedDocumentReferenceWithMode(document);
 
         return documentRef ? [documentRef] : [];
       }),
@@ -184,13 +188,14 @@ export class DesktopWindowSession {
     persistedState: PersistedWindowSessionState
   ): Promise<void> {
     this.currentMode = persistedState.editorMode;
+    this.documentModes.clear();
 
     const workspaceEntries = await tryCollectWorkspaceEntries(
       this.dependencies.fileSystem,
       persistedState.workspacePath,
       { showHiddenFiles: this.dependencies.getWorkspaceShowHiddenFiles() }
     );
-    const documentRefs =
+    const documentRefs: PersistedDocumentReference[] =
       persistedState.documentRefs ??
       persistedState.documentPaths.map((documentPath) => ({
         kind: "desktop-path" as const,
@@ -203,6 +208,21 @@ export class DesktopWindowSession {
         )
       )
     ).filter((session) => session !== null);
+    documents.forEach((document) => {
+      const documentRef = getPersistedDocumentReference(document);
+      const persistedDocumentRef = documentRefs.find(
+        (candidate) =>
+          createDocumentModeKeyFromPersistedReference(candidate) ===
+          (documentRef
+            ? createDocumentModeKeyFromPersistedReference(documentRef)
+            : null)
+      );
+
+      this.setStoredDocumentMode(
+        document,
+        persistedDocumentRef?.editorMode ?? persistedState.editorMode
+      );
+    });
     const activeDocument = getActivePersistedDocument(
       documents,
       persistedState
@@ -220,7 +240,7 @@ export class DesktopWindowSession {
       workspaceEntries,
       workspacePath: persistedState.workspacePath
     });
-    this.clampEditorModeForActiveDocument({ emit: false });
+    this.syncEditorModeForActiveDocument({ emit: false });
     this.updateActiveFileWatcher();
     this.updateWorkspaceWatcher();
   }
@@ -296,8 +316,7 @@ export class DesktopWindowSession {
         await this.saveActiveDocumentAs();
         return;
       case "toggle-mode":
-        this.currentMode = this.getNextEditorMode();
-        this.emitToRenderer({ type: "mode-changed", mode: this.currentMode });
+        this.setModeForActiveDocument(this.getNextEditorMode());
         this.persistSessionStateSoon();
         return;
       case "open-devtools":
@@ -338,8 +357,7 @@ export class DesktopWindowSession {
       return;
     }
 
-    this.currentMode = this.getAllowedEditorMode(mode);
-    this.emitToRenderer({ type: "mode-changed", mode: this.currentMode });
+    this.setModeForActiveDocument(mode);
     this.persistSessionStateSoon();
   }
 
@@ -355,7 +373,7 @@ export class DesktopWindowSession {
       activeDocumentId: documentId,
       activeTabId: documentId
     });
-    this.clampEditorModeForActiveDocument();
+    this.syncEditorModeForActiveDocument();
     this.updateActiveFileWatcher();
     this.persistSessionStateSoon();
     this.emitShellSnapshot();
@@ -396,14 +414,16 @@ export class DesktopWindowSession {
     if (
       document &&
       shouldProtectDocumentSessionClose(document) &&
-      !(await this.confirmDiscardProtectedDocuments([document], "close-tab"))
+      !(await this.resolveProtectedDocumentClose([document], "close-tab"))
     ) {
       this.emitToRenderer({ type: "status", message: "Close tab cancelled." });
       this.emitShellSnapshot();
       return;
     }
 
-    this.closeDocumentSession(tabId);
+    this.closeDocumentSession(
+      document ? this.getCurrentDocumentIdForClose(document) : tabId
+    );
     this.persistSessionStateSoon();
     this.emitShellSnapshot();
   }
@@ -632,7 +652,7 @@ export class DesktopWindowSession {
       return true;
     }
 
-    const canClose = await this.confirmDiscardProtectedDocuments(
+    const canClose = await this.resolveProtectedDocumentClose(
       protectedDocuments,
       "quit"
     );
@@ -664,7 +684,10 @@ export class DesktopWindowSession {
   private emitShellSnapshot(): void {
     this.emitToRenderer({
       type: "shell-snapshot",
-      snapshot: this.shellData
+      snapshot: {
+        ...this.shellData,
+        documentViewModes: this.getDocumentViewModesSnapshot()
+      }
     });
   }
 
@@ -697,14 +720,6 @@ export class DesktopWindowSession {
     return document.location.path;
   }
 
-  private getActiveDocumentModeConstraint(): DocumentModeConstraint | null {
-    const activeDocument = this.shellData.documents.find(
-      (document) => document.id === this.shellData.activeDocumentId
-    );
-
-    return activeDocument?.modeConstraint ?? null;
-  }
-
   private getActiveDocument(): DocumentSession | null {
     return (
       this.shellData.documents.find(
@@ -724,24 +739,118 @@ export class DesktopWindowSession {
     return this.getActiveDocument();
   }
 
-  private getAllowedEditorMode(mode: EditorViewMode): EditorViewMode {
-    return mode !== "source" &&
-      this.getActiveDocumentModeConstraint() === "source-only"
+  private getAllowedEditorMode(
+    document: DocumentSession | null,
+    mode: EditorViewMode
+  ): EditorViewMode {
+    return mode !== "source" && document?.modeConstraint === "source-only"
       ? "source"
       : mode;
   }
 
   private getNextEditorMode(): EditorViewMode {
+    const activeDocument = this.getActiveDocument();
+
     return this.getAllowedEditorMode(
-      this.currentMode === "rich" ? "source" : "rich"
+      activeDocument,
+      this.getStoredDocumentMode(activeDocument) === "rich" ? "source" : "rich"
     );
   }
 
-  private clampEditorModeForActiveDocument(
+  private getStoredDocumentMode(
+    document: DocumentSession | null
+  ): EditorViewMode {
+    if (!document) {
+      return this.currentMode;
+    }
+
+    return (
+      this.documentModes.get(this.getDocumentModeKey(document)) ??
+      this.getDefaultDocumentMode(document)
+    );
+  }
+
+  private getDefaultDocumentMode(document: DocumentSession): EditorViewMode {
+    return document.modeConstraint === "source-only" ? "source" : "rich";
+  }
+
+  private getDocumentModeKey(document: DocumentSession): string {
+    if (document.location.kind === "app-draft") {
+      return `app-draft:${document.location.draftId}`;
+    }
+
+    if (document.location.kind === "desktop-path") {
+      return `desktop-path:${document.location.path}`;
+    }
+
+    return document.id;
+  }
+
+  private setStoredDocumentMode(
+    document: DocumentSession,
+    mode: EditorViewMode
+  ): void {
+    this.documentModes.set(
+      this.getDocumentModeKey(document),
+      this.getAllowedEditorMode(document, mode)
+    );
+  }
+
+  private getDocumentViewModesSnapshot(): Record<string, EditorViewMode> {
+    return Object.fromEntries(
+      this.shellData.documents.map((document) => [
+        document.id,
+        this.getAllowedEditorMode(
+          document,
+          this.getStoredDocumentMode(document)
+        )
+      ])
+    );
+  }
+
+  private getPersistedDocumentReferenceWithMode(
+    document: DocumentSession
+  ): PersistedDocumentReference | null {
+    const documentRef = getPersistedDocumentReference(document);
+
+    if (!documentRef) {
+      return null;
+    }
+
+    return {
+      ...documentRef,
+      editorMode: this.getAllowedEditorMode(
+        document,
+        this.getStoredDocumentMode(document)
+      )
+    };
+  }
+
+  private setModeForActiveDocument(mode: EditorViewMode): void {
+    const activeDocument = this.getActiveDocument();
+    const previousMode = this.currentMode;
+
+    if (activeDocument) {
+      this.setStoredDocumentMode(activeDocument, mode);
+    }
+
+    this.currentMode = this.getAllowedEditorMode(activeDocument, mode);
+    this.emitToRenderer({ type: "mode-changed", mode: this.currentMode });
+
+    if (previousMode !== this.currentMode) {
+      this.emitShellSnapshot();
+    }
+  }
+
+  private syncEditorModeForActiveDocument(
     options: { emit?: boolean } = {}
   ): void {
     const previousMode = this.currentMode;
-    this.currentMode = this.getAllowedEditorMode(this.currentMode);
+    const activeDocument = this.getActiveDocument();
+    this.currentMode = this.getAllowedEditorMode(
+      activeDocument,
+      this.getStoredDocumentMode(activeDocument)
+    );
 
     if (options.emit !== false && previousMode !== this.currentMode) {
       this.emitToRenderer({ type: "mode-changed", mode: this.currentMode });
@@ -887,7 +996,7 @@ export class DesktopWindowSession {
       activeTabId: nextSession.id,
       documents: [nextSession, ...remainingDocuments]
     });
-    this.clampEditorModeForActiveDocument();
+    this.syncEditorModeForActiveDocument();
     this.updateActiveFileWatcher();
   }
 
@@ -895,6 +1004,7 @@ export class DesktopWindowSession {
     documentId: string,
     nextSession: DocumentSession
   ): void {
+    this.replacementDocumentIds.set(documentId, nextSession.id);
     this.updateShellData({
       activeDocumentId:
         this.shellData.activeDocumentId === documentId
@@ -908,7 +1018,7 @@ export class DesktopWindowSession {
         document.id === documentId ? nextSession : document
       )
     });
-    this.clampEditorModeForActiveDocument();
+    this.syncEditorModeForActiveDocument();
     this.updateActiveFileWatcher();
   }
 
@@ -940,7 +1050,7 @@ export class DesktopWindowSession {
           ? "All documents closed."
           : "Closed document tab."
     });
-    this.clampEditorModeForActiveDocument();
+    this.syncEditorModeForActiveDocument();
     this.updateActiveFileWatcher();
   }
 
@@ -987,7 +1097,7 @@ export class DesktopWindowSession {
       documents: nextDocuments,
       status
     });
-    this.clampEditorModeForActiveDocument();
+    this.syncEditorModeForActiveDocument();
     this.updateActiveFileWatcher();
   }
 
@@ -1008,6 +1118,10 @@ export class DesktopWindowSession {
     );
   }
 
+  private getCurrentDocumentIdForClose(document: DocumentSession): string {
+    return this.replacementDocumentIds.get(document.id) ?? document.id;
+  }
+
   private async closeActiveDocumentSession(): Promise<void> {
     const activeDocument = this.getActiveDocumentForActiveTab();
 
@@ -1021,17 +1135,16 @@ export class DesktopWindowSession {
 
     if (
       shouldProtectDocumentSessionClose(activeDocument) &&
-      !(await this.confirmDiscardProtectedDocuments(
-        [activeDocument],
-        "close-tab"
-      ))
+      !(await this.resolveProtectedDocumentClose([activeDocument], "close-tab"))
     ) {
       this.emitToRenderer({ type: "status", message: "Close tab cancelled." });
       this.emitShellSnapshot();
       return;
     }
 
-    this.closeDocumentSession(activeDocument.id);
+    this.closeDocumentSession(
+      this.getCurrentDocumentIdForClose(activeDocument)
+    );
     this.persistSessionStateSoon();
     this.emitShellSnapshot();
   }
@@ -1050,14 +1163,16 @@ export class DesktopWindowSession {
       shouldProtectDocumentSessionClose
     );
 
-    if (!(await this.confirmDiscardDocumentsSequentially(protectedDocuments))) {
+    if (
+      !(await this.resolveProtectedDocumentsSequentially(protectedDocuments))
+    ) {
       this.emitToRenderer({ type: "status", message: "Close tab cancelled." });
       this.emitShellSnapshot();
       return false;
     }
 
     this.closeDocumentSessionsWithOptions(
-      documents.map((document) => document.id),
+      documents.map((document) => this.getCurrentDocumentIdForClose(document)),
       status,
       options
     );
@@ -1102,6 +1217,53 @@ export class DesktopWindowSession {
     documents: DocumentSession[]
   ): Promise<boolean> {
     return confirmDiscardDocumentsSequentiallyDialog(this.window, documents);
+  }
+
+  private async resolveProtectedDocumentClose(
+    documents: DocumentSession[],
+    action: "close-tab" | "quit"
+  ): Promise<boolean> {
+    const choice = await chooseProtectedDocumentCloseActionDialog(
+      this.window,
+      documents,
+      action
+    );
+
+    if (choice === "discard") {
+      return true;
+    }
+
+    if (choice === "cancel") {
+      return false;
+    }
+
+    return this.saveDocumentsBeforeClose(documents);
+  }
+
+  private async resolveProtectedDocumentsSequentially(
+    documents: DocumentSession[]
+  ): Promise<boolean> {
+    for (const document of documents) {
+      if (
+        !(await this.resolveProtectedDocumentClose([document], "close-tab"))
+      ) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private async saveDocumentsBeforeClose(
+    documents: DocumentSession[]
+  ): Promise<boolean> {
+    for (const document of documents) {
+      if (!(await this.saveDocument(document.id, "manual"))) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   private updateActiveFileWatcher(): void {
@@ -1235,7 +1397,7 @@ export class DesktopWindowSession {
         activeTabId: openDocument.id,
         status: `Switched to ${path.basename(filePath)}.`
       });
-      this.clampEditorModeForActiveDocument();
+      this.syncEditorModeForActiveDocument();
       this.updateActiveFileWatcher();
       this.persistSessionStateSoon();
       this.emitShellSnapshot();
@@ -1290,7 +1452,7 @@ export class DesktopWindowSession {
       workspaceEntries,
       workspacePath: directoryPath
     });
-    this.clampEditorModeForActiveDocument();
+    this.syncEditorModeForActiveDocument();
     this.autosaveScheduler.clearAll();
     this.updateActiveFileWatcher();
     this.updateWorkspaceWatcher();
@@ -1382,9 +1544,9 @@ export class DesktopWindowSession {
     await this.refreshWorkspaceEntries();
   }
 
-  private async saveDraftDocument(document: DocumentSession): Promise<void> {
+  private async saveDraftDocument(document: DocumentSession): Promise<boolean> {
     if (document.location.kind !== "app-draft") {
-      return;
+      return false;
     }
 
     this.autosaveScheduler.clear(document.id);
@@ -1406,11 +1568,14 @@ export class DesktopWindowSession {
     });
     this.persistSessionStateSoon();
     this.emitShellSnapshot();
+    return true;
   }
 
-  private async promoteDraftDocument(document: DocumentSession): Promise<void> {
+  private async promoteDraftDocument(
+    document: DocumentSession
+  ): Promise<boolean> {
     if (document.location.kind !== "app-draft") {
-      return;
+      return false;
     }
 
     const result = await dialog.showSaveDialog(this.window, {
@@ -1421,7 +1586,7 @@ export class DesktopWindowSession {
 
     if (result.canceled || !result.filePath) {
       this.emitToRenderer({ type: "status", message: "Save cancelled." });
-      return;
+      return false;
     }
 
     const textToSave = this.prepareTextForSave(document);
@@ -1442,7 +1607,7 @@ export class DesktopWindowSession {
             ? `Save conflict: file was ${saveResult.reason}.`
             : `Save failed: ${saveResult.message}`
       });
-      return;
+      return false;
     }
 
     await this.dependencies.draftStorage.deleteDraft(document.location);
@@ -1465,6 +1630,7 @@ export class DesktopWindowSession {
     await this.refreshWorkspaceEntries();
     this.persistSessionStateSoon();
     this.emitShellSnapshot();
+    return true;
   }
 
   private async renameDocument(documentId: string): Promise<void> {
@@ -1574,7 +1740,7 @@ export class DesktopWindowSession {
       ),
       status: `Renamed ${path.basename(document.location.path)} to ${path.basename(targetPath)}.`
     });
-    this.clampEditorModeForActiveDocument();
+    this.syncEditorModeForActiveDocument();
     this.updateActiveFileWatcher();
     await this.refreshWorkspaceEntries();
     this.persistSessionStateSoon();
@@ -1584,13 +1750,13 @@ export class DesktopWindowSession {
   private async saveDocument(
     documentId: string,
     trigger: "autosave" | "manual"
-  ): Promise<void> {
+  ): Promise<boolean> {
     const activeDocument = this.shellData.documents.find(
       (document) => document.id === documentId
     );
 
     if (!activeDocument) {
-      return;
+      return false;
     }
 
     if (activeDocument.saveState === "idle") {
@@ -1598,10 +1764,10 @@ export class DesktopWindowSession {
         trigger === "manual" &&
         activeDocument.location.kind === "app-draft"
       ) {
-        await this.promoteDraftDocument(activeDocument);
+        return this.promoteDraftDocument(activeDocument);
       }
 
-      return;
+      return true;
     }
 
     if (
@@ -1612,17 +1778,15 @@ export class DesktopWindowSession {
         type: "status",
         message: "Resolve the disk conflict before saving."
       });
-      return;
+      return false;
     }
 
     if (activeDocument.location.kind === "app-draft") {
       if (trigger === "autosave") {
-        await this.saveDraftDocument(activeDocument);
+        return this.saveDraftDocument(activeDocument);
       } else {
-        await this.promoteDraftDocument(activeDocument);
+        return this.promoteDraftDocument(activeDocument);
       }
-
-      return;
     }
 
     if (activeDocument.location.kind !== "desktop-path") {
@@ -1630,7 +1794,7 @@ export class DesktopWindowSession {
         type: "status",
         message: "Save is only available for desktop files."
       });
-      return;
+      return false;
     }
 
     this.autosaveScheduler.clear(activeDocument.id);
@@ -1686,7 +1850,7 @@ export class DesktopWindowSession {
       });
       this.persistSessionStateSoon();
       this.emitShellSnapshot();
-      return;
+      return true;
     }
 
     if (saveResult.kind === "conflict") {
@@ -1699,7 +1863,7 @@ export class DesktopWindowSession {
         status: `Save conflict: file was ${saveResult.reason}.`
       });
       this.emitShellSnapshot();
-      return;
+      return false;
     }
 
     this.updateShellData({
@@ -1714,6 +1878,7 @@ export class DesktopWindowSession {
       status: `Save failed: ${saveResult.message}`
     });
     this.emitShellSnapshot();
+    return false;
   }
 
   private async reloadActiveDocumentFromDisk(): Promise<void> {
@@ -1754,7 +1919,7 @@ export class DesktopWindowSession {
       ),
       status: `Reloaded ${path.basename(activeDocument.location.path)} from disk.`
     });
-    this.clampEditorModeForActiveDocument();
+    this.syncEditorModeForActiveDocument();
     this.emitShellSnapshot();
   }
 
@@ -1938,4 +2103,12 @@ function isWorkspaceSearchOptions(
     typeof (options as { regexp?: unknown }).regexp === "boolean" &&
     typeof (options as { wholeWord?: unknown }).wholeWord === "boolean"
   );
+}
+
+function createDocumentModeKeyFromPersistedReference(
+  documentRef: PersistedDocumentReference
+): string {
+  return documentRef.kind === "app-draft"
+    ? `app-draft:${documentRef.draftId}`
+    : `desktop-path:${documentRef.path}`;
 }

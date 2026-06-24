@@ -85,6 +85,7 @@ export type CommandsSlice = {
 };
 
 export type LayoutSlice = {
+  documentViewModes: Record<string, EditorViewMode>;
   editorViewMode: EditorViewMode;
   paneSizes: number[];
   isSidebarVisible: boolean;
@@ -97,6 +98,7 @@ export type PlumaShellSnapshot = {
   activeDocumentId: string | null;
   activeTabId: string | null;
   documents: DocumentSession[];
+  documentViewModes: Record<string, EditorViewMode>;
   explorerNodes: ExplorerNode[];
   hasWorkspace: boolean;
   isBridgeAvailable: boolean;

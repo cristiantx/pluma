@@ -1,7 +1,6 @@
 # Pluma Markdown
 
-Pluma Markdown is CommonMark-compatible Markdown with GitHub Flavored Markdown
-and YAML frontmatter.
+Pluma Markdown is CommonMark-compatible Markdown with GitHub Flavored Markdown and YAML frontmatter.
 
 Source mode accepts CommonMark input, GFM extensions, and YAML frontmatter.
 Rich editing is available for documents that can round-trip through Pluma's

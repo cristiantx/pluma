@@ -21,6 +21,7 @@ export type RichEditorProps = {
   "aria-label"?: string;
   autoFocus?: boolean;
   documentId: string;
+  imageBaseUrl?: string | undefined;
   resolvedTheme?: "dark" | "light";
   onCursorAnchorChange?: (anchor: EditorCursorAnchor) => void;
   onFocus?: () => void;

@@ -4,14 +4,15 @@ import path from "node:path";
 import type { DocumentSession } from "@pluma/core";
 
 export type ProtectedDocumentAction = "close-tab" | "quit" | "reload";
+export type ProtectedDocumentCloseChoice = "save" | "discard" | "cancel";
 
-export async function confirmDiscardProtectedDocuments(
+export async function chooseProtectedDocumentCloseAction(
   window: BrowserWindow | null,
   documents: DocumentSession[],
   action: ProtectedDocumentAction
-): Promise<boolean> {
+): Promise<ProtectedDocumentCloseChoice> {
   if (!window || documents.length === 0) {
-    return true;
+    return "discard";
   }
 
   const detail =
@@ -21,16 +22,34 @@ export async function confirmDiscardProtectedDocuments(
   const actionLabel =
     action === "quit" ? "Quit" : action === "reload" ? "Reload" : "Close";
   const result = await dialog.showMessageBox(window, {
-    buttons: [actionLabel, "Cancel"],
-    cancelId: 1,
-    defaultId: 1,
+    buttons: ["Save", "Don't Save", "Cancel"],
+    cancelId: 2,
+    defaultId: 0,
     detail,
-    message: `${actionLabel} anyway?`,
+    message: `${actionLabel} with unsaved changes?`,
     noLink: true,
     type: "warning"
   });
 
-  return result.response === 0;
+  if (result.response === 0) {
+    return "save";
+  }
+
+  return result.response === 1 ? "discard" : "cancel";
+}
+
+export async function confirmDiscardProtectedDocuments(
+  window: BrowserWindow | null,
+  documents: DocumentSession[],
+  action: ProtectedDocumentAction
+): Promise<boolean> {
+  const choice = await chooseProtectedDocumentCloseAction(
+    window,
+    documents,
+    action
+  );
+
+  return choice === "discard";
 }
 
 export async function confirmDiscardDocumentsSequentially(

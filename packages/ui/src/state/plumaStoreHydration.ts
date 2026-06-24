@@ -40,6 +40,7 @@ export function hydratePlumaShellSnapshot(
       documents: snapshot.documents
     },
     layout: {
+      documentViewModes: snapshot.documentViewModes,
       editorViewMode: snapshot.editorViewMode,
       isSidebarVisible: snapshot.hasWorkspace
         ? isNewWorkspace || state.layout.isSidebarVisible

@@ -39,6 +39,7 @@ export const initialPlumaStoreState: PlumaStoreInitializer = {
     documents: []
   },
   layout: {
+    documentViewModes: {},
     editorViewMode: "source",
     isSidebarVisible: true,
     paneSizes: []

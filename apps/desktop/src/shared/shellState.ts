@@ -29,6 +29,7 @@ export type WorkspaceSearchOptions = {
 export type DesktopShellSnapshot = {
   activeDocumentId: string | null;
   activeTabId: string | null;
+  documentViewModes: Record<string, EditorViewMode>;
   documents: DocumentSession[];
   isDevelopment: boolean;
   paneSizes: number[];
@@ -77,6 +78,7 @@ export const initialShellState: ShellState = {
   activeDocumentId: null,
   activeTabId: null,
   activity: [],
+  documentViewModes: {},
   documents: [],
   isDevelopment: false,
   mode: "source",
@@ -96,6 +98,7 @@ function normalizeDesktopShellSnapshot(
   return {
     activeDocumentId: snapshot.activeDocumentId ?? null,
     activeTabId: snapshot.activeTabId ?? snapshot.activeDocumentId ?? null,
+    documentViewModes: snapshot.documentViewModes ?? {},
     documents: snapshot.documents ?? [],
     isDevelopment: snapshot.isDevelopment ?? false,
     paneSizes: snapshot.paneSizes ?? [],
@@ -117,6 +120,12 @@ export function reduceShellEvent(
     case "mode-changed":
       return {
         ...current,
+        documentViewModes: current.activeDocumentId
+          ? {
+              ...current.documentViewModes,
+              [current.activeDocumentId]: event.mode
+            }
+          : current.documentViewModes,
         mode: event.mode,
         status: `Editor mode switched to ${event.mode}.`,
         activity: appendActivity(current.activity, `Mode: ${event.mode}`)

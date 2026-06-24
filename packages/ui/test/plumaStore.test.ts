@@ -54,6 +54,10 @@ const baseSnapshot: PlumaShellSnapshot = {
   activeDocument: baseDocuments[0] ?? null,
   activeDocumentId: baseDocuments[0]?.id ?? null,
   activeTabId: baseDocuments[0]?.id ?? null,
+  documentViewModes: {
+    [baseDocuments[0]?.id ?? ""]: "source",
+    [baseDocuments[1]?.id ?? ""]: "rich"
+  },
   documents: baseDocuments,
   explorerNodes: [
     { depth: 0, id: "guides", kind: "folder", label: "Guides" },
@@ -110,6 +114,9 @@ describe("usePlumaStore", () => {
     expect(state.tabs.tabs).toEqual(baseTabs);
     expect(state.tabs.activeTabId).toBe(baseDocuments[0]?.id);
     expect(state.layout.paneSizes).toEqual([210, 770]);
+    expect(state.layout.documentViewModes).toEqual(
+      baseSnapshot.documentViewModes
+    );
     expect(state.layout.editorViewMode).toBe("source");
     expect(state.layout.isSidebarVisible).toBe(true);
     expect(state.status.statusMetrics[0]?.value).toBe("312");
@@ -457,6 +464,16 @@ describe("usePlumaStore", () => {
 
     expect(usePlumaStore.getState().layout.editorViewMode).toBe("rich");
     expect(setEditorViewMode).toHaveBeenCalledWith("rich");
+  });
+
+  it("switches to a document's remembered view mode when selecting its tab", () => {
+    const setActiveTabId = vi.fn();
+    usePlumaStore.getState().setCommandHandlers({ setActiveTabId });
+    usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
+
+    usePlumaStore.getState().setActiveTabId(baseDocuments[1]?.id ?? "");
+
+    expect(usePlumaStore.getState().layout.editorViewMode).toBe("rich");
   });
 
   it("updates active document text and dirty tab state", () => {

@@ -120,6 +120,7 @@ export function getShellSnapshot(
     activeDocumentId: shellState.activeDocumentId,
     activeTabId: shellState.activeTabId,
     documents: getDocuments(shellState),
+    documentViewModes: shellState.documentViewModes,
     explorerNodes: getExplorerNodes(shellState),
     hasWorkspace: Boolean(shellState.workspacePath),
     isBridgeAvailable,

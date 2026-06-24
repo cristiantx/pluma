@@ -162,6 +162,17 @@ function runSetEditorViewMode(
     return;
   }
 
+  setShellState((current) => ({
+    ...current,
+    documentViewModes: current.activeDocumentId
+      ? {
+          ...current.documentViewModes,
+          [current.activeDocumentId]: mode
+        }
+      : current.documentViewModes,
+    mode,
+    status: `Editor mode switched to ${mode}.`
+  }));
   void window.pluma.setEditorMode(mode);
 }
 
@@ -182,11 +193,13 @@ function runSetActiveTabCommand(
     if (!current.documents.some((document) => document.id === tabId)) {
       return current;
     }
+    const mode = current.documentViewModes[tabId] ?? current.mode;
 
     return {
       ...current,
       activeDocumentId: tabId,
-      activeTabId: tabId
+      activeTabId: tabId,
+      mode
     };
   });
 

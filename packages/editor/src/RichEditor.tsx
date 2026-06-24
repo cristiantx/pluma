@@ -40,6 +40,7 @@ import {
 } from "./sourceEditorInterop.js";
 import { markdownCommandKeymap } from "./markdownCommands.js";
 import { plumaRichEditorTheme } from "./richEditorTheme.js";
+import { resolveRichEditorImageUrls } from "./richEditorImageUrls.js";
 import type { RichEditorHandle, RichEditorProps } from "./richEditorTypes.js";
 import { sourceSearchDecorations } from "./sourceSearchDecorations.js";
 
@@ -52,6 +53,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
       "aria-label": ariaLabel = "Rich Markdown editor",
       autoFocus = false,
       documentId,
+      imageBaseUrl,
       onCursorAnchorChange,
       onFocus,
       onReady,
@@ -70,6 +72,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
     const onFocusRef = useRef(onFocus);
     const onReadyRef = useRef(onReady);
     const onScrollAnchorChangeRef = useRef(onScrollAnchorChange);
+    const imageBaseUrlRef = useRef(imageBaseUrl);
     const rawTextRef = useRef(rawText);
     const scrollSourceRef = useRef<EditorScrollSyncSource>("user");
     const viewRef = useRef<EditorView | null>(null);
@@ -106,8 +109,9 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
 
     useEffect(() => {
       onChangeRef.current = onChange;
+      imageBaseUrlRef.current = imageBaseUrl;
       rawTextRef.current = rawText;
-    }, [onChange]);
+    }, [imageBaseUrl, onChange]);
 
     useEffect(() => {
       rawTextRef.current = rawText;
@@ -130,6 +134,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
       let isDisposed = false;
       let initializedView: EditorView | null = null;
       let teardownListeners: (() => void) | null = null;
+      let imageObserver: MutationObserver | null = null;
 
       void Promise.all([
         import("draftly/editor") as Promise<DraftlyModule>,
@@ -172,6 +177,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
 
         view.dom.setAttribute("aria-label", ariaLabel);
         setRichEditorSpellcheck(view, spellCheck);
+        resolveRichEditorImageUrls(view.dom, imageBaseUrlRef.current);
         viewRef.current = view;
         initializedView = view;
         setIsReady(true);
@@ -199,6 +205,13 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
         view.scrollDOM.addEventListener("scroll", handleScroll, {
           passive: true
         });
+        imageObserver = new MutationObserver(() => {
+          resolveRichEditorImageUrls(view.dom, imageBaseUrlRef.current);
+        });
+        imageObserver.observe(view.dom, {
+          childList: true,
+          subtree: true
+        });
 
         if (autoFocus) {
           view.focus();
@@ -223,6 +236,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
         const view = initializedView ?? viewRef.current;
 
         if (view) {
+          imageObserver?.disconnect();
           teardownListeners?.();
           view.destroy();
         }
@@ -232,6 +246,14 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
         }
       };
     }, [ariaLabel, autoFocus, documentId, resolvedTheme]);
+
+    useEffect(() => {
+      const view = viewRef.current;
+
+      if (view) {
+        resolveRichEditorImageUrls(view.dom, imageBaseUrl);
+      }
+    }, [imageBaseUrl]);
 
     useEffect(() => {
       setRichEditorSpellcheck(viewRef.current, spellCheck);

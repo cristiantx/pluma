@@ -262,6 +262,11 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
           null,
         documents: state.document.documents
       },
+      layout: {
+        ...state.layout,
+        editorViewMode:
+          state.layout.documentViewModes[tabId] ?? state.layout.editorViewMode
+      },
       tabs: {
         ...state.tabs,
         activeTabId: tabId
@@ -300,6 +305,12 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     set((state) => ({
       layout: {
         ...state.layout,
+        documentViewModes: state.document.activeDocument
+          ? {
+              ...state.layout.documentViewModes,
+              [state.document.activeDocument.id]: mode
+            }
+          : state.layout.documentViewModes,
         editorViewMode: mode
       }
     }));
