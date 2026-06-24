@@ -1,7 +1,7 @@
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { Code, NotepadText } from "lucide-react";
 import { memo } from "react";
-import type { ComponentType, SVGProps } from "react";
+import type { ComponentType, CSSProperties, SVGProps } from "react";
 
 import type { EditorViewMode } from "../state/plumaStoreTypes.js";
 import { usePlumaStore } from "../state/usePlumaStore.js";
@@ -27,6 +27,10 @@ export const FloatingEditorViewSwitch = memo(
     const setEditorViewMode = usePlumaStore((state) => state.setEditorViewMode);
     const hasActiveDocumentTab =
       activeDocument !== null && activeTabId === activeDocument.id;
+    const activeModeIndex = Math.max(
+      0,
+      editorViewModes.findIndex((item) => item.mode === editorViewMode)
+    );
 
     if (!hasActiveDocumentTab) {
       return null;
@@ -38,7 +42,17 @@ export const FloatingEditorViewSwitch = memo(
           className="floating-editor-view-switch"
           aria-label="Editor view mode"
           role="group"
+          style={
+            {
+              "--editor-view-mode-count": editorViewModes.length,
+              "--editor-view-mode-index": activeModeIndex
+            } as CSSProperties
+          }
         >
+          <span
+            aria-hidden="true"
+            className="floating-editor-view-switch-active"
+          />
           {editorViewModes.map((item) => {
             const Icon = item.icon;
 

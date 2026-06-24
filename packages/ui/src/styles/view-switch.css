@@ -1,44 +1,110 @@
 .floating-editor-view-switch {
+  --editor-view-switch-padding: 4px;
+  --editor-view-switch-button-width: 36px;
+  --editor-view-switch-button-height: 32px;
+  --editor-view-switch-surface: #ffffff;
+  --editor-view-switch-track: transparent;
+  --editor-view-switch-active: #eef1f4;
+  --editor-view-switch-icon: #5d6a78;
+  --editor-view-switch-icon-active: #263241;
   position: absolute;
   right: 18px;
   bottom: 18px;
   z-index: 4;
-  height: 30px;
+  height: calc(
+    var(--editor-view-switch-button-height) +
+      (var(--editor-view-switch-padding) * 2)
+  );
   display: inline-flex;
-  align-items: stretch;
-  overflow: hidden;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-control);
-  background: color-mix(in srgb, var(--surface-bg) 94%, transparent);
+  align-items: center;
+  overflow: visible;
+  border: 0;
+  border-radius: 999px;
+  background: var(--editor-view-switch-surface);
   box-shadow:
-    0 12px 30px rgba(0, 0, 0, 0.18),
-    0 1px 0 color-mix(in srgb, var(--text-primary) 8%, transparent) inset;
+    0 18px 42px rgba(0, 0, 0, 0.22),
+    0 3px 10px rgba(0, 0, 0, 0.1);
+  padding: var(--editor-view-switch-padding);
+}
+
+:root[data-theme="dark"] .floating-editor-view-switch {
+  --editor-view-switch-surface: #ffffff;
+  --editor-view-switch-track: transparent;
+  --editor-view-switch-active: color-mix(
+    in srgb,
+    #eef1f4 88%,
+    var(--text-primary) 12%
+  );
+  --editor-view-switch-icon: #5d6a78;
+  --editor-view-switch-icon-active: #263241;
+}
+
+.floating-editor-view-switch::before {
+  position: absolute;
+  inset: var(--editor-view-switch-padding);
+  border-radius: 999px;
+  background: var(--editor-view-switch-track);
+  content: "";
+}
+
+.floating-editor-view-switch-active {
+  position: absolute;
+  top: var(--editor-view-switch-padding);
+  bottom: var(--editor-view-switch-padding);
+  left: var(--editor-view-switch-padding);
+  z-index: 1;
+  width: calc(
+    (100% - (var(--editor-view-switch-padding) * 2)) /
+      var(--editor-view-mode-count)
+  );
+  border-radius: 999px;
+  background: var(--editor-view-switch-active);
+  box-shadow: none;
+  transform: translateX(calc(var(--editor-view-mode-index) * 100%));
+  transition: transform 180ms ease;
 }
 
 .floating-editor-view-switch-button {
-  width: 34px;
-  height: 100%;
+  position: relative;
+  z-index: 2;
+  width: var(--editor-view-switch-button-width);
+  height: var(--editor-view-switch-button-height);
   display: grid;
   place-items: center;
-  border-left: 1px solid var(--border-default);
-  color: var(--text-secondary);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--editor-view-switch-icon);
   line-height: 1;
   padding: 0;
-}
-
-.floating-editor-view-switch-button:first-child {
-  border-left: 0;
+  transition:
+    color 140ms ease,
+    transform 140ms ease;
 }
 
 .floating-editor-view-switch-button svg {
-  width: 15px;
-  height: 15px;
+  width: 18px;
+  height: 18px;
   stroke-width: 2;
 }
 
 .floating-editor-view-switch-button:hover,
-.floating-editor-view-switch-button:focus-visible,
-.floating-editor-view-switch-button[aria-pressed="true"] {
-  background: var(--active-control);
+.floating-editor-view-switch-button:focus-visible {
   color: var(--text-primary);
+}
+
+.floating-editor-view-switch-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.floating-editor-view-switch-button[aria-pressed="true"] {
+  color: var(--editor-view-switch-icon-active);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-editor-view-switch-active,
+  .floating-editor-view-switch-button {
+    transition: none;
+  }
 }
