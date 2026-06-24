@@ -1,0 +1,195 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to build and publish"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  NODE_VERSION: 22
+  PNPM_VERSION: 10.12.1
+
+jobs:
+  checks:
+    name: Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate
+        run: pnpm validate
+
+  macos-artifacts:
+    name: macOS ${{ matrix.arch }}
+    needs: checks
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: macos-15-intel
+          - arch: arm64
+            runner: macos-15
+
+    env:
+      HAS_MACOS_CERTIFICATE: ${{ secrets.PLUMA_MACOS_CERTIFICATE_P12 != '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Import Apple signing certificate
+        if: env.HAS_MACOS_CERTIFICATE == 'true'
+        env:
+          CERTIFICATE_P12: ${{ secrets.PLUMA_MACOS_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.PLUMA_MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          : "${CERTIFICATE_PASSWORD:?Set PLUMA_MACOS_CERTIFICATE_PASSWORD to import the signing certificate.}"
+
+          certificate_path="$RUNNER_TEMP/pluma-certificate.p12"
+          keychain_path="$RUNNER_TEMP/pluma-signing.keychain-db"
+          keychain_password="$(openssl rand -base64 32)"
+
+          echo -n "$CERTIFICATE_P12" | base64 --decode > "$certificate_path"
+
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security import "$certificate_path" \
+            -P "$CERTIFICATE_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$keychain_path"
+          security list-keychains -d user -s "$keychain_path" $(security list-keychains -d user | tr -d '"')
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -s \
+            -k "$keychain_password" \
+            "$keychain_path"
+
+      - name: Make macOS artifacts
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.PLUMA_APPLE_IDENTITY }}
+          APPLE_NOTARIZATION_ID: ${{ secrets.PLUMA_APPLE_ID }}
+          APPLE_NOTARIZATION_PASSWORD: ${{ secrets.PLUMA_APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.PLUMA_APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+
+          if [ "$HAS_MACOS_CERTIFICATE" = "true" ]; then
+            : "${APPLE_SIGNING_IDENTITY:?Set PLUMA_APPLE_IDENTITY to sign macOS release artifacts.}"
+            export PLUMA_APPLE_IDENTITY="$APPLE_SIGNING_IDENTITY"
+            export PLUMA_APPLE_ID="$APPLE_NOTARIZATION_ID"
+            export PLUMA_APPLE_ID_PASSWORD="$APPLE_NOTARIZATION_PASSWORD"
+            export PLUMA_APPLE_TEAM_ID="$APPLE_TEAM_ID"
+          fi
+
+          pnpm --filter @pluma/desktop exec electron-forge make --arch=${{ matrix.arch }}
+
+      - name: Collect release assets
+        run: |
+          set -euo pipefail
+
+          mkdir -p release-assets
+
+          while IFS= read -r -d '' artifact; do
+            base_name="$(basename "$artifact")"
+            extension="${base_name##*.}"
+            name_without_extension="${base_name%.*}"
+
+            if [[ "$name_without_extension" != *"${{ matrix.arch }}"* ]]; then
+              base_name="${name_without_extension}-${{ matrix.arch }}.${extension}"
+            fi
+
+            cp "$artifact" "release-assets/$base_name"
+          done < <(find apps/desktop/out/make -type f \( -name "*.dmg" -o \( -name "*.zip" ! -name "*.dmg.zip" \) \) -print0)
+
+          find release-assets -type f -print
+
+      - name: Upload artifact bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: pluma-macos-${{ matrix.arch }}
+          path: release-assets/*
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: macos-artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifact bundles
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Publish release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          mapfile -d '' assets < <(find release-assets -type f \( -name "*.dmg" -o \( -name "*.zip" ! -name "*.dmg.zip" \) \) -print0)
+
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "No release assets found."
+            exit 1
+          fi
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
+          else
+            gh release create "$RELEASE_TAG" \
+              "${assets[@]}" \
+              --title "Pluma ${RELEASE_TAG#v}" \
+              --generate-notes
+          fi

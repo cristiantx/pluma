@@ -41,17 +41,30 @@ Placeholder entitlement files live in:
 
 Unsigned local builds remain valid for development packaging checks.
 
+GitHub release builds import an Apple Developer ID certificate only when the
+repository has a base64-encoded `.p12` certificate configured:
+
+- `PLUMA_MACOS_CERTIFICATE_P12`
+- `PLUMA_MACOS_CERTIFICATE_PASSWORD`
+
+Signed CI releases also need `PLUMA_APPLE_IDENTITY`. Notarization runs when
+`PLUMA_APPLE_ID`, `PLUMA_APPLE_ID_PASSWORD`, and `PLUMA_APPLE_TEAM_ID` are also
+present. If the certificate secret is absent, the release workflow still builds
+unsigned `.dmg` and `.zip` artifacts.
+
 ## File Association
 
 The packaged app registers `.md` as an editor-owned macOS document type. Broader Markdown extensions remain future work.
 
 ## GitHub Releases Path
 
-Release publication is manual for now:
+Release publication is automated by `.github/workflows/release.yml`:
 
-1. Build artifacts with `pnpm desktop:make`.
-2. Create a Git tag for the release version.
-3. Draft a GitHub Release from that tag.
-4. Upload the generated `.dmg` and `.zip` artifacts from `apps/desktop/out/make`.
+1. Create and push a release tag that starts with `v`, such as `v0.1.0`.
+2. The workflow validates the repo, builds macOS `x64` and `arm64` artifacts,
+   and uploads the generated `.dmg` and `.zip` files to the GitHub Release.
+3. If the release does not already exist, the workflow creates it with generated
+   release notes. If it already exists, the workflow replaces matching assets.
 
-This keeps the release shape compatible with a later automated GitHub Releases pipeline and future auto-update work.
+The workflow can also be run manually with an existing tag through
+`workflow_dispatch`.

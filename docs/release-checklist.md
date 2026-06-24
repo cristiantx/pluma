@@ -21,6 +21,7 @@ pnpm desktop:make
 ## Release Publication
 
 1. Create and push the release tag.
-2. Draft the GitHub Release for that tag.
-3. Upload the generated `.dmg` and `.zip` artifacts from `apps/desktop/out/make`.
-4. Publish the release notes.
+2. Wait for the `Release` GitHub Actions workflow to finish.
+3. Review the generated GitHub Release notes and uploaded `.dmg` and `.zip`
+   artifacts.
+4. Publish or edit the release notes if needed.

@@ -69,6 +69,22 @@ export const plumaRichEditorTheme: Extension = EditorView.theme({
   ".cm-draftly-code-header-right, .cm-draftly-code-copy-btn": {
     display: "none !important"
   },
+  "&.cm-draftly .cm-draftly-task-checkbox.checked input::after": {
+    content: '""',
+    position: "absolute",
+    inset: "1px",
+    backgroundColor: "currentColor",
+    maskImage:
+      'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27currentColor%27 stroke-width=%273%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M20 6 9 17l-5-5%27/%3E%3C/svg%3E")',
+    maskPosition: "center",
+    maskRepeat: "no-repeat",
+    maskSize: "100% 100%",
+    WebkitMaskImage:
+      'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27currentColor%27 stroke-width=%273%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M20 6 9 17l-5-5%27/%3E%3C/svg%3E")',
+    WebkitMaskPosition: "center",
+    WebkitMaskRepeat: "no-repeat",
+    WebkitMaskSize: "100% 100%"
+  },
   ".cm-draftly-mermaid-rendered": {
     width: "100%",
     minHeight: "180px",
