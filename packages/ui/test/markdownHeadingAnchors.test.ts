@@ -30,6 +30,8 @@ Body
   });
 
   it("returns null for missing headings", () => {
-    expect(findMarkdownHeadingAnchorPosition("# Start\n", "missing")).toBeNull();
+    expect(
+      findMarkdownHeadingAnchorPosition("# Start\n", "missing")
+    ).toBeNull();
   });
 });

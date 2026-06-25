@@ -498,6 +498,37 @@ describe("usePlumaStore", () => {
     );
   });
 
+  it("keeps tab references stable when edited tab dirtiness is unchanged", () => {
+    const updateDocumentText = vi.fn();
+    usePlumaStore.getState().setCommandHandlers({ updateDocumentText });
+    usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
+    const currentTabs = usePlumaStore.getState().tabs.tabs;
+
+    usePlumaStore
+      .getState()
+      .updateDocumentText(baseDocuments[1]?.id ?? "", "# Edited\n");
+
+    expect(usePlumaStore.getState().tabs.tabs).toBe(currentTabs);
+    expect(updateDocumentText).toHaveBeenCalledWith(
+      baseDocuments[1]?.id,
+      "# Edited\n"
+    );
+  });
+
+  it("ignores unchanged document text updates", () => {
+    const updateDocumentText = vi.fn();
+    usePlumaStore.getState().setCommandHandlers({ updateDocumentText });
+    usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
+    const currentDocuments = usePlumaStore.getState().document.documents;
+
+    usePlumaStore
+      .getState()
+      .updateDocumentText(baseDocuments[0]?.id ?? "", "# Welcome\n");
+
+    expect(usePlumaStore.getState().document.documents).toBe(currentDocuments);
+    expect(updateDocumentText).not.toHaveBeenCalled();
+  });
+
   it("keeps sidebar visibility scoped to workspace state", () => {
     usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
     usePlumaStore.getState().toggleSidebar();

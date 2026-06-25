@@ -12,10 +12,7 @@ export type DesktopIpcHandlers = {
   closeTab: (event: IpcMainInvokeEvent, tabId: string) => Promise<void>;
   getSettings: (event: IpcMainInvokeEvent) => Promise<AppSettings>;
   openAppDataFolder: (event: IpcMainInvokeEvent) => Promise<void>;
-  openExternalUrl: (
-    event: IpcMainInvokeEvent,
-    url: unknown
-  ) => Promise<void>;
+  openExternalUrl: (event: IpcMainInvokeEvent, url: unknown) => Promise<void>;
   openSettingsFile: (event: IpcMainInvokeEvent) => Promise<void>;
   openWorkspaceFile: (
     event: IpcMainInvokeEvent,

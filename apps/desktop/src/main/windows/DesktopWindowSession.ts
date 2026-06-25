@@ -568,20 +568,25 @@ export class DesktopWindowSession {
       return;
     }
 
+    const activeDocument = this.shellData.documents.find(
+      (document) => document.id === documentId
+    );
+
+    if (!activeDocument || activeDocument.rawText === rawText) {
+      return;
+    }
+
+    const nextDocument = updateDocumentSessionText(activeDocument, rawText);
     const nextDocuments = this.shellData.documents.map((document) =>
-      document.id === documentId
-        ? updateDocumentSessionText(document, rawText)
-        : document
+      document.id === documentId ? nextDocument : document
     );
 
     this.updateShellData({
       documents: nextDocuments,
       status: "Document edited."
     });
-    const nextDocument = nextDocuments.find(
-      (document) => document.id === documentId
-    );
-    if (nextDocument?.saveState === "dirty") {
+
+    if (nextDocument.saveState === "dirty") {
       if (
         nextDocument.location.kind === "app-draft" ||
         this.dependencies.getAutosaveEnabled()
@@ -593,7 +598,6 @@ export class DesktopWindowSession {
     } else {
       this.autosaveScheduler.clear(documentId);
     }
-    this.emitShellSnapshot();
   }
 
   convertActiveDocumentLineEndings(target: "crlf" | "lf"): void {

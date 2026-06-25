@@ -225,6 +225,31 @@ describe("DesktopWindowSession", () => {
     expect(files["/workspace/notes.md"]).toBe("# Edited\n");
   });
 
+  it("updates edited document state without echoing a full shell snapshot", async () => {
+    const { send, session } = createSession({
+      "/workspace/notes.md": "# Saved\n"
+    });
+
+    await session.restorePersistedState({
+      activeDocumentPath: "/workspace/notes.md",
+      documentPaths: ["/workspace/notes.md"],
+      editorMode: "source",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+
+    send.mockClear();
+    session.updateDocumentText("desktop:/workspace/notes.md", "# Edited\n");
+
+    expect(send).not.toHaveBeenCalled();
+    expect(session.getProtectedDocuments()).toEqual([
+      expect.objectContaining({
+        rawText: "# Edited\n",
+        saveState: "dirty"
+      })
+    ]);
+  });
+
   it("allows window close without saving when requested", async () => {
     const files = {
       "/workspace/notes.md": "# Saved\n"

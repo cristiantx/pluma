@@ -188,6 +188,20 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
       workspacePath
     ]
   );
+  const handleRichEditorFocus = useCallback(() => {
+    setActiveEditorKind("rich");
+  }, [setActiveEditorKind]);
+  const handleSourceEditorFocus = useCallback(() => {
+    setActiveEditorKind("source");
+  }, [setActiveEditorKind]);
+  const handleDocumentTextChange = useCallback(
+    (rawText: string) => {
+      if (activeDocumentId) {
+        updateDocumentText(activeDocumentId, rawText);
+      }
+    },
+    [activeDocumentId, updateDocumentText]
+  );
 
   useEffect(() => {
     return addEditorCommandEventListener(handleEditorCommand);
@@ -262,11 +276,11 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
           documentId={activeDocument.id}
           imageBaseUrl={imageBaseUrl}
           onCursorAnchorChange={handleCursorAnchorChange}
-          onFocus={() => setActiveEditorKind("rich")}
+          onFocus={handleRichEditorFocus}
           onOpenLinkRequest={handleOpenLinkRequest}
           onReady={scheduleReplayAnchors}
           onScrollAnchorChange={handleScrollAnchorChange}
-          onChange={(rawText) => updateDocumentText(activeDocument.id, rawText)}
+          onChange={handleDocumentTextChange}
           ref={richEditorRef}
           rawText={activeDocument.rawText}
           resolvedTheme={resolvedTheme}
@@ -290,10 +304,10 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
       <SourceEditor
         documentId={activeDocument.id}
         onCursorAnchorChange={handleCursorAnchorChange}
-        onFocus={() => setActiveEditorKind("source")}
+        onFocus={handleSourceEditorFocus}
         onReady={scheduleReplayAnchors}
         onScrollAnchorChange={handleScrollAnchorChange}
-        onChange={(rawText) => updateDocumentText(activeDocument.id, rawText)}
+        onChange={handleDocumentTextChange}
         ref={sourceEditorRef}
         rawText={activeDocument.rawText}
         searchRevealRequest={sourceSearchRevealRequest}

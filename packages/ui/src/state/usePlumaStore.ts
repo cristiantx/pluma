@@ -428,27 +428,42 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   },
 
   updateDocumentText: (documentId, rawText) => {
+    let didUpdateDocument = false;
+
     set((state) => {
-      const nextDocuments = state.document.documents.map((document) =>
-        document.id === documentId
-          ? updateDocumentSessionText(document, rawText)
-          : document
+      const currentDocument = state.document.documents.find(
+        (document) => document.id === documentId
       );
+
+      if (!currentDocument || currentDocument.rawText === rawText) {
+        return state;
+      }
+
+      const nextDocument = updateDocumentSessionText(currentDocument, rawText);
+      const nextDocuments = state.document.documents.map((document) =>
+        document.id === documentId ? nextDocument : document
+      );
+      didUpdateDocument = true;
       const nextActiveDocument =
         state.document.activeDocument?.id === documentId
-          ? (nextDocuments.find((document) => document.id === documentId) ??
-            null)
+          ? nextDocument
           : state.document.activeDocument;
-      const nextTabs = state.tabs.tabs.map((tab) =>
-        tab.id === documentId
-          ? {
-              ...tab,
-              isDirty:
-                nextDocuments.find((document) => document.id === documentId)
-                  ?.saveState !== "idle"
-            }
-          : tab
-      );
+      const nextIsDirty = nextDocument.saveState !== "idle";
+      const nextTabs = state.tabs.tabs.some(
+        (tab) =>
+          tab.kind !== "settings" &&
+          tab.id === documentId &&
+          tab.isDirty !== nextIsDirty
+      )
+        ? state.tabs.tabs.map((tab) =>
+            tab.kind !== "settings" && tab.id === documentId
+              ? {
+                  ...tab,
+                  isDirty: nextIsDirty
+                }
+              : tab
+          )
+        : state.tabs.tabs;
 
       return {
         document: {
@@ -461,7 +476,10 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
         }
       };
     });
-    get().commands.commandHandlers.updateDocumentText(documentId, rawText);
+
+    if (didUpdateDocument) {
+      get().commands.commandHandlers.updateDocumentText(documentId, rawText);
+    }
   },
 
   updatePaneSizes: (paneSizes) => {
