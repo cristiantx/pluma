@@ -135,7 +135,7 @@ describe("DesktopWindowSession", () => {
           path: "/workspace/rich.md"
         },
         {
-          editorMode: "source",
+          editorMode: "preview",
           kind: "desktop-path",
           path: "/workspace/source.md"
         }
@@ -149,9 +149,9 @@ describe("DesktopWindowSession", () => {
 
     session.setActiveDocument("desktop:/workspace/source.md");
 
-    expect(session.getPersistedState().editorMode).toBe("source");
+    expect(session.getPersistedState().editorMode).toBe("preview");
     expect(send).toHaveBeenCalledWith("pluma:event", {
-      mode: "source",
+      mode: "preview",
       type: "mode-changed"
     });
 
@@ -164,6 +164,41 @@ describe("DesktopWindowSession", () => {
     });
   });
 
+  it("cycles editor mode from source to rich to preview to source", async () => {
+    const { send, session } = createSession({
+      "/workspace/notes.md": "# Notes\n"
+    });
+
+    await session.restorePersistedState({
+      activeDocumentPath: "/workspace/notes.md",
+      documentPaths: ["/workspace/notes.md"],
+      editorMode: "source",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+
+    await session.handleCommand("toggle-mode");
+    expect(session.getPersistedState().editorMode).toBe("rich");
+    expect(send).toHaveBeenCalledWith("pluma:event", {
+      mode: "rich",
+      type: "mode-changed"
+    });
+
+    await session.handleCommand("toggle-mode");
+    expect(session.getPersistedState().editorMode).toBe("preview");
+    expect(send).toHaveBeenCalledWith("pluma:event", {
+      mode: "preview",
+      type: "mode-changed"
+    });
+
+    await session.handleCommand("toggle-mode");
+    expect(session.getPersistedState().editorMode).toBe("source");
+    expect(send).toHaveBeenCalledWith("pluma:event", {
+      mode: "source",
+      type: "mode-changed"
+    });
+  });
+
   it("clamps restored source-only documents to source mode", async () => {
     const { session } = createSession({
       "/workspace/source-only.md": "<aside>Keep exact</aside>\n"
@@ -172,7 +207,7 @@ describe("DesktopWindowSession", () => {
     await session.restorePersistedState({
       activeDocumentPath: "/workspace/source-only.md",
       documentPaths: ["/workspace/source-only.md"],
-      editorMode: "rich",
+      editorMode: "preview",
       paneSizes: [],
       workspacePath: "/workspace"
     });
@@ -195,6 +230,36 @@ describe("DesktopWindowSession", () => {
     });
 
     session.setActiveDocument("desktop:/workspace/source-only.md");
+
+    expect(session.getPersistedState().editorMode).toBe("source");
+    expect(send).toHaveBeenCalledWith("pluma:event", {
+      mode: "source",
+      type: "mode-changed"
+    });
+  });
+
+  it("forces source-only documents to source when setting or toggling mode", async () => {
+    const { send, session } = createSession({
+      "/workspace/source-only.md": "<aside>Keep exact</aside>\n"
+    });
+
+    await session.restorePersistedState({
+      activeDocumentPath: "/workspace/source-only.md",
+      documentPaths: ["/workspace/source-only.md"],
+      editorMode: "source",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+
+    session.setEditorMode("preview");
+
+    expect(session.getPersistedState().editorMode).toBe("source");
+    expect(send).toHaveBeenCalledWith("pluma:event", {
+      mode: "source",
+      type: "mode-changed"
+    });
+
+    await session.handleCommand("toggle-mode");
 
     expect(session.getPersistedState().editorMode).toBe("source");
     expect(send).toHaveBeenCalledWith("pluma:event", {

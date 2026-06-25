@@ -456,14 +456,14 @@ describe("usePlumaStore", () => {
     expect(updatePaneSizes).toHaveBeenCalledWith([240, 760]);
   });
 
-  it("sets the editor view mode through shared state", () => {
+  it("sets preview editor view mode through shared state", () => {
     const setEditorViewMode = vi.fn();
     usePlumaStore.getState().setCommandHandlers({ setEditorViewMode });
 
-    usePlumaStore.getState().setEditorViewMode("rich");
+    usePlumaStore.getState().setEditorViewMode("preview");
 
-    expect(usePlumaStore.getState().layout.editorViewMode).toBe("rich");
-    expect(setEditorViewMode).toHaveBeenCalledWith("rich");
+    expect(usePlumaStore.getState().layout.editorViewMode).toBe("preview");
+    expect(setEditorViewMode).toHaveBeenCalledWith("preview");
   });
 
   it("switches to a document's remembered view mode when selecting its tab", () => {
@@ -474,6 +474,21 @@ describe("usePlumaStore", () => {
     usePlumaStore.getState().setActiveTabId(baseDocuments[1]?.id ?? "");
 
     expect(usePlumaStore.getState().layout.editorViewMode).toBe("rich");
+  });
+
+  it("remembers preview mode per document", () => {
+    usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
+
+    usePlumaStore.getState().setEditorViewMode("preview");
+    usePlumaStore.getState().setActiveTabId(baseDocuments[1]?.id ?? "");
+    usePlumaStore.getState().setActiveTabId(baseDocuments[0]?.id ?? "");
+
+    expect(usePlumaStore.getState().layout.editorViewMode).toBe("preview");
+    expect(
+      usePlumaStore.getState().layout.documentViewModes[
+        baseDocuments[0]?.id ?? ""
+      ]
+    ).toBe("preview");
   });
 
   it("updates active document text and dirty tab state", () => {

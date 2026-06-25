@@ -29,6 +29,7 @@ import type { RefObject } from "react";
 import type * as DraftlyEditor from "draftly/editor";
 import type * as DraftlyPlugins from "draftly/plugins";
 
+import { createDraftlyPlugins } from "./draftlyPlugins.js";
 import type {
   EditorCursorAnchor,
   EditorScrollSyncSource
@@ -356,40 +357,6 @@ function createRichEditorExtensions(
       }
     }),
     plumaRichEditorTheme
-  ];
-}
-
-function createDraftlyPlugins({
-  CodePlugin,
-  EmojiPlugin,
-  HRPlugin,
-  HTMLPlugin,
-  HeadingPlugin,
-  ImagePlugin,
-  InlinePlugin,
-  LinkPlugin,
-  ListPlugin,
-  MathPlugin,
-  MermaidPlugin,
-  ParagraphPlugin,
-  QuotePlugin,
-  TablePlugin
-}: DraftlyPluginsModule) {
-  return [
-    new ParagraphPlugin(),
-    new HeadingPlugin(),
-    new InlinePlugin(),
-    new LinkPlugin(),
-    new ListPlugin(),
-    new TablePlugin(),
-    new HTMLPlugin(),
-    new ImagePlugin(),
-    new MathPlugin(),
-    new MermaidPlugin(),
-    new CodePlugin(),
-    new QuotePlugin(),
-    new HRPlugin(),
-    new EmojiPlugin()
   ];
 }
 

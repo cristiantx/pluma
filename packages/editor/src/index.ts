@@ -1,5 +1,6 @@
 import type { ProjectInfo } from "@pluma/core";
 
+export { PreviewView } from "./PreviewView.js";
 export { RichEditor } from "./RichEditor.js";
 export { SourceEditor } from "./SourceEditor.js";
 export {
@@ -14,6 +15,7 @@ export {
   runMarkdownCommand,
   type MarkdownCommandName
 } from "./markdownCommands.js";
+export type { PreviewViewProps } from "./previewViewTypes.js";
 export type { RichEditorHandle, RichEditorProps } from "./richEditorTypes.js";
 export type {
   RichSearchMatch,

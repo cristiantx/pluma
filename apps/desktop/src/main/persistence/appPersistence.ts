@@ -62,7 +62,7 @@ type PersistedMultiWindowSessionStateCandidate = {
 };
 
 export function isEditorViewMode(value: unknown): value is EditorViewMode {
-  return value === "source" || value === "rich";
+  return value === "source" || value === "rich" || value === "preview";
 }
 
 export async function readAppSettings(filePath: string): Promise<AppSettings> {

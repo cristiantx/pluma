@@ -1,5 +1,5 @@
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { Code, NotepadText } from "lucide-react";
+import { Code, Eye, NotepadText } from "lucide-react";
 import { memo } from "react";
 import type { ComponentType, CSSProperties, SVGProps } from "react";
 
@@ -12,7 +12,8 @@ const editorViewModes: {
   mode: EditorViewMode;
 }[] = [
   { icon: Code, label: "Code view", mode: "source" },
-  { icon: NotepadText, label: "Rich view", mode: "rich" }
+  { icon: NotepadText, label: "Rich view", mode: "rich" },
+  { icon: Eye, label: "Preview view", mode: "preview" }
 ];
 
 export const FloatingEditorViewSwitch = memo(
@@ -27,12 +28,16 @@ export const FloatingEditorViewSwitch = memo(
     const setEditorViewMode = usePlumaStore((state) => state.setEditorViewMode);
     const hasActiveDocumentTab =
       activeDocument !== null && activeTabId === activeDocument.id;
+    const availableEditorViewModes =
+      activeDocument?.modeConstraint === "source-only"
+        ? editorViewModes.filter((item) => item.mode === "source")
+        : editorViewModes;
     const activeModeIndex = Math.max(
       0,
-      editorViewModes.findIndex((item) => item.mode === editorViewMode)
+      availableEditorViewModes.findIndex((item) => item.mode === editorViewMode)
     );
 
-    if (!hasActiveDocumentTab) {
+    if (!hasActiveDocumentTab || availableEditorViewModes.length < 2) {
       return null;
     }
 
@@ -44,7 +49,7 @@ export const FloatingEditorViewSwitch = memo(
           role="group"
           style={
             {
-              "--editor-view-mode-count": editorViewModes.length,
+              "--editor-view-mode-count": availableEditorViewModes.length,
               "--editor-view-mode-index": activeModeIndex
             } as CSSProperties
           }
@@ -53,7 +58,7 @@ export const FloatingEditorViewSwitch = memo(
             aria-hidden="true"
             className="floating-editor-view-switch-active"
           />
-          {editorViewModes.map((item) => {
+          {availableEditorViewModes.map((item) => {
             const Icon = item.icon;
 
             return (

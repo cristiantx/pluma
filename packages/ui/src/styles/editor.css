@@ -109,6 +109,7 @@
 }
 
 .rich-pane,
+.preview-pane,
 .source-pane {
   flex: 1 1 0;
   min-width: 0;
@@ -116,12 +117,14 @@
   height: 100%;
 }
 
-.rich-pane {
+.rich-pane,
+.preview-pane {
   overflow: hidden;
   background: var(--editor-bg);
 }
 
-.rich-document {
+.rich-document,
+.preview-document {
   height: 100%;
   color: var(--text-primary);
 }
@@ -147,6 +150,10 @@
 
 .editor-panes[data-rich-density="compact"] .rich-editor .cm-content {
   padding: 32px 56px 56px;
+}
+
+.editor-panes[data-rich-density="compact"] .pluma-preview {
+  --pluma-preview-content-padding: 32px 56px 56px;
 }
 
 .source-pane {

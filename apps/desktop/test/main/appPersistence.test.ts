@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   defaultAppSettings,
+  isEditorViewMode,
   isMeaningfulPersistedWindowState,
   normalizePersistedSessionState,
   readAppSettings,
@@ -308,6 +309,57 @@ describe("normalizePersistedSessionState", () => {
     ).toBe(1);
   });
 
+  it("accepts preview as a persisted editor mode", () => {
+    expect(isEditorViewMode("preview")).toBe(true);
+    expect(
+      normalizePersistedSessionState({
+        activeWindowIndex: 0,
+        windows: [
+          {
+            activeDocumentPath: "/tmp/pluma/a.md",
+            activeDocumentRef: {
+              editorMode: "preview",
+              kind: "desktop-path",
+              path: "/tmp/pluma/a.md"
+            },
+            documentPaths: [],
+            documentRefs: [
+              {
+                editorMode: "preview",
+                kind: "desktop-path",
+                path: "/tmp/pluma/a.md"
+              }
+            ],
+            editorMode: "preview",
+            workspacePath: null
+          }
+        ]
+      })
+    ).toEqual({
+      activeWindowIndex: 0,
+      windows: [
+        {
+          activeDocumentPath: "/tmp/pluma/a.md",
+          activeDocumentRef: {
+            editorMode: "preview",
+            kind: "desktop-path",
+            path: "/tmp/pluma/a.md"
+          },
+          documentPaths: [],
+          documentRefs: [
+            {
+              editorMode: "preview",
+              kind: "desktop-path",
+              path: "/tmp/pluma/a.md"
+            }
+          ],
+          editorMode: "preview",
+          workspacePath: null
+        }
+      ]
+    });
+  });
+
   it("rejects invalid persisted state", () => {
     expect(
       normalizePersistedSessionState({
@@ -316,7 +368,7 @@ describe("normalizePersistedSessionState", () => {
           {
             activeDocumentPath: "/tmp/pluma/a.md",
             documentPaths: ["/tmp/pluma/a.md"],
-            editorMode: "preview",
+            editorMode: "diff",
             workspacePath: null
           }
         ]

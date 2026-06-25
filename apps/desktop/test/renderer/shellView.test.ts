@@ -60,6 +60,15 @@ describe("getStatusMetrics", () => {
       }).find((metric) => metric.label === "Save")
     ).toEqual({ label: "Save", value: "Draft" });
   });
+
+  it("labels preview editor mode in the status metrics", () => {
+    expect(
+      getStatusMetrics({
+        ...initialShellState,
+        mode: "preview"
+      }).find((metric) => metric.label === "Mode")
+    ).toEqual({ label: "Mode", value: "Preview" });
+  });
 });
 
 describe("getExplorerNodes", () => {

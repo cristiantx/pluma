@@ -7,12 +7,13 @@ import type {
   SourceEditorHandle
 } from "@pluma/editor";
 
+import type { EditorViewMode } from "../state/plumaStoreTypes.js";
 import { useEditorAnchorSync } from "./useEditorAnchorSync.js";
 import { useEditorSearchController } from "./useEditorSearchController.js";
 
 type EditorWorkspaceControllerOptions = {
   activeDocumentId: string | null;
-  editorViewMode: "rich" | "source";
+  editorViewMode: EditorViewMode;
   richEditorRef: RefObject<RichEditorHandle | null>;
   showRichEditor: boolean;
   showSource: boolean;
@@ -32,6 +33,7 @@ export function useEditorWorkspaceController({
   const searchController = useEditorSearchController({
     activeDocumentId,
     activeEditorKind,
+    editorViewMode,
     richEditorRef,
     showRichEditor,
     showSource,

@@ -136,6 +136,8 @@ export function getShellSnapshot(
 
 function toModeMetricValue(mode: ShellState["mode"]): string {
   switch (mode) {
+    case "preview":
+      return "Preview";
     case "rich":
       return "Rich";
     case "source":

@@ -1,9 +1,11 @@
 import { memo, useCallback, useEffect, useRef } from "react";
 
 import {
+  PreviewView,
   RichEditor,
   SourceEditor,
   type EditorCursorAnchor,
+  type PreviewViewProps,
   type RichEditorHandle,
   type SourceEditorHandle
 } from "@pluma/editor";
@@ -81,13 +83,10 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
     activeDocument?.location.kind === "desktop-path"
       ? activeDocument.location.path
       : null;
-  const showRichEditor =
-    activeDocument?.modeConstraint !== "source-only" &&
-    editorViewMode === "rich";
-  const showSource =
-    editorViewMode === "source" ||
-    activeDocument?.modeConstraint === "source-only" ||
-    !showRichEditor;
+  const isSourceOnly = activeDocument?.modeConstraint === "source-only";
+  const showPreview = !isSourceOnly && editorViewMode === "preview";
+  const showRichEditor = !isSourceOnly && editorViewMode === "rich";
+  const showSource = editorViewMode === "source" || isSourceOnly;
   const {
     closeSearchPanel,
     commitSearchQuery,
@@ -240,7 +239,6 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
     );
   }
 
-  const isSourceOnly = activeDocument.modeConstraint === "source-only";
   const sourceSearchRevealRequest =
     searchRevealRequest &&
     showSource &&
@@ -287,6 +285,20 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
           searchRevealRequest={richSearchRevealRequest}
           spellCheck={spellcheckEnabled}
         />
+      </div>
+    </article>
+  ) : null;
+  const previewProps: PreviewViewProps = {
+    documentId: activeDocument.id,
+    imageBaseUrl,
+    onOpenLinkRequest: handleOpenLinkRequest,
+    rawText: activeDocument.rawText,
+    resolvedTheme
+  };
+  const previewPane = showPreview ? (
+    <article className="preview-pane" aria-label="Markdown preview">
+      <div className="preview-document">
+        <PreviewView {...previewProps} />
       </div>
     </article>
   ) : null;
@@ -381,7 +393,7 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
         data-rich-width={richEditorWidth}
         data-source-width={sourceEditorWidth}
       >
-        {richPane ?? sourcePane}
+        {previewPane ?? richPane ?? sourcePane}
       </div>
     </section>
   );

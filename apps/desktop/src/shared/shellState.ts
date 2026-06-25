@@ -1,7 +1,7 @@
 import type { DocumentSession } from "@pluma/core";
 import type { AppSettings } from "@pluma/ui";
 
-type EditorMode = "rich" | "source";
+type EditorMode = "preview" | "rich" | "source";
 export type EditorViewMode = EditorMode;
 
 export type WorkspaceTreeEntry = {

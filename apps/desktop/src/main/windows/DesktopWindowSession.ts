@@ -754,11 +754,12 @@ export class DesktopWindowSession {
 
   private getNextEditorMode(): EditorViewMode {
     const activeDocument = this.getActiveDocument();
+    const cycle: EditorViewMode[] = ["source", "rich", "preview"];
+    const currentMode = this.getStoredDocumentMode(activeDocument);
+    const currentIndex = cycle.indexOf(currentMode);
+    const nextMode = cycle[(currentIndex + 1) % cycle.length] ?? "source";
 
-    return this.getAllowedEditorMode(
-      activeDocument,
-      this.getStoredDocumentMode(activeDocument) === "rich" ? "source" : "rich"
-    );
+    return this.getAllowedEditorMode(activeDocument, nextMode);
   }
 
   private getStoredDocumentMode(

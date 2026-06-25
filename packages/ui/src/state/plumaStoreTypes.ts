@@ -34,7 +34,7 @@ export type PlumaCommandHandlers = {
   toggleMode: () => void;
 };
 
-export type EditorViewMode = "source" | "rich";
+export type EditorViewMode = "source" | "rich" | "preview";
 export type SidebarView = "workspace" | "search";
 
 export type ThemeSlice = {

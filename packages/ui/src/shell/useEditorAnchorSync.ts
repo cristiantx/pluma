@@ -8,9 +8,11 @@ import type {
   SourceEditorHandle
 } from "@pluma/editor";
 
+import type { EditorViewMode } from "../state/plumaStoreTypes.js";
+
 type EditorAnchorSyncOptions = {
   activeDocumentId: string | null;
-  editorViewMode: "rich" | "source";
+  editorViewMode: EditorViewMode;
   richEditorRef: RefObject<RichEditorHandle | null>;
   sourceEditorRef: RefObject<SourceEditorHandle | null>;
 };
@@ -33,6 +35,10 @@ export function useEditorAnchorSync({
   }, []);
 
   const replayAnchors = useCallback(() => {
+    if (editorViewMode === "preview") {
+      return;
+    }
+
     const scrollAnchor = latestScrollAnchorRef.current;
     const cursorAnchor = latestCursorAnchorRef.current;
     const hasScrollAnchor =

@@ -43,6 +43,41 @@ describe("reduceShellEvent", () => {
     });
   });
 
+  it("updates preview mode and remembers it for the active document", () => {
+    const session = createDocumentSession({
+      location: {
+        kind: "desktop-path",
+        path: "/tmp/pluma/Preview.md"
+      },
+      metadata: {
+        fileId: "1",
+        mtimeMs: 10,
+        size: 10
+      },
+      rawText: "# Preview\n"
+    });
+
+    expect(
+      reduceShellEvent(
+        {
+          ...initialShellState,
+          activeDocumentId: session.id,
+          documents: [session]
+        },
+        {
+          type: "mode-changed",
+          mode: "preview"
+        }
+      )
+    ).toMatchObject({
+      documentViewModes: {
+        [session.id]: "preview"
+      },
+      mode: "preview",
+      status: "Editor mode switched to preview."
+    });
+  });
+
   it("hydrates the shell snapshot when workspace data arrives", () => {
     const session = createDocumentSession({
       location: {

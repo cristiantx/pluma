@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 
 import type {
@@ -11,9 +11,23 @@ import type {
 } from "@pluma/editor";
 import { createEmptyEditorSearchQuery } from "@pluma/editor";
 
+import { usePlumaStore } from "../state/usePlumaStore.js";
+
+type SearchCommand =
+  | "find-next"
+  | "find-previous"
+  | "replace-next"
+  | "replace-all";
+
+type DeferredSearchCommand = {
+  command: SearchCommand;
+  options: EditorSearchActionOptions;
+};
+
 type EditorSearchControllerOptions = {
   activeDocumentId: string | null;
   activeEditorKind: EditorKind;
+  editorViewMode: "source" | "rich" | "preview";
   richEditorRef: RefObject<RichEditorHandle | null>;
   showRichEditor: boolean;
   showSource: boolean;
@@ -23,11 +37,13 @@ type EditorSearchControllerOptions = {
 export function useEditorSearchController({
   activeDocumentId,
   activeEditorKind,
+  editorViewMode,
   richEditorRef,
   showRichEditor,
   showSource,
   sourceEditorRef
 }: EditorSearchControllerOptions) {
+  const setEditorViewMode = usePlumaStore((state) => state.setEditorViewMode);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isReplaceVisible, setIsReplaceVisible] = useState(true);
   const [searchPanelFocusRequestId, setSearchPanelFocusRequestId] = useState(0);
@@ -37,6 +53,7 @@ export function useEditorSearchController({
   const [searchStatus, setSearchStatus] = useState<EditorSearchStatus>(
     createEmptySearchStatus
   );
+  const deferredSearchCommandRef = useRef<DeferredSearchCommand | null>(null);
 
   const getActiveEditor = useCallback(() => {
     if (activeEditorKind === "rich" && showRichEditor) {
@@ -62,6 +79,15 @@ export function useEditorSearchController({
     );
   }, [getActiveEditor]);
 
+  const ensureSourceSearchMode = useCallback(() => {
+    if (editorViewMode !== "preview") {
+      return false;
+    }
+
+    setEditorViewMode("source");
+    return true;
+  }, [editorViewMode, setEditorViewMode]);
+
   const commitSearchQuery = useCallback(
     (query: EditorSearchQuery) => {
       setSearchQuery(query);
@@ -80,10 +106,12 @@ export function useEditorSearchController({
   }, [refreshSearchStatus, richEditorRef, sourceEditorRef]);
 
   const runSearchCommand = useCallback(
-    (
-      command: "find-next" | "find-previous" | "replace-next" | "replace-all",
-      options: EditorSearchActionOptions = {}
-    ) => {
+    (command: SearchCommand, options: EditorSearchActionOptions = {}) => {
+      if (ensureSourceSearchMode()) {
+        deferredSearchCommandRef.current = { command, options };
+        return;
+      }
+
       const editor = getActiveEditor();
 
       if (!editor) {
@@ -104,13 +132,32 @@ export function useEditorSearchController({
 
       window.requestAnimationFrame(refreshSearchStatus);
     },
-    [getActiveEditor, refreshSearchStatus, searchQuery]
+    [ensureSourceSearchMode, getActiveEditor, refreshSearchStatus, searchQuery]
   );
+
+  useEffect(() => {
+    if (editorViewMode === "preview") {
+      return;
+    }
+
+    const deferredCommand = deferredSearchCommandRef.current;
+
+    if (!deferredCommand) {
+      return;
+    }
+
+    deferredSearchCommandRef.current = null;
+    window.requestAnimationFrame(() => {
+      runSearchCommand(deferredCommand.command, deferredCommand.options);
+    });
+  }, [editorViewMode, runSearchCommand]);
 
   const handleEditorCommand = useCallback(
     (command: unknown) => {
       if (command === "find") {
+        ensureSourceSearchMode();
         setIsSearchOpen(true);
+        setIsReplaceVisible(false);
         richEditorRef.current?.setSearchQuery(searchQuery);
         sourceEditorRef.current?.setSearchQuery(searchQuery);
         setSearchPanelFocusRequestId((current) => current + 1);
@@ -129,6 +176,7 @@ export function useEditorSearchController({
       }
 
       if (command === "replace") {
+        ensureSourceSearchMode();
         setIsSearchOpen(true);
         setIsReplaceVisible(true);
         richEditorRef.current?.setSearchQuery(searchQuery);
@@ -138,6 +186,7 @@ export function useEditorSearchController({
       }
     },
     [
+      ensureSourceSearchMode,
       refreshSearchStatus,
       richEditorRef,
       runSearchCommand,
