@@ -38,8 +38,8 @@ export const plumaRichEditorTheme: Extension = EditorView.theme({
     flex: "0 0 auto",
     minHeight: "100%",
     width: "var(--rich-editor-content-width)",
-    maxWidth: "var(--rich-editor-content-width)",
-    padding: "64px 92px 88px",
+    maxWidth: "var(--rich-editor-content-max-width)",
+    padding: "var(--rich-editor-content-padding)",
     margin: "0 auto",
     caretColor: "var(--text-primary)"
   },
@@ -59,6 +59,10 @@ export const plumaRichEditorTheme: Extension = EditorView.theme({
     outline: "none"
   },
   "&.cm-draftly .cm-content": {
+    width: "var(--rich-editor-content-width)",
+    maxWidth: "var(--rich-editor-content-max-width)",
+    padding: "var(--rich-editor-content-padding)",
+    margin: "0 auto",
     fontFamily: "var(--font-ui)"
   },
   "&.cm-draftly .cm-content .cm-draftly-h1, &.cm-draftly .cm-content .cm-draftly-h2, &.cm-draftly .cm-content .cm-draftly-h3, &.cm-draftly .cm-content .cm-draftly-h4, &.cm-draftly .cm-content .cm-draftly-h5, &.cm-draftly .cm-content .cm-draftly-h6":

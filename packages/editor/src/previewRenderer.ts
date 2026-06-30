@@ -87,7 +87,6 @@ function createPreviewViewCss(_resolvedTheme: "dark" | "light"): string {
   --color-border: var(--border-default);
   --font-jetbrains-mono: var(--font-editor);
   --font-sans: var(--font-ui);
-  --pluma-preview-content-padding: 64px 92px 88px;
   box-sizing: border-box;
   height: 100%;
   overflow: overlay;
@@ -128,10 +127,53 @@ function createPreviewViewCss(_resolvedTheme: "dark" | "light"): string {
 .${plumaPreviewContentClassName} {
   min-height: 100%;
   width: var(--rich-editor-content-width);
-  max-width: var(--rich-editor-content-width);
+  max-width: var(--rich-editor-content-max-width);
   margin: 0 auto;
-  padding: var(--pluma-preview-content-padding);
+  padding: var(--rich-editor-content-padding);
   font-family: var(--font-ui);
+}
+
+.${plumaPreviewContentClassName} p,
+.${plumaPreviewContentClassName} h1,
+.${plumaPreviewContentClassName} h2,
+.${plumaPreviewContentClassName} h3,
+.${plumaPreviewContentClassName} h4,
+.${plumaPreviewContentClassName} h5,
+.${plumaPreviewContentClassName} h6,
+.${plumaPreviewContentClassName} ul,
+.${plumaPreviewContentClassName} ol,
+.${plumaPreviewContentClassName} blockquote,
+.${plumaPreviewContentClassName} pre,
+.${plumaPreviewContentClassName} figure {
+  margin: 0;
+}
+
+.${plumaPreviewContentClassName} h1,
+.${plumaPreviewContentClassName} h2,
+.${plumaPreviewContentClassName} h3,
+.${plumaPreviewContentClassName} h4,
+.${plumaPreviewContentClassName} h5,
+.${plumaPreviewContentClassName} h6 {
+  display: inline;
+  line-height: inherit;
+}
+
+.${plumaPreviewContentClassName} .cm-draftly-paragraph {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.${plumaPreviewContentClassName} .cm-draftly-preview {
+  margin: 0;
+  padding-left: 2rem !important;
+}
+
+.${plumaPreviewContentClassName} .cm-draftly-preview li {
+  margin-bottom: 0;
+}
+
+.${plumaPreviewContentClassName} .cm-draftly-preview li > .cm-draftly-paragraph {
+  display: inline;
 }
 
 .${plumaPreviewContentClassName} .cm-draftly-h1,

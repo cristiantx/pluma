@@ -90,9 +90,19 @@ describe("PreviewView rendering", () => {
     );
 
     expect(css).toContain("width: var(--rich-editor-content-width);");
-    expect(css).toContain("max-width: var(--rich-editor-content-width);");
-    expect(css).toContain("--pluma-preview-content-padding: 64px 92px 88px;");
-    expect(css).toContain("padding: var(--pluma-preview-content-padding);");
+    expect(css).toContain("max-width: var(--rich-editor-content-max-width);");
+    expect(css).toContain("padding: var(--rich-editor-content-padding);");
+    expect(css).toContain(".pluma-preview-content p,");
+    expect(css).toContain(".pluma-preview-content .cm-draftly-paragraph");
+    expect(css).toContain("padding-top: 0;");
+    expect(css).toContain(".pluma-preview-content .cm-draftly-preview li");
+    expect(css).toContain("display: inline;");
+    expect(css).toContain("line-height: inherit;");
+    expect(css).toContain("padding-left: 2rem !important;");
+    expect(css).toContain("margin-bottom: 0;");
+    expect(css).toContain(
+      ".pluma-preview-content .cm-draftly-preview li > .cm-draftly-paragraph"
+    );
     expect(css).not.toContain("max-width: 860px");
   });
 });
