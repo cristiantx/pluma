@@ -200,22 +200,11 @@ export const settingsSections: readonly SettingsSectionDefinition[] = [
         title: "Show hidden files"
       },
       {
-        description: "Use case-sensitive matching for workspace searches.",
-        key: "workspaceSearchCaseSensitive",
+        description:
+          "Hide files and folders matched by workspace .gitignore files.",
+        key: "workspaceRespectGitIgnore",
         kind: "checkbox",
-        title: "Search case sensitive"
-      },
-      {
-        description: "Treat workspace search queries as regular expressions.",
-        key: "workspaceSearchRegexp",
-        kind: "checkbox",
-        title: "Search with regular expressions"
-      },
-      {
-        description: "Match whole words by default in workspace search.",
-        key: "workspaceSearchWholeWord",
-        kind: "checkbox",
-        title: "Search whole words"
+        title: "Hide Git-ignored files"
       }
     ],
     id: "settings-workspace",

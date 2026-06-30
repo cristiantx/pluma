@@ -212,12 +212,8 @@ function isAppSettings(value: unknown): value is AppSettings {
       typeof candidate.openExportedFile === "boolean") &&
     (candidate.restorePreviousSession === undefined ||
       typeof candidate.restorePreviousSession === "boolean") &&
-    (candidate.workspaceSearchCaseSensitive === undefined ||
-      typeof candidate.workspaceSearchCaseSensitive === "boolean") &&
-    (candidate.workspaceSearchRegexp === undefined ||
-      typeof candidate.workspaceSearchRegexp === "boolean") &&
-    (candidate.workspaceSearchWholeWord === undefined ||
-      typeof candidate.workspaceSearchWholeWord === "boolean") &&
+    (candidate.workspaceRespectGitIgnore === undefined ||
+      typeof candidate.workspaceRespectGitIgnore === "boolean") &&
     (candidate.workspaceShowHiddenFiles === undefined ||
       typeof candidate.workspaceShowHiddenFiles === "boolean") &&
     typeof candidate.themePreference === "string" &&
@@ -261,15 +257,9 @@ function normalizeAppSettings(settings: Partial<AppSettings>): AppSettings {
       settings.spellcheckEnabled ?? defaultAppSettings.spellcheckEnabled,
     themePreference:
       settings.themePreference ?? defaultAppSettings.themePreference,
-    workspaceSearchCaseSensitive:
-      settings.workspaceSearchCaseSensitive ??
-      defaultAppSettings.workspaceSearchCaseSensitive,
-    workspaceSearchRegexp:
-      settings.workspaceSearchRegexp ??
-      defaultAppSettings.workspaceSearchRegexp,
-    workspaceSearchWholeWord:
-      settings.workspaceSearchWholeWord ??
-      defaultAppSettings.workspaceSearchWholeWord,
+    workspaceRespectGitIgnore:
+      settings.workspaceRespectGitIgnore ??
+      defaultAppSettings.workspaceRespectGitIgnore,
     workspaceShowHiddenFiles:
       settings.workspaceShowHiddenFiles ??
       defaultAppSettings.workspaceShowHiddenFiles

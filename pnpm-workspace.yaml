@@ -1,3 +1,14 @@
 packages:
   - apps/*
   - packages/*
+nodeLinker: hoisted
+allowBuilds:
+  esbuild: true
+  fs-xattr: true
+  macos-alias: true
+onlyBuiltDependencies:
+  - electron
+  - electron-winstaller
+  - esbuild
+  - fs-xattr
+  - macos-alias

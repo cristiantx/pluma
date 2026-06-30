@@ -76,6 +76,7 @@ export type DesktopWindowSessionDependencies = {
   getAutosaveEnabled: () => boolean;
   getDefaultLineEnding: () => "crlf" | "lf" | "system";
   getOpenExportedFile: () => boolean;
+  getWorkspaceRespectGitIgnore: () => boolean;
   getWorkspaceShowHiddenFiles: () => boolean;
   isDevelopment: boolean;
   onMenuStateChange: () => void;
@@ -193,7 +194,10 @@ export class DesktopWindowSession {
     const workspaceEntries = await tryCollectWorkspaceEntries(
       this.dependencies.fileSystem,
       persistedState.workspacePath,
-      { showHiddenFiles: this.dependencies.getWorkspaceShowHiddenFiles() }
+      {
+        respectGitIgnore: this.dependencies.getWorkspaceRespectGitIgnore(),
+        showHiddenFiles: this.dependencies.getWorkspaceShowHiddenFiles()
+      }
     );
     const documentRefs: PersistedDocumentReference[] =
       persistedState.documentRefs ??
@@ -342,7 +346,10 @@ export class DesktopWindowSession {
 
     return searchMarkdownWorkspace({
       folderPath: typeof folderPath === "string" ? folderPath : null,
-      options,
+      options: {
+        ...options,
+        respectGitIgnore: this.dependencies.getWorkspaceRespectGitIgnore()
+      },
       query,
       workspacePath: this.shellData.workspacePath
     });
@@ -1293,7 +1300,10 @@ export class DesktopWindowSession {
     const workspaceEntries = await tryCollectWorkspaceEntries(
       this.dependencies.fileSystem,
       this.shellData.workspacePath,
-      { showHiddenFiles: this.dependencies.getWorkspaceShowHiddenFiles() }
+      {
+        respectGitIgnore: this.dependencies.getWorkspaceRespectGitIgnore(),
+        showHiddenFiles: this.dependencies.getWorkspaceShowHiddenFiles()
+      }
     );
 
     this.updateShellData({
@@ -1446,7 +1456,10 @@ export class DesktopWindowSession {
       this.dependencies.fileSystem,
       directoryPath,
       0,
-      { showHiddenFiles: this.dependencies.getWorkspaceShowHiddenFiles() }
+      {
+        respectGitIgnore: this.dependencies.getWorkspaceRespectGitIgnore(),
+        showHiddenFiles: this.dependencies.getWorkspaceShowHiddenFiles()
+      }
     );
 
     this.updateShellData({

@@ -22,9 +22,13 @@ type RipgrepMatch = {
   };
 };
 
+type WorkspaceSearchModifiers = SharedWorkspaceSearchOptions & {
+  respectGitIgnore?: boolean;
+};
+
 export type WorkspaceSearchOptions = {
   folderPath?: string | null;
-  options: SharedWorkspaceSearchOptions;
+  options: WorkspaceSearchModifiers;
   query: string;
   workspacePath: string;
 };
@@ -66,7 +70,7 @@ function getSearchRoot(options: WorkspaceSearchOptions): string | null {
 async function runRipgrep(
   query: string,
   searchRoot: string,
-  options: SharedWorkspaceSearchOptions
+  options: WorkspaceSearchModifiers
 ): Promise<string> {
   const ripgrepPath = await resolveRipgrepPath();
   const args = createRipgrepArgs(query, searchRoot, options);
@@ -97,7 +101,7 @@ async function runRipgrep(
 export function createRipgrepArgs(
   query: string,
   searchRoot: string,
-  options: SharedWorkspaceSearchOptions
+  options: WorkspaceSearchModifiers
 ): string[] {
   const args = [
     "--no-config",
@@ -110,6 +114,12 @@ export function createRipgrepArgs(
     "--glob",
     "*.mdown"
   ];
+
+  if (options.respectGitIgnore) {
+    args.push("--no-require-git");
+  } else {
+    args.push("--no-ignore");
+  }
 
   if (options.caseSensitive) {
     args.push("--case-sensitive");

@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -33,6 +33,30 @@ describe("createRipgrepArgs", () => {
         wholeWord: false
       })
     ).toContain("--fixed-strings");
+  });
+
+  it("searches ignored files when gitignore respect is disabled", () => {
+    const args = createRipgrepArgs("already", "/tmp/pluma", {
+      caseSensitive: false,
+      regexp: false,
+      respectGitIgnore: false,
+      wholeWord: false
+    });
+
+    expect(args).toContain("--no-ignore");
+    expect(args).not.toContain("--no-require-git");
+  });
+
+  it("respects gitignore files outside Git repositories when requested", () => {
+    const args = createRipgrepArgs("already", "/tmp/pluma", {
+      caseSensitive: false,
+      regexp: false,
+      respectGitIgnore: true,
+      wholeWord: false
+    });
+
+    expect(args).toContain("--no-require-git");
+    expect(args).not.toContain("--no-ignore");
   });
 
   it("adds case-sensitive, regex, and word flags only when requested", () => {
@@ -246,6 +270,54 @@ describe("searchMarkdownWorkspace", () => {
           lineText: "browser",
           matchEnd: 7,
           matchStart: 0
+        }
+      ]);
+    } finally {
+      await rm(workspacePath, { force: true, recursive: true });
+    }
+  });
+
+  it("can opt into respecting gitignore files in non-Git folders", async () => {
+    const workspacePath = await mkdtemp(path.join(tmpdir(), "pluma-search-"));
+
+    try {
+      await writeFile(path.join(workspacePath, ".gitignore"), "ignored/\n");
+      await mkdir(path.join(workspacePath, "ignored"));
+      await writeFile(
+        path.join(workspacePath, "ignored", "Hidden.md"),
+        "needle\n"
+      );
+      await writeFile(path.join(workspacePath, "Visible.md"), "needle\n");
+
+      await expect(
+        searchMarkdownWorkspace({
+          folderPath: null,
+          options: {
+            caseSensitive: false,
+            regexp: false,
+            respectGitIgnore: false,
+            wholeWord: false
+          },
+          query: "needle",
+          workspacePath
+        })
+      ).resolves.toHaveLength(2);
+
+      await expect(
+        searchMarkdownWorkspace({
+          folderPath: null,
+          options: {
+            caseSensitive: false,
+            regexp: false,
+            respectGitIgnore: true,
+            wholeWord: false
+          },
+          query: "needle",
+          workspacePath
+        })
+      ).resolves.toMatchObject([
+        {
+          filePath: path.join(workspacePath, "Visible.md")
         }
       ]);
     } finally {

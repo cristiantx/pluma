@@ -45,9 +45,7 @@ describe("readAppSettings", () => {
         sourceEditorWidth: "default",
         spellcheckEnabled: true,
         themePreference: "dark",
-        workspaceSearchCaseSensitive: false,
-        workspaceSearchRegexp: false,
-        workspaceSearchWholeWord: false,
+        workspaceRespectGitIgnore: false,
         workspaceShowHiddenFiles: true
       });
     } finally {
@@ -87,9 +85,7 @@ describe("readAppSettings", () => {
         sourceEditorWidth: "default",
         spellcheckEnabled: false,
         themePreference: "system",
-        workspaceSearchCaseSensitive: false,
-        workspaceSearchRegexp: false,
-        workspaceSearchWholeWord: false,
+        workspaceRespectGitIgnore: false,
         workspaceShowHiddenFiles: true
       });
     } finally {
@@ -123,6 +119,7 @@ describe("readAppSettings", () => {
           splitViewOrder: "source-rich",
           themePreference: "system",
           workspaceSearchCaseSensitive: true,
+          workspaceRespectGitIgnore: true,
           workspaceSearchRegexp: true,
           workspaceSearchWholeWord: true,
           workspaceShowHiddenFiles: false
@@ -143,11 +140,18 @@ describe("readAppSettings", () => {
         sourceEditorTabSize: 4,
         sourceEditorWordWrap: false,
         sourceEditorWidth: "full",
-        workspaceSearchCaseSensitive: true,
-        workspaceSearchRegexp: true,
-        workspaceSearchWholeWord: true,
+        workspaceRespectGitIgnore: true,
         workspaceShowHiddenFiles: false
       });
+      await expect(readAppSettings(settingsPath)).resolves.not.toHaveProperty(
+        "workspaceSearchCaseSensitive"
+      );
+      await expect(readAppSettings(settingsPath)).resolves.not.toHaveProperty(
+        "workspaceSearchRegexp"
+      );
+      await expect(readAppSettings(settingsPath)).resolves.not.toHaveProperty(
+        "workspaceSearchWholeWord"
+      );
       await expect(readAppSettings(settingsPath)).resolves.not.toHaveProperty(
         "splitViewOrder"
       );

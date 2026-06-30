@@ -10,6 +10,11 @@ import {
 } from "@pluma/core";
 
 import type { WorkspaceTreeEntry } from "../../shared/shellState";
+import {
+  collectWorkspaceGitIgnoreRules,
+  isWorkspaceEntryGitIgnored,
+  type WorkspaceGitIgnoreRule
+} from "./workspaceGitIgnore";
 
 const markdownExtensions = new Set([".md", ".markdown", ".mdown"]);
 
@@ -74,6 +79,7 @@ export async function tryCreateSessionForFilePath(
 }
 
 export type CollectWorkspaceEntriesOptions = {
+  respectGitIgnore?: boolean;
   showHiddenFiles: boolean;
 };
 
@@ -83,22 +89,56 @@ export async function collectWorkspaceEntries(
   depth = 0,
   options: CollectWorkspaceEntriesOptions = { showHiddenFiles: true }
 ): Promise<WorkspaceTreeEntry[]> {
+  return collectWorkspaceEntriesForDirectory(
+    fileSystem,
+    directoryPath,
+    depth,
+    options
+  );
+}
+
+async function collectWorkspaceEntriesForDirectory(
+  fileSystem: FileSystemAdapter<DesktopFileLocation>,
+  directoryPath: string,
+  depth: number,
+  options: CollectWorkspaceEntriesOptions,
+  inheritedGitIgnoreRules: WorkspaceGitIgnoreRule[] = []
+): Promise<WorkspaceTreeEntry[]> {
   const directoryEntries = await fileSystem.listDirectory(
     toDesktopFileLocation(directoryPath)
   );
   const workspaceEntries: WorkspaceTreeEntry[] = [];
+  const gitIgnoreRules = options.respectGitIgnore
+    ? await collectWorkspaceGitIgnoreRules(
+        fileSystem,
+        directoryPath,
+        inheritedGitIgnoreRules
+      )
+    : inheritedGitIgnoreRules;
 
   for (const directoryEntry of directoryEntries) {
+    if (
+      options.respectGitIgnore &&
+      isWorkspaceEntryGitIgnored(gitIgnoreRules, {
+        kind: directoryEntry.kind,
+        name: directoryEntry.name,
+        path: directoryEntry.location.path
+      })
+    ) {
+      continue;
+    }
+
     if (!options.showHiddenFiles && directoryEntry.name.startsWith(".")) {
       continue;
     }
 
     if (directoryEntry.kind === "directory") {
-      const childEntries = await collectWorkspaceEntries(
+      const childEntries = await collectWorkspaceEntriesForDirectory(
         fileSystem,
         directoryEntry.location.path,
         depth + 1,
-        options
+        options,
+        gitIgnoreRules
       );
 
       workspaceEntries.push({

@@ -27,9 +27,7 @@ export type AppSettings = {
   sourceEditorWordWrap: boolean;
   spellcheckEnabled: boolean;
   themePreference: ThemePreference;
-  workspaceSearchCaseSensitive: boolean;
-  workspaceSearchRegexp: boolean;
-  workspaceSearchWholeWord: boolean;
+  workspaceRespectGitIgnore: boolean;
   workspaceShowHiddenFiles: boolean;
 };
 
@@ -49,9 +47,7 @@ export const defaultAppSettings: AppSettings = {
   sourceEditorWidth: "default",
   spellcheckEnabled: true,
   themePreference: "system",
-  workspaceSearchCaseSensitive: false,
-  workspaceSearchRegexp: false,
-  workspaceSearchWholeWord: false,
+  workspaceRespectGitIgnore: false,
   workspaceShowHiddenFiles: true
 };
 

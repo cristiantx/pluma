@@ -83,14 +83,6 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
       },
       writing: {
         spellcheckEnabled: settings.spellcheckEnabled
-      },
-      workspace: {
-        ...state.workspace,
-        searchOptions: {
-          caseSensitive: settings.workspaceSearchCaseSensitive,
-          regexp: settings.workspaceSearchRegexp,
-          wholeWord: settings.workspaceSearchWholeWord
-        }
       }
     }));
   },
@@ -493,6 +485,12 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   },
 
   updateSettings: async (settings) => {
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        ...settings
+      }
+    }));
     const nextSettings =
       await get().commands.commandHandlers.updateSettings(settings);
     get().hydrateSettings(nextSettings);

@@ -65,6 +65,7 @@ let defaultLineEnding: DefaultLineEnding = "system";
 let openExportedFile = false;
 let restorePreviousSession = true;
 let spellcheckEnabled = true;
+let workspaceRespectGitIgnore = false;
 let workspaceShowHiddenFiles = true;
 let isDevelopment = false;
 let isQuitting = false;
@@ -276,6 +277,7 @@ async function updateStoredAppSettings(
   openExportedFile = nextSettings.openExportedFile;
   restorePreviousSession = nextSettings.restorePreviousSession;
   spellcheckEnabled = nextSettings.spellcheckEnabled;
+  workspaceRespectGitIgnore = nextSettings.workspaceRespectGitIgnore;
   workspaceShowHiddenFiles = nextSettings.workspaceShowHiddenFiles;
 
   if (!autosaveEnabled) {
@@ -290,7 +292,9 @@ async function updateStoredAppSettings(
 
   if (
     currentSettings.workspaceShowHiddenFiles !==
-    nextSettings.workspaceShowHiddenFiles
+      nextSettings.workspaceShowHiddenFiles ||
+    currentSettings.workspaceRespectGitIgnore !==
+      nextSettings.workspaceRespectGitIgnore
   ) {
     for (const session of sessions.values()) {
       void session.refreshSettingsSensitiveState();
@@ -327,14 +331,8 @@ function getAppSettingsUpdate(settings: unknown): Partial<AppSettings> {
     ...(typeof settings.restorePreviousSession === "boolean"
       ? { restorePreviousSession: settings.restorePreviousSession }
       : {}),
-    ...(typeof settings.workspaceSearchCaseSensitive === "boolean"
-      ? { workspaceSearchCaseSensitive: settings.workspaceSearchCaseSensitive }
-      : {}),
-    ...(typeof settings.workspaceSearchRegexp === "boolean"
-      ? { workspaceSearchRegexp: settings.workspaceSearchRegexp }
-      : {}),
-    ...(typeof settings.workspaceSearchWholeWord === "boolean"
-      ? { workspaceSearchWholeWord: settings.workspaceSearchWholeWord }
+    ...(typeof settings.workspaceRespectGitIgnore === "boolean"
+      ? { workspaceRespectGitIgnore: settings.workspaceRespectGitIgnore }
       : {}),
     ...(typeof settings.workspaceShowHiddenFiles === "boolean"
       ? { workspaceShowHiddenFiles: settings.workspaceShowHiddenFiles }
@@ -438,6 +436,7 @@ function createWindowDependencies(
     getAutosaveEnabled: () => autosaveEnabled,
     getDefaultLineEnding: () => defaultLineEnding,
     getOpenExportedFile: () => openExportedFile,
+    getWorkspaceRespectGitIgnore: () => workspaceRespectGitIgnore,
     getWorkspaceShowHiddenFiles: () => workspaceShowHiddenFiles,
     isDevelopment,
     onMenuStateChange: refreshApplicationMenu,
@@ -612,6 +611,7 @@ function registerDesktopIpcHandlers(): void {
       openExportedFile = settings.openExportedFile;
       restorePreviousSession = settings.restorePreviousSession;
       spellcheckEnabled = settings.spellcheckEnabled;
+      workspaceRespectGitIgnore = settings.workspaceRespectGitIgnore;
       workspaceShowHiddenFiles = settings.workspaceShowHiddenFiles;
       applySpellcheckEnabled(spellcheckEnabled);
 
@@ -702,6 +702,7 @@ export function startDesktopMainProcess(
     openExportedFile = settings.openExportedFile;
     restorePreviousSession = settings.restorePreviousSession;
     spellcheckEnabled = settings.spellcheckEnabled;
+    workspaceRespectGitIgnore = settings.workspaceRespectGitIgnore;
     workspaceShowHiddenFiles = settings.workspaceShowHiddenFiles;
     applySpellcheckEnabled(spellcheckEnabled);
     Menu.setApplicationMenu(getApplicationMenu());

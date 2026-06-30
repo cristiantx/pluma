@@ -124,9 +124,7 @@ function useFallbackSettings(
     sourceEditorWidth: "default" as const,
     spellcheckEnabled: true,
     themePreference: "system" as const,
-    workspaceSearchCaseSensitive: false,
-    workspaceSearchRegexp: false,
-    workspaceSearchWholeWord: false,
+    workspaceRespectGitIgnore: false,
     workspaceShowHiddenFiles: true,
     ...settings
   };

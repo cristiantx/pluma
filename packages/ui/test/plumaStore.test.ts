@@ -597,4 +597,39 @@ describe("usePlumaStore", () => {
     expect(openFile).toHaveBeenCalledTimes(1);
     expect(openWorkspaceFile).toHaveBeenCalledWith("/tmp/Notes.md");
   });
+
+  it("updates app settings optimistically before persistence returns", async () => {
+    let resolveUpdate:
+      | ((settings: typeof initialPlumaStoreState.settings) => void)
+      | null = null;
+    const updateSettings = vi.fn(
+      () =>
+        new Promise<typeof initialPlumaStoreState.settings>((resolve) => {
+          resolveUpdate = resolve;
+        })
+    );
+
+    usePlumaStore.getState().setCommandHandlers({ updateSettings });
+
+    const updatePromise = usePlumaStore
+      .getState()
+      .updateSettings({ workspaceRespectGitIgnore: true });
+
+    expect(usePlumaStore.getState().settings.workspaceRespectGitIgnore).toBe(
+      true
+    );
+    expect(updateSettings).toHaveBeenCalledWith({
+      workspaceRespectGitIgnore: true
+    });
+
+    resolveUpdate?.({
+      ...initialPlumaStoreState.settings,
+      workspaceRespectGitIgnore: true
+    });
+    await updatePromise;
+
+    expect(usePlumaStore.getState().settings.workspaceRespectGitIgnore).toBe(
+      true
+    );
+  });
 });
