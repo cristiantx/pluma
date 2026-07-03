@@ -38,7 +38,8 @@ import { AutosaveScheduler } from "../autosave/autosaveScheduler";
 import {
   chooseProtectedDocumentCloseAction as chooseProtectedDocumentCloseActionDialog,
   confirmDiscardDocumentsSequentially as confirmDiscardDocumentsSequentiallyDialog,
-  confirmDiscardProtectedDocuments as confirmDiscardProtectedDocumentsDialog
+  confirmDiscardProtectedDocuments as confirmDiscardProtectedDocumentsDialog,
+  confirmReloadConflictedDocument as confirmReloadConflictedDocumentDialog
 } from "../dialogs/documentProtection";
 import { buildTabContextMenu } from "../menus/tabContextMenu";
 import { ActiveFileWatcher } from "../watching/activeFileWatcher";
@@ -276,9 +277,6 @@ export class DesktopWindowSession {
     switch (command) {
       case "close-active-tab":
         await this.closeActiveDocumentSession();
-        return;
-      case "compare-conflict":
-        this.showManualCompareStatus();
         return;
       case "find":
       case "find-next":
@@ -1226,6 +1224,10 @@ export class DesktopWindowSession {
     );
   }
 
+  private async confirmReloadConflictedDocument(): Promise<boolean> {
+    return confirmReloadConflictedDocumentDialog(this.window);
+  }
+
   private async confirmDiscardDocumentsSequentially(
     documents: DocumentSession[]
   ): Promise<boolean> {
@@ -1936,6 +1938,15 @@ export class DesktopWindowSession {
     }
 
     if (
+      activeDocument.saveState === "conflict" &&
+      !(await this.confirmReloadConflictedDocument())
+    ) {
+      this.emitToRenderer({ type: "status", message: "Reload cancelled." });
+      return;
+    }
+
+    if (
+      activeDocument.saveState !== "conflict" &&
       shouldProtectDocumentSessionClose(activeDocument) &&
       !(await this.confirmDiscardProtectedDocuments([activeDocument], "reload"))
     ) {
@@ -2018,18 +2029,6 @@ export class DesktopWindowSession {
       status: "Kept in-memory edits. The next save will write over disk."
     });
     this.emitShellSnapshot();
-  }
-
-  private showManualCompareStatus(): void {
-    const activeDocument = this.getActiveDocumentForActiveTab();
-
-    this.emitToRenderer({
-      type: "status",
-      message:
-        activeDocument?.location.kind === "desktop-path"
-          ? `File path: ${activeDocument.location.path}`
-          : "No desktop file path to show."
-    });
   }
 
   private revealDocumentInWorkspace(document: DocumentSession): void {

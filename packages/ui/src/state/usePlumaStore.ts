@@ -23,10 +23,6 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     closeTabHandler(tabId);
   },
 
-  compareConflict: () => {
-    get().commands.commandHandlers.compareConflict();
-  },
-
   closeSettingsTab: () => {
     let nextActiveTabId = "";
 

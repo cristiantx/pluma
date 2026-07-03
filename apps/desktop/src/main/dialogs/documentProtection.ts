@@ -52,6 +52,27 @@ export async function confirmDiscardProtectedDocuments(
   return choice === "discard";
 }
 
+export async function confirmReloadConflictedDocument(
+  window: BrowserWindow | null
+): Promise<boolean> {
+  if (!window) {
+    return true;
+  }
+
+  const result = await dialog.showMessageBox(window, {
+    buttons: ["Reload from Disk", "Keep Editing"],
+    cancelId: 1,
+    defaultId: 1,
+    detail:
+      "This file has local edits and also changed on disk. Reloading will discard your local edits and replace the editor contents with the disk version.",
+    message: "Reload file from disk?",
+    noLink: true,
+    type: "warning"
+  });
+
+  return result.response === 0;
+}
+
 export async function confirmDiscardDocumentsSequentially(
   window: BrowserWindow | null,
   documents: DocumentSession[]

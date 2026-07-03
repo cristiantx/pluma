@@ -53,7 +53,6 @@ type EditorCommandName = "find" | "find-next" | "find-previous" | "replace";
 
 export type CommandName =
   | "close-active-tab"
-  | "compare-conflict"
   | EditorCommandName
   | "export-html"
   | "export-pdf"

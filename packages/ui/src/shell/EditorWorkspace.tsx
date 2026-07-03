@@ -64,7 +64,6 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   );
   const hasWorkspace = usePlumaStore((state) => state.workspace.hasWorkspace);
   const workspacePath = usePlumaStore((state) => state.workspace.workspacePath);
-  const compareConflict = usePlumaStore((state) => state.compareConflict);
   const keepEditing = usePlumaStore((state) => state.keepEditing);
   const openExternalUrl = usePlumaStore((state) => state.openExternalUrl);
   const reloadFromDisk = usePlumaStore((state) => state.reloadFromDisk);
@@ -355,9 +354,6 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
             </button>
             <button onClick={keepEditing} type="button">
               Keep Editing
-            </button>
-            <button onClick={compareConflict} type="button">
-              Show Path
             </button>
           </div>
         </div>

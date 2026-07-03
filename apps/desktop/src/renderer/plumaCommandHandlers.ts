@@ -27,7 +27,6 @@ export function createPlumaCommandHandlers({
         `Cannot close "${tabId}" because IPC is unavailable.`,
         (pluma) => void pluma.closeTab(tabId)
       ),
-    compareConflict: () => runCommand(setShellState, "compare-conflict"),
     keepEditing: () => runCommand(setShellState, "keep-editing"),
     newFile: () => runCommand(setShellState, "new-file"),
     openDevTools: () => runCommand(setShellState, "open-devtools"),

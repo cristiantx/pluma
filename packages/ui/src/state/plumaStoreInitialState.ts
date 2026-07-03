@@ -8,7 +8,6 @@ const noop = () => {};
 
 const defaultCommandHandlers: PlumaCommandHandlers = {
   closeTab: noop,
-  compareConflict: noop,
   keepEditing: noop,
   newFile: noop,
   openDevTools: noop,
