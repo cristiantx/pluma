@@ -76,6 +76,15 @@ export const plumaRichEditorTheme: Extension = EditorView.theme({
   ".cm-draftly-code-header-right, .cm-draftly-code-copy-btn": {
     display: "none !important"
   },
+  "&.cm-draftly .cm-draftly-image-figure": {
+    alignItems: "flex-start",
+    display: "inline-flex",
+    margin: "0",
+    verticalAlign: "top"
+  },
+  "&.cm-draftly .cm-draftly-image": {
+    display: "block"
+  },
   "&.cm-draftly .cm-draftly-task-checkbox.checked input::after": {
     content: '""',
     position: "absolute",
