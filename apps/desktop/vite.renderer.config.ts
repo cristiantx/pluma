@@ -24,6 +24,16 @@ export default defineConfig({
         "../../packages/ui/src/styles/index.css"
       )
     },
-    dedupe: ["react", "react-dom"]
+    dedupe: [
+      "react",
+      "react-dom",
+      "@codemirror/commands",
+      "@codemirror/lang-markdown",
+      "@codemirror/language",
+      "@codemirror/language-data",
+      "@codemirror/search",
+      "@codemirror/state",
+      "@codemirror/view"
+    ]
   }
 });

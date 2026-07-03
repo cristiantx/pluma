@@ -45,6 +45,7 @@ import {
   setSourceSearchQuery
 } from "./sourceEditorInterop.js";
 import { markdownCommandKeymap } from "./markdownCommands.js";
+import { scheduleRichEditorRenderRefresh } from "./refreshRichEditorRendering.js";
 import { getRichEditorModifiedClickLinkUrl } from "./richEditorLinkClicks.js";
 import { plumaRichEditorTheme } from "./richEditorTheme.js";
 import { resolveRichEditorImageUrls } from "./richEditorImageUrls.js";
@@ -149,6 +150,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
 
       let isDisposed = false;
       let initializedView: EditorView | null = null;
+      let cancelRenderRefresh: (() => void) | null = null;
       let teardownListeners: (() => void) | null = null;
       let imageObserver: MutationObserver | null = null;
 
@@ -196,6 +198,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
         resolveRichEditorImageUrls(view.dom, imageBaseUrlRef.current);
         viewRef.current = view;
         initializedView = view;
+        cancelRenderRefresh = scheduleRichEditorRenderRefresh(view);
         setIsReady(true);
         onReadyRef.current?.();
 
@@ -269,6 +272,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
 
         if (view) {
           imageObserver?.disconnect();
+          cancelRenderRefresh?.();
           teardownListeners?.();
           view.destroy();
         }
@@ -305,6 +309,8 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
           insert: rawText
         }
       });
+
+      return scheduleRichEditorRenderRefresh(view);
     }, [rawText]);
 
     useEffect(() => {

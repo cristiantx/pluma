@@ -28,8 +28,11 @@ export type DesktopIpcHandlers = {
     folderPath: unknown,
     options: unknown
   ) => Promise<WorkspaceSearchMatch[]>;
-  setActiveDocument: (event: IpcMainInvokeEvent, documentId: unknown) => void;
-  setActiveTab: (event: IpcMainInvokeEvent, tabId: unknown) => void;
+  setActiveDocument: (
+    event: IpcMainInvokeEvent,
+    documentId: unknown
+  ) => Promise<void>;
+  setActiveTab: (event: IpcMainInvokeEvent, tabId: unknown) => Promise<void>;
   setEditorMode: (event: IpcMainInvokeEvent, mode: unknown) => void;
   resetSettings: (event: IpcMainInvokeEvent) => Promise<AppSettings>;
   showTabContextMenu: (
@@ -63,12 +66,15 @@ export function registerIpcHandlers(handlers: DesktopIpcHandlers): void {
     handlers.setEditorMode(event, mode);
   });
 
-  ipcMain.handle("pluma:set-active-document", (event, documentId: unknown) => {
-    handlers.setActiveDocument(event, documentId);
-  });
+  ipcMain.handle(
+    "pluma:set-active-document",
+    async (event, documentId: unknown) => {
+      await handlers.setActiveDocument(event, documentId);
+    }
+  );
 
-  ipcMain.handle("pluma:set-active-tab", (event, tabId: unknown) => {
-    handlers.setActiveTab(event, tabId);
+  ipcMain.handle("pluma:set-active-tab", async (event, tabId: unknown) => {
+    await handlers.setActiveTab(event, tabId);
   });
 
   ipcMain.handle(

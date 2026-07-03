@@ -580,11 +580,11 @@ function registerDesktopIpcHandlers(): void {
     setEditorMode: (event, mode) => {
       getSessionForEvent(event)?.setEditorMode(mode);
     },
-    setActiveDocument: (event, documentId) => {
-      getSessionForEvent(event)?.setActiveDocument(documentId);
+    setActiveDocument: async (event, documentId) => {
+      await getSessionForEvent(event)?.setActiveDocument(documentId);
     },
-    setActiveTab: (event, tabId) => {
-      getSessionForEvent(event)?.setActiveTab(tabId);
+    setActiveTab: async (event, tabId) => {
+      await getSessionForEvent(event)?.setActiveTab(tabId);
     },
     openWorkspaceFile: async (event, filePath) => {
       await getSessionForEvent(event)?.openWorkspaceFile(filePath);

@@ -22,6 +22,7 @@ import type {
 
 import { DesktopWindowSession } from "../../../src/main/windows/DesktopWindowSession";
 import type { AppDraftStorage } from "../../../src/main/persistence/appDraftStorage";
+import type { DesktopShellSnapshot } from "../../../src/shared/shellState";
 
 function createFileSystem(
   files: Record<string, string>
@@ -89,6 +90,7 @@ function createSession(files: Record<string, string>) {
     getAutosaveEnabled: () => false,
     getDefaultLineEnding: () => "lf",
     getOpenExportedFile: () => false,
+    getWorkspaceRespectGitIgnore: () => false,
     getWorkspaceShowHiddenFiles: () => true,
     isDevelopment: false,
     onMenuStateChange,
@@ -111,6 +113,28 @@ function getMetadata(filePath: string, text: string): FileMetadata {
     mtimeMs: text.length,
     size: text.length
   };
+}
+
+function getLastShellSnapshot(
+  send: ReturnType<typeof vi.fn>
+): DesktopShellSnapshot {
+  const shellSnapshotCall = [...send.mock.calls]
+    .reverse()
+    .find(([channel, event]) => {
+      return (
+        channel === "pluma:event" &&
+        typeof event === "object" &&
+        event !== null &&
+        "type" in event &&
+        event.type === "shell-snapshot"
+      );
+    });
+
+  if (!shellSnapshotCall) {
+    throw new Error("Expected a shell snapshot event.");
+  }
+
+  return shellSnapshotCall[1].snapshot;
 }
 
 describe("DesktopWindowSession", () => {
@@ -147,7 +171,7 @@ describe("DesktopWindowSession", () => {
 
     expect(session.getPersistedState().editorMode).toBe("rich");
 
-    session.setActiveDocument("desktop:/workspace/source.md");
+    await session.setActiveDocument("desktop:/workspace/source.md");
 
     expect(session.getPersistedState().editorMode).toBe("preview");
     expect(send).toHaveBeenCalledWith("pluma:event", {
@@ -155,7 +179,7 @@ describe("DesktopWindowSession", () => {
       type: "mode-changed"
     });
 
-    session.setActiveDocument("desktop:/workspace/rich.md");
+    await session.setActiveDocument("desktop:/workspace/rich.md");
 
     expect(session.getPersistedState().editorMode).toBe("rich");
     expect(send).toHaveBeenCalledWith("pluma:event", {
@@ -229,7 +253,7 @@ describe("DesktopWindowSession", () => {
       workspacePath: "/workspace"
     });
 
-    session.setActiveDocument("desktop:/workspace/source-only.md");
+    await session.setActiveDocument("desktop:/workspace/source-only.md");
 
     expect(session.getPersistedState().editorMode).toBe("source");
     expect(send).toHaveBeenCalledWith("pluma:event", {
@@ -375,6 +399,150 @@ describe("DesktopWindowSession", () => {
     expect(session.getPersistedState().documentPaths).toEqual([]);
   });
 
+  it("reloads a clean inactive document from disk when its tab is activated", async () => {
+    const files = {
+      "/workspace/active.md": "# Active\n",
+      "/workspace/inactive.md": "# Old\n"
+    };
+    const { send, session } = createSession(files);
+
+    await session.restorePersistedState({
+      activeDocumentPath: "/workspace/active.md",
+      documentPaths: ["/workspace/active.md", "/workspace/inactive.md"],
+      editorMode: "source",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+
+    send.mockClear();
+    files["/workspace/inactive.md"] = "# Updated inactive file\n";
+
+    await session.setActiveDocument("desktop:/workspace/inactive.md");
+
+    const snapshot = getLastShellSnapshot(send);
+    expect(snapshot.activeDocumentId).toBe("desktop:/workspace/inactive.md");
+    expect(snapshot.status).toBe("Active file reloaded from disk.");
+    expect(
+      snapshot.documents.find(
+        (document) => document.id === "desktop:/workspace/inactive.md"
+      )
+    ).toEqual(
+      expect.objectContaining({
+        lastSavedText: "# Updated inactive file\n",
+        rawText: "# Updated inactive file\n",
+        saveState: "idle"
+      })
+    );
+  });
+
+  it("keeps dirty inactive edits when disk changes before tab activation", async () => {
+    const files = {
+      "/workspace/active.md": "# Active\n",
+      "/workspace/inactive.md": "# Old\n"
+    };
+    const { send, session } = createSession(files);
+
+    await session.restorePersistedState({
+      activeDocumentPath: "/workspace/active.md",
+      documentPaths: ["/workspace/active.md", "/workspace/inactive.md"],
+      editorMode: "source",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+    session.updateDocumentText(
+      "desktop:/workspace/inactive.md",
+      "# Local inactive edits\n"
+    );
+
+    send.mockClear();
+    files["/workspace/inactive.md"] = "# Remote inactive change\n";
+
+    await session.setActiveDocument("desktop:/workspace/inactive.md");
+
+    const snapshot = getLastShellSnapshot(send);
+    expect(snapshot.activeDocumentId).toBe("desktop:/workspace/inactive.md");
+    expect(snapshot.status).toBe("Active file changed on disk.");
+    expect(
+      snapshot.documents.find(
+        (document) => document.id === "desktop:/workspace/inactive.md"
+      )
+    ).toEqual(
+      expect.objectContaining({
+        lastSavedText: "# Old\n",
+        rawText: "# Local inactive edits\n",
+        saveState: "conflict"
+      })
+    );
+  });
+
+  it("marks an inactive document as conflicted when it is deleted before activation", async () => {
+    const files: Record<string, string> = {
+      "/workspace/active.md": "# Active\n",
+      "/workspace/inactive.md": "# Old\n"
+    };
+    const { send, session } = createSession(files);
+
+    await session.restorePersistedState({
+      activeDocumentPath: "/workspace/active.md",
+      documentPaths: ["/workspace/active.md", "/workspace/inactive.md"],
+      editorMode: "source",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+
+    send.mockClear();
+    delete files["/workspace/inactive.md"];
+
+    await session.setActiveDocument("desktop:/workspace/inactive.md");
+
+    const snapshot = getLastShellSnapshot(send);
+    expect(snapshot.activeDocumentId).toBe("desktop:/workspace/inactive.md");
+    expect(snapshot.status).toBe("Active file was deleted on disk.");
+    expect(
+      snapshot.documents.find(
+        (document) => document.id === "desktop:/workspace/inactive.md"
+      )
+    ).toEqual(
+      expect.objectContaining({
+        rawText: "# Old\n",
+        saveState: "conflict"
+      })
+    );
+  });
+
+  it("switches to an unchanged inactive document without reload status churn", async () => {
+    const { send, session } = createSession({
+      "/workspace/active.md": "# Active\n",
+      "/workspace/inactive.md": "# Old\n"
+    });
+
+    await session.restorePersistedState({
+      activeDocumentPath: "/workspace/active.md",
+      documentPaths: ["/workspace/active.md", "/workspace/inactive.md"],
+      editorMode: "source",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+
+    send.mockClear();
+
+    await session.setActiveDocument("desktop:/workspace/inactive.md");
+
+    const snapshot = getLastShellSnapshot(send);
+    expect(snapshot.activeDocumentId).toBe("desktop:/workspace/inactive.md");
+    expect(snapshot.status).toBe("Restored previous session.");
+    expect(
+      snapshot.documents.find(
+        (document) => document.id === "desktop:/workspace/inactive.md"
+      )
+    ).toEqual(
+      expect.objectContaining({
+        rawText: "# Old\n",
+        saveState: "idle"
+      })
+    );
+  });
+
   it("converts active document line endings and marks it dirty", async () => {
     const { send, session } = createSession({
       "/workspace/notes.md": "# Notes\nBody\n"
@@ -422,7 +590,7 @@ describe("DesktopWindowSession", () => {
 
     expect(session.hasActiveDocument()).toBe(true);
 
-    session.setActiveTab("settings");
+    await session.setActiveTab("settings");
 
     expect(session.hasActiveDocument()).toBe(false);
     expect(session.getPersistedState().activeDocumentPath).toBe(

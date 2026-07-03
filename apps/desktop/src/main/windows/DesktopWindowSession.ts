@@ -368,7 +368,7 @@ export class DesktopWindowSession {
     this.persistSessionStateSoon();
   }
 
-  setActiveDocument(documentId: unknown): void {
+  async setActiveDocument(documentId: unknown): Promise<void> {
     if (
       typeof documentId !== "string" ||
       !this.shellData.documents.some((document) => document.id === documentId)
@@ -382,18 +382,19 @@ export class DesktopWindowSession {
     });
     this.syncEditorModeForActiveDocument();
     this.updateActiveFileWatcher();
+    await this.reconcileDocumentWithDisk(documentId, { emitSnapshot: false });
     this.persistSessionStateSoon();
     this.emitShellSnapshot();
   }
 
-  setActiveTab(tabId: unknown): void {
+  async setActiveTab(tabId: unknown): Promise<void> {
     if (tabId === "settings") {
       this.updateShellData({ activeTabId: "settings" });
       this.emitShellSnapshot();
       return;
     }
 
-    this.setActiveDocument(tabId);
+    await this.setActiveDocument(tabId);
   }
 
   async openWorkspaceFile(filePath: unknown): Promise<void> {
@@ -1316,10 +1317,6 @@ export class DesktopWindowSession {
   private async handleActiveFileExternalChange(
     filePath: string
   ): Promise<void> {
-    if (this.dependencies.selfWritePaths.has(filePath)) {
-      return;
-    }
-
     const activeDocument = this.getActiveDocument();
 
     if (
@@ -1330,72 +1327,100 @@ export class DesktopWindowSession {
       return;
     }
 
+    await this.reconcileDocumentWithDisk(activeDocument.id, {
+      emitSnapshot: true
+    });
+  }
+
+  private async reconcileDocumentWithDisk(
+    documentId: string,
+    options: { emitSnapshot: boolean }
+  ): Promise<void> {
+    const documentToReconcile = this.getDocumentById(documentId);
+
+    if (
+      !documentToReconcile ||
+      documentToReconcile.location.kind !== "desktop-path" ||
+      this.dependencies.selfWritePaths.has(documentToReconcile.location.path)
+    ) {
+      return;
+    }
+
     const currentMetadata = await this.dependencies.fileSystem.getMetadata(
-      activeDocument.location
+      documentToReconcile.location
     );
 
     if (!currentMetadata) {
       this.updateShellData({
         documents: this.shellData.documents.map((document) =>
-          document.id === activeDocument.id
+          document.id === documentToReconcile.id
             ? markDocumentSessionConflict(document)
             : document
         ),
         status: "Active file was deleted on disk."
       });
-      this.emitShellSnapshot();
+      if (options.emitSnapshot) {
+        this.emitShellSnapshot();
+      }
       return;
     }
 
     if (
-      activeDocument.lastSavedMetadata &&
-      currentMetadata.mtimeMs === activeDocument.lastSavedMetadata.mtimeMs &&
-      currentMetadata.size === activeDocument.lastSavedMetadata.size &&
-      currentMetadata.fileId === activeDocument.lastSavedMetadata.fileId
+      documentToReconcile.lastSavedMetadata &&
+      currentMetadata.mtimeMs ===
+        documentToReconcile.lastSavedMetadata.mtimeMs &&
+      currentMetadata.size === documentToReconcile.lastSavedMetadata.size &&
+      currentMetadata.fileId === documentToReconcile.lastSavedMetadata.fileId
     ) {
       return;
     }
 
-    this.autosaveScheduler.clear(activeDocument.id);
+    this.autosaveScheduler.clear(documentToReconcile.id);
 
-    if (activeDocument.rawText === activeDocument.lastSavedText) {
+    if (documentToReconcile.rawText === documentToReconcile.lastSavedText) {
       const nextSession = await createSessionForFilePath(
         this.dependencies.fileSystem,
-        filePath
+        documentToReconcile.location.path
       );
 
       if (!nextSession) {
         this.updateShellData({
           documents: this.shellData.documents.map((document) =>
-            document.id === activeDocument.id
+            document.id === documentToReconcile.id
               ? markDocumentSessionConflict(document)
               : document
           ),
           status: "Active file changed on disk but could not be reloaded."
         });
-        this.emitShellSnapshot();
+        if (options.emitSnapshot) {
+          this.emitShellSnapshot();
+        }
         return;
       }
 
       this.updateShellData({
         documents: this.shellData.documents.map((document) =>
-          document.id === activeDocument.id ? nextSession : document
+          document.id === documentToReconcile.id ? nextSession : document
         ),
         status: "Active file reloaded from disk."
       });
-      this.emitShellSnapshot();
+      if (options.emitSnapshot) {
+        this.emitShellSnapshot();
+      }
       return;
     }
 
     this.updateShellData({
       documents: this.shellData.documents.map((document) =>
-        document.id === activeDocument.id
+        document.id === documentToReconcile.id
           ? markDocumentSessionExternalChange(document)
           : document
       ),
       status: "Active file changed on disk."
     });
-    this.emitShellSnapshot();
+    if (options.emitSnapshot) {
+      this.emitShellSnapshot();
+    }
   }
 
   private async openFilePath(
