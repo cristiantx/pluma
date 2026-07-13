@@ -27,7 +27,7 @@ declare global {
         path: string,
         kind: "file" | "folder"
       ): Promise<void>;
-      updateDocumentText(documentId: string, rawText: string): Promise<void>;
+      updateDocumentText(documentId: string, rawText: string): void;
       updatePaneSizes(paneSizes: number[]): Promise<void>;
       updateSettings(settings: Partial<AppSettings>): Promise<AppSettings>;
       onEvent(listener: (event: RendererEvent) => void): () => void;

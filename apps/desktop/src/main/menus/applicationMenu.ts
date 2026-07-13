@@ -193,8 +193,16 @@ export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
             ]
           : []),
         { type: "separator" },
-        { role: "reload" },
-        { role: "forceReload" },
+        {
+          label: "Reload",
+          accelerator: "CmdOrCtrl+R",
+          click: () => options.onCommand("reload-window")
+        },
+        {
+          label: "Force Reload",
+          accelerator: "Shift+CmdOrCtrl+R",
+          click: () => options.onCommand("force-reload-window")
+        },
         { role: "toggleDevTools" }
       ]
     },

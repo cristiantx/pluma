@@ -45,6 +45,7 @@ export type CommandName =
   | EditorCommandName
   | "export-html"
   | "export-pdf"
+  | "force-reload-window"
   | "keep-editing"
   | "new-file"
   | "new-window"
@@ -53,6 +54,7 @@ export type CommandName =
   | "open-folder"
   | "open-settings"
   | "reload-from-disk"
+  | "reload-window"
   | "save"
   | "save-as"
   | "toggle-mode";

@@ -5,6 +5,7 @@ import {
   nativeImage,
   session,
   shell,
+  type IpcMainEvent,
   type IpcMainInvokeEvent
 } from "electron";
 import path from "node:path";
@@ -31,6 +32,7 @@ import {
 } from "./assets/localAssetProtocol";
 import { buildApplicationMenu } from "./menus/applicationMenu";
 import { registerIpcHandlers } from "./ipc/registerIpcHandlers";
+import { DocumentTextFlushCoordinator } from "./ipc/documentTextFlushCoordinator";
 import { getAppSettingsUpdate } from "./settings/appSettingsUpdate";
 import {
   shouldPersistAfterWindowClosed,
@@ -71,6 +73,7 @@ let settingsMutationQueue: Promise<void> = Promise.resolve();
 
 const fileSystem = new DesktopFileSystemAdapter();
 const sessions = new Map<number, DesktopWindowSession>();
+const documentTextFlushCoordinator = new DocumentTextFlushCoordinator();
 const windowsAllowedToClose = new Set<number>();
 const sessionStateFileName = "session-state.json";
 const appSettingsFileName = "settings.json";
@@ -173,7 +176,7 @@ function getLatestFocusedSession(): DesktopWindowSession | null {
 }
 
 function getSessionForEvent(
-  event: IpcMainInvokeEvent
+  event: IpcMainEvent | IpcMainInvokeEvent
 ): DesktopWindowSession | null {
   const senderWindow = BrowserWindow.fromWebContents(event.sender);
 
@@ -324,11 +327,48 @@ async function handleMenuCommand(command: CommandName): Promise<void> {
   }
 
   const session = getLatestFocusedSession() ?? createWindow();
+
+  if (!(await flushSessionDocumentText(session))) {
+    return;
+  }
+
+  if (command === "reload-window") {
+    session.window.webContents.reload();
+    return;
+  }
+
+  if (command === "force-reload-window") {
+    session.window.webContents.reloadIgnoringCache();
+    return;
+  }
+
   await session.handleCommand(command);
 }
 
-function handleConvertLineEndings(target: "crlf" | "lf"): void {
-  getLatestFocusedSession()?.convertActiveDocumentLineEndings(target);
+async function handleConvertLineEndings(target: "crlf" | "lf"): Promise<void> {
+  const session = getLatestFocusedSession();
+
+  if (!session || !(await flushSessionDocumentText(session))) {
+    return;
+  }
+
+  session.convertActiveDocumentLineEndings(target);
+}
+
+async function flushSessionDocumentText(
+  session: DesktopWindowSession
+): Promise<boolean> {
+  const flushed = await documentTextFlushCoordinator.request(
+    session.window.webContents
+  );
+
+  if (!flushed) {
+    session.emitStatus(
+      "Could not synchronize the latest document edits. Try the action again."
+    );
+  }
+
+  return flushed;
 }
 
 function getApplicationMenu(): Menu {
@@ -342,7 +382,7 @@ function getApplicationMenu(): Menu {
     isDevelopment,
     spellcheckEnabled,
     onCommand: (command) => void handleMenuCommand(command),
-    onConvertLineEndings: handleConvertLineEndings,
+    onConvertLineEndings: (target) => void handleConvertLineEndings(target),
     onSetAutosaveEnabled: (enabled) => void setAutosaveEnabled(enabled),
     onSetSpellcheckEnabled: (enabled) => void setSpellcheckEnabled(enabled)
   });
@@ -384,6 +424,7 @@ function createWindow(): DesktopWindowSession {
     onClosed: () => {
       const session = sessions.get(window.id);
       session?.dispose();
+      documentTextFlushCoordinator.cancelSender(window.webContents.id);
       sessions.delete(window.id);
       windowsAllowedToClose.delete(window.id);
 
@@ -414,19 +455,8 @@ function createWindow(): DesktopWindowSession {
         return;
       }
 
-      const session = sessions.get(window.id);
-      if (!session || session.getProtectedDocuments().length === 0) {
-        return;
-      }
-
       event.preventDefault();
-
-      void session.closeWindowWithProtection().then((canClose) => {
-        if (canClose) {
-          windowsAllowedToClose.add(window.id);
-          window.close();
-        }
-      });
+      void closeWindowAfterFlush(window.id);
     },
     onLoaded: () => {
       const session = sessions.get(window.id);
@@ -444,6 +474,28 @@ function createWindow(): DesktopWindowSession {
   });
 
   return session;
+}
+
+async function closeWindowAfterFlush(windowId: number): Promise<void> {
+  const session = sessions.get(windowId);
+
+  if (!session || session.window.isDestroyed()) {
+    return;
+  }
+
+  if (!(await flushSessionDocumentText(session))) {
+    return;
+  }
+
+  if (
+    session.getProtectedDocuments().length > 0 &&
+    !(await session.closeWindowWithProtection())
+  ) {
+    return;
+  }
+
+  windowsAllowedToClose.add(windowId);
+  session.window.close();
 }
 
 async function restorePersistedSessionState(): Promise<void> {
@@ -483,6 +535,14 @@ async function confirmQuitAcrossWindows(): Promise<boolean> {
 }
 
 async function quitApplicationWithSessionPersistence(): Promise<void> {
+  const flushResults = await Promise.all(
+    getOrderedSessions().map(flushSessionDocumentText)
+  );
+
+  if (flushResults.some((flushed) => !flushed)) {
+    return;
+  }
+
   if (!(await confirmQuitAcrossWindows())) {
     return;
   }
@@ -494,6 +554,9 @@ async function quitApplicationWithSessionPersistence(): Promise<void> {
 
 function registerDesktopIpcHandlers(): void {
   registerIpcHandlers({
+    acknowledgeDocumentTextFlush: (event, requestId) => {
+      documentTextFlushCoordinator.acknowledge(event.sender.id, requestId);
+    },
     runCommand: async (event, command) => {
       if (command === "new-window") {
         createWindow();

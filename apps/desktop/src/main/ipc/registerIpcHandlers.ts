@@ -1,4 +1,4 @@
-import { ipcMain, type IpcMainInvokeEvent } from "electron";
+import { ipcMain, type IpcMainEvent, type IpcMainInvokeEvent } from "electron";
 
 import type { AppSettings } from "@pluma/ui/settings";
 import type {
@@ -9,6 +9,10 @@ import type {
 } from "../../shared/shellState";
 
 export type DesktopIpcHandlers = {
+  acknowledgeDocumentTextFlush: (
+    event: IpcMainEvent,
+    requestId: unknown
+  ) => void;
   closeTab: (event: IpcMainInvokeEvent, tabId: string) => Promise<void>;
   getSettings: (event: IpcMainInvokeEvent) => Promise<AppSettings>;
   openAppDataFolder: (event: IpcMainInvokeEvent) => Promise<void>;
@@ -46,7 +50,7 @@ export type DesktopIpcHandlers = {
     kind: unknown
   ) => void;
   updateDocumentText: (
-    event: IpcMainInvokeEvent,
+    event: IpcMainEvent,
     documentId: unknown,
     rawText: unknown
   ) => void;
@@ -116,12 +120,16 @@ export function registerIpcHandlers(handlers: DesktopIpcHandlers): void {
     handlers.updatePaneSizes(event, paneSizes);
   });
 
-  ipcMain.handle(
+  ipcMain.on(
     "pluma:update-document-text",
     (event, documentId: unknown, rawText: unknown) => {
       handlers.updateDocumentText(event, documentId, rawText);
     }
   );
+
+  ipcMain.on("pluma:document-text-flushed", (event, requestId: unknown) => {
+    handlers.acknowledgeDocumentTextFlush(event, requestId);
+  });
 
   ipcMain.handle("pluma:get-settings", async (event) =>
     handlers.getSettings(event)

@@ -5,16 +5,31 @@ import type {
   RendererEvent,
   WorkspaceSearchOptions
 } from "./shared/shellState";
+import { PendingDocumentTextSync } from "./preload/documentTextSync";
+
+const pendingDocumentText = new PendingDocumentTextSync(
+  (documentId, rawText) => {
+    ipcRenderer.send("pluma:update-document-text", documentId, rawText);
+  }
+);
+
+function invokeAfterDocumentTextFlush(
+  channel: string,
+  ...args: unknown[]
+): Promise<unknown> {
+  pendingDocumentText.flush();
+  return ipcRenderer.invoke(channel, ...args);
+}
 
 const api = {
   closeTab(tabId: string) {
-    return ipcRenderer.invoke("pluma:close-tab", tabId);
+    return invokeAfterDocumentTextFlush("pluma:close-tab", tabId);
   },
   getSettings() {
     return ipcRenderer.invoke("pluma:get-settings");
   },
   openWorkspaceFile(path: string) {
-    return ipcRenderer.invoke("pluma:open-workspace-file", path);
+    return invokeAfterDocumentTextFlush("pluma:open-workspace-file", path);
   },
   openAppDataFolder() {
     return ipcRenderer.invoke("pluma:open-app-data-folder");
@@ -41,22 +56,33 @@ const api = {
     );
   },
   runCommand(command: CommandName) {
-    return ipcRenderer.invoke("pluma:command", command);
+    return invokeAfterDocumentTextFlush("pluma:command", command);
   },
   setEditorMode(mode: EditorViewMode) {
-    return ipcRenderer.invoke("pluma:set-editor-mode", mode);
+    return invokeAfterDocumentTextFlush("pluma:set-editor-mode", mode);
   },
   setActiveDocument(documentId: string) {
-    return ipcRenderer.invoke("pluma:set-active-document", documentId);
+    return invokeAfterDocumentTextFlush(
+      "pluma:set-active-document",
+      documentId
+    );
   },
   setActiveTab(tabId: string) {
-    return ipcRenderer.invoke("pluma:set-active-tab", tabId);
+    return invokeAfterDocumentTextFlush("pluma:set-active-tab", tabId);
   },
   showTabContextMenu(tabId: string, tabIds: string[]) {
-    return ipcRenderer.invoke("pluma:show-tab-context-menu", tabId, tabIds);
+    return invokeAfterDocumentTextFlush(
+      "pluma:show-tab-context-menu",
+      tabId,
+      tabIds
+    );
   },
   showWorkspaceContextMenu(path: string, kind: string) {
-    return ipcRenderer.invoke("pluma:show-workspace-context-menu", path, kind);
+    return invokeAfterDocumentTextFlush(
+      "pluma:show-workspace-context-menu",
+      path,
+      kind
+    );
   },
   updateSettings(settings: unknown) {
     return ipcRenderer.invoke("pluma:update-settings", settings);
@@ -65,11 +91,7 @@ const api = {
     return ipcRenderer.invoke("pluma:update-pane-sizes", paneSizes);
   },
   updateDocumentText(documentId: string, rawText: string) {
-    return ipcRenderer.invoke(
-      "pluma:update-document-text",
-      documentId,
-      rawText
-    );
+    pendingDocumentText.schedule(documentId, rawText);
   },
   onEvent(listener: (event: RendererEvent) => void) {
     const wrapped = (
@@ -86,5 +108,10 @@ const api = {
     };
   }
 };
+
+ipcRenderer.on("pluma:flush-pending-document-text", (_event, requestId) => {
+  pendingDocumentText.flush();
+  ipcRenderer.send("pluma:document-text-flushed", requestId);
+});
 
 contextBridge.exposeInMainWorld("pluma", api);

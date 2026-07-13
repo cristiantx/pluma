@@ -325,6 +325,8 @@ export class DesktopWindowSession {
         await this.createNewMarkdownFile();
         return;
       case "new-window":
+      case "reload-window":
+      case "force-reload-window":
         return;
       case "open-file":
         await this.openFileFromDialog();
