@@ -14,7 +14,7 @@ import {
   defaultAppSettings,
   type AppSettings,
   type DefaultLineEnding
-} from "@pluma/ui";
+} from "@pluma/ui/settings";
 import { downloadChromeExtension } from "electron-devtools-installer/dist/downloadChromeExtension.js";
 import started from "electron-squirrel-startup";
 

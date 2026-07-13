@@ -11,7 +11,7 @@ import {
   isSourceEditorTabSize,
   isThemePreference,
   type AppSettings
-} from "@pluma/ui";
+} from "@pluma/ui/settings";
 
 import type { EditorViewMode } from "../../shared/shellState";
 import { writeTextFileAtomic } from "./atomicFile";

@@ -9,6 +9,7 @@
   "main": ".vite/build/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "check:main-bundle": "node scripts/assertMainBundle.mjs",
     "dev": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",

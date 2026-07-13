@@ -62,7 +62,7 @@ import {
   exportDocument,
   type ExportDocumentResult
 } from "../export/desktopExport";
-import type { AppSettings } from "@pluma/ui";
+import type { AppSettings } from "@pluma/ui/settings";
 import type { ExportDocumentFormat } from "../export/exportDocumentHtml";
 import { markDocumentAfterSuccessfulWrite } from "./documentSaveState";
 import {

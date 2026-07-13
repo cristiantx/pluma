@@ -20,7 +20,8 @@
       "@pluma/core": ["packages/core/src/index.ts"],
       "@pluma/core-desktop": ["packages/core/src/desktop.ts"],
       "@pluma/editor": ["packages/editor/src/index.ts"],
-      "@pluma/ui": ["packages/ui/src/index.ts"]
+      "@pluma/ui": ["packages/ui/src/index.ts"],
+      "@pluma/ui/settings": ["packages/ui/src/settings.ts"]
     }
   }
 }

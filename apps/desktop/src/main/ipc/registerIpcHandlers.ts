@@ -1,6 +1,6 @@
 import { ipcMain, type IpcMainInvokeEvent } from "electron";
 
-import type { AppSettings } from "@pluma/ui";
+import type { AppSettings } from "@pluma/ui/settings";
 import type {
   CommandName,
   EditorViewMode,

@@ -1,4 +1,7 @@
-import type { ThemePreference } from "./theme.js";
+import { isThemePreference, type ThemePreference } from "./theme.js";
+
+export { isThemePreference };
+export type { ThemePreference };
 
 export type EditorWidthPreference = "default" | "full" | "narrow" | "wide";
 export type RichEditorDensity = "comfortable" | "compact";

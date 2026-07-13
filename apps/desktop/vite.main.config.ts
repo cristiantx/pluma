@@ -12,6 +12,10 @@ export default defineConfig({
       "@pluma/core-desktop": path.resolve(
         __dirname,
         "../../packages/core/src/desktop.ts"
+      ),
+      "@pluma/ui/settings": path.resolve(
+        __dirname,
+        "../../packages/ui/src/settings.ts"
       )
     }
   }

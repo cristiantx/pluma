@@ -8,7 +8,7 @@ import {
   isSourceEditorTabSize,
   isThemePreference,
   type AppSettings
-} from "@pluma/ui";
+} from "@pluma/ui/settings";
 
 export function getAppSettingsUpdate(settings: unknown): Partial<AppSettings> {
   if (!isRecord(settings)) {
