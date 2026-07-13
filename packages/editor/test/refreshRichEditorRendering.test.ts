@@ -12,7 +12,8 @@ describe("scheduleRichEditorRenderRefresh", () => {
       requestMeasure: vi.fn(),
       state: {
         selection
-      }
+      },
+      viewport: { from: 0, to: 0 }
     } as unknown as Pick<EditorView, "dispatch" | "requestMeasure" | "state">;
     const scheduler = {
       cancelAnimationFrame: vi.fn(),
@@ -22,7 +23,7 @@ describe("scheduleRichEditorRenderRefresh", () => {
       })
     };
 
-    scheduleRichEditorRenderRefresh(view, scheduler);
+    scheduleRichEditorRenderRefresh(view, scheduler, () => false);
 
     expect(callbacks).toHaveLength(1);
 
@@ -38,6 +39,45 @@ describe("scheduleRichEditorRenderRefresh", () => {
     expect(view.dispatch).toHaveBeenCalledTimes(2);
   });
 
+  it("refreshes again when background syntax parsing completes", () => {
+    const callbacks: FrameRequestCallback[] = [];
+    const view = {
+      dispatch: vi.fn(),
+      requestMeasure: vi.fn(),
+      state: {
+        selection: {}
+      },
+      viewport: { from: 0, to: 120 }
+    } as unknown as Pick<
+      EditorView,
+      "dispatch" | "requestMeasure" | "state" | "viewport"
+    >;
+    const scheduler = {
+      cancelAnimationFrame: vi.fn(),
+      requestAnimationFrame: vi.fn((callback: FrameRequestCallback) => {
+        callbacks.push(callback);
+        return callbacks.length;
+      })
+    };
+    const isParsePending = vi
+      .fn<(view: typeof view) => boolean>()
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(false);
+
+    scheduleRichEditorRenderRefresh(view, scheduler, isParsePending);
+    callbacks[0]?.(1);
+    callbacks[1]?.(2);
+
+    expect(view.dispatch).toHaveBeenCalledTimes(2);
+    expect(callbacks).toHaveLength(3);
+
+    callbacks[2]?.(3);
+
+    expect(isParsePending).toHaveBeenCalledTimes(2);
+    expect(view.requestMeasure).toHaveBeenCalledTimes(3);
+    expect(view.dispatch).toHaveBeenCalledTimes(3);
+  });
+
   it("cancels pending refresh frames", () => {
     const callbacks: FrameRequestCallback[] = [];
     const view = {
@@ -45,7 +85,8 @@ describe("scheduleRichEditorRenderRefresh", () => {
       requestMeasure: vi.fn(),
       state: {
         selection: {}
-      }
+      },
+      viewport: { from: 0, to: 0 }
     } as unknown as Pick<EditorView, "dispatch" | "requestMeasure" | "state">;
     const scheduler = {
       cancelAnimationFrame: vi.fn(),
@@ -55,7 +96,11 @@ describe("scheduleRichEditorRenderRefresh", () => {
       })
     };
 
-    const cancel = scheduleRichEditorRenderRefresh(view, scheduler);
+    const cancel = scheduleRichEditorRenderRefresh(
+      view,
+      scheduler,
+      () => false
+    );
     cancel();
     callbacks[0]?.(1);
 

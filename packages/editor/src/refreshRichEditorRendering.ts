@@ -1,3 +1,4 @@
+import { syntaxParserRunning, syntaxTreeAvailable } from "@codemirror/language";
 import type { EditorView } from "@codemirror/view";
 
 type RichEditorRenderRefreshScheduler = {
@@ -7,12 +8,17 @@ type RichEditorRenderRefreshScheduler = {
 
 type RichEditorRenderRefreshView = Pick<
   EditorView,
-  "dispatch" | "requestMeasure" | "state"
+  "dispatch" | "requestMeasure" | "state" | "viewport"
 >;
+
+type RichEditorParsePending = (view: RichEditorRenderRefreshView) => boolean;
+
+const parseWaitFrameLimit = 120;
 
 export function scheduleRichEditorRenderRefresh(
   view: RichEditorRenderRefreshView,
-  scheduler: RichEditorRenderRefreshScheduler = window
+  scheduler: RichEditorRenderRefreshScheduler = window,
+  isParsePending: RichEditorParsePending = hasPendingVisibleSyntaxParse
 ): () => void {
   const frameHandles = new Set<number>();
   let isCanceled = false;
@@ -33,9 +39,24 @@ export function scheduleRichEditorRenderRefresh(
     view.dispatch({ selection: view.state.selection });
   };
 
+  const refreshAfterParsing = (remainingFrames: number) => {
+    if (!isParsePending(view) || remainingFrames === 0) {
+      refresh();
+      return;
+    }
+
+    requestFrame(() => refreshAfterParsing(remainingFrames - 1));
+  };
+
   requestFrame(() => {
     refresh();
-    requestFrame(refresh);
+    requestFrame(() => {
+      refresh();
+
+      if (isParsePending(view)) {
+        requestFrame(() => refreshAfterParsing(parseWaitFrameLimit));
+      }
+    });
   });
 
   return () => {
@@ -47,4 +68,13 @@ export function scheduleRichEditorRenderRefresh(
 
     frameHandles.clear();
   };
+}
+
+function hasPendingVisibleSyntaxParse(
+  view: RichEditorRenderRefreshView
+): boolean {
+  return (
+    syntaxParserRunning(view as EditorView) &&
+    !syntaxTreeAvailable(view.state, view.viewport.to)
+  );
 }
