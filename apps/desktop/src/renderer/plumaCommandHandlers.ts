@@ -1,142 +1,114 @@
-import type { Dispatch, SetStateAction } from "react";
-
-import type { PlumaCommandHandlers } from "@pluma/ui";
+import {
+  defaultAppSettings,
+  usePlumaStore,
+  type AppSettings,
+  type PlumaCommandHandlers
+} from "@pluma/ui";
 
 import type {
   CommandName,
   EditorViewMode,
-  initialShellState,
   WorkspaceSearchOptions
 } from "../shared/shellState";
 
-type ShellStateSetter = Dispatch<SetStateAction<typeof initialShellState>>;
-
 type CreatePlumaCommandHandlersOptions = {
   schedulePaneSizesSave: (paneSizes: number[]) => void;
-  setShellState: ShellStateSetter;
 };
 
 export function createPlumaCommandHandlers({
-  schedulePaneSizesSave,
-  setShellState
+  schedulePaneSizesSave
 }: CreatePlumaCommandHandlersOptions): PlumaCommandHandlers {
   return {
     closeTab: (tabId) =>
-      invokePlumaOrSetStatus(
-        setShellState,
+      invokePlumaOrNotify(
         `Cannot close "${tabId}" because IPC is unavailable.`,
-        (pluma) => void pluma.closeTab(tabId)
+        (pluma) => pluma.closeTab(tabId)
       ),
-    keepEditing: () => runCommand(setShellState, "keep-editing"),
-    newFile: () => runCommand(setShellState, "new-file"),
-    openDevTools: () => runCommand(setShellState, "open-devtools"),
+    keepEditing: () => runCommand("keep-editing"),
+    newFile: () => runCommand("new-file"),
+    openDevTools: () => runCommand("open-devtools"),
     openAppDataFolder: () =>
-      invokePlumaOrSetStatus(
-        setShellState,
+      invokePlumaOrNotify(
         "Cannot open app data because IPC is unavailable.",
-        (pluma) => void pluma.openAppDataFolder()
+        (pluma) => pluma.openAppDataFolder()
       ),
     openExternalUrl: (url) =>
-      invokePlumaOrSetStatus(
-        setShellState,
+      invokePlumaOrNotify(
         `Cannot open "${url}" because IPC is unavailable.`,
-        (pluma) => void pluma.openExternalUrl(url)
+        (pluma) => pluma.openExternalUrl(url)
       ),
-    openFile: () => runCommand(setShellState, "open-file"),
-    openFolder: () => runCommand(setShellState, "open-folder"),
+    openFile: () => runCommand("open-file"),
+    openFolder: () => runCommand("open-folder"),
     openSettingsFile: () =>
-      invokePlumaOrSetStatus(
-        setShellState,
+      invokePlumaOrNotify(
         "Cannot open settings because IPC is unavailable.",
-        (pluma) => void pluma.openSettingsFile()
+        (pluma) => pluma.openSettingsFile()
       ),
     openWorkspaceFile: (path) =>
-      invokePlumaOrSetStatus(
-        setShellState,
+      invokePlumaOrNotify(
         `Cannot open "${path}" because IPC is unavailable.`,
-        (pluma) => void pluma.openWorkspaceFile(path)
+        (pluma) => pluma.openWorkspaceFile(path)
       ),
-    searchWorkspace: (query, folderPath, options) =>
-      runSearchWorkspace(query, folderPath, options),
-    updateSettings: (settings) => runUpdateSettings(settings),
-    reloadFromDisk: () => runCommand(setShellState, "reload-from-disk"),
-    resetSettings: () => runResetSettings(),
-    setActiveTabId: (tabId) => runSetActiveTabCommand(setShellState, tabId),
-    setEditorViewMode: (mode) => runSetEditorViewMode(setShellState, mode),
+    searchWorkspace: runSearchWorkspace,
+    updateSettings: runUpdateSettings,
+    reloadFromDisk: () => runCommand("reload-from-disk"),
+    resetSettings: runResetSettings,
+    setActiveTabId: (tabId) =>
+      invokePlumaOrNotify(
+        `Cannot activate "${tabId}" because IPC is unavailable.`,
+        (pluma) => pluma.setActiveTab(tabId)
+      ),
+    setEditorViewMode: (mode) => runSetEditorViewMode(mode),
     showTabContextMenu: (tabId, tabIds) =>
-      invokePlumaOrSetStatus(
-        setShellState,
+      invokePlumaOrNotify(
         `Cannot show tab menu for "${tabId}" because IPC is unavailable.`,
-        (pluma) => void pluma.showTabContextMenu(tabId, tabIds)
+        (pluma) => pluma.showTabContextMenu(tabId, tabIds)
       ),
     showWorkspaceContextMenu: (path, kind) =>
-      invokePlumaOrSetStatus(
-        setShellState,
+      invokePlumaOrNotify(
         `Cannot show file menu for "${path}" because IPC is unavailable.`,
-        (pluma) => void pluma.showWorkspaceContextMenu(path, kind)
+        (pluma) => pluma.showWorkspaceContextMenu(path, kind)
       ),
     updateDocumentText: (documentId, rawText) =>
-      invokePlumaOrSetStatus(
-        setShellState,
+      invokePlumaOrNotify(
         `Cannot update "${documentId}" because IPC is unavailable.`,
-        (pluma) => void pluma.updateDocumentText(documentId, rawText)
+        (pluma) => pluma.updateDocumentText(documentId, rawText)
       ),
     updatePaneSizes: schedulePaneSizesSave,
-    toggleMode: () => runCommand(setShellState, "toggle-mode")
+    toggleMode: () => runCommand("toggle-mode")
   };
 }
 
-function runResetSettings() {
+function runResetSettings(): Promise<AppSettings> {
   if (!window.pluma) {
-    return Promise.resolve(useFallbackSettings({}));
+    notifyError("Cannot reset settings because IPC is unavailable.");
+    return Promise.resolve(defaultAppSettings);
   }
 
-  return window.pluma.resetSettings();
+  return window.pluma.resetSettings().catch((error: unknown) => {
+    notifyError(`Could not reset settings: ${getErrorMessage(error)}`);
+    return usePlumaStore.getState().settings;
+  });
 }
 
 function runUpdateSettings(
-  settings: Parameters<NonNullable<typeof window.pluma>["updateSettings"]>[0]
-) {
+  settings: Partial<AppSettings>
+): Promise<AppSettings> {
   if (!window.pluma) {
-    return Promise.resolve(useFallbackSettings(settings));
+    notifyError("Cannot update settings because IPC is unavailable.");
+    return Promise.resolve({ ...defaultAppSettings, ...settings });
   }
 
-  return window.pluma.updateSettings(settings);
+  return window.pluma.updateSettings(settings).catch((error: unknown) => {
+    notifyError(`Could not update settings: ${getErrorMessage(error)}`);
+    return usePlumaStore.getState().settings;
+  });
 }
 
-function useFallbackSettings(
-  settings: Parameters<NonNullable<typeof window.pluma>["updateSettings"]>[0]
-) {
-  return {
-    autosaveEnabled: true,
-    defaultLineEnding: "system" as const,
-    openExportedFile: false,
-    richEditorDensity: "comfortable" as const,
-    richEditorWidth: "default" as const,
-    restorePreviousSession: true,
-    sourceEditorColorScheme: "follow-theme" as const,
-    sourceEditorFontFamily: "mono" as const,
-    sourceEditorFontSize: 14 as const,
-    sourceEditorLineNumbers: true,
-    sourceEditorTabSize: 2 as const,
-    sourceEditorWordWrap: true,
-    sourceEditorWidth: "default" as const,
-    spellcheckEnabled: true,
-    themePreference: "system" as const,
-    workspaceRespectGitIgnore: false,
-    workspaceShowHiddenFiles: true,
-    ...settings
-  };
-}
-
-function runCommand(
-  setShellState: ShellStateSetter,
-  command: CommandName
-): void {
-  invokePlumaOrSetStatus(
-    setShellState,
+function runCommand(command: CommandName): void {
+  invokePlumaOrNotify(
     `Cannot run "${command}" because IPC is unavailable.`,
-    (pluma) => void pluma.runCommand(command)
+    (pluma) => pluma.runCommand(command)
   );
 }
 
@@ -146,85 +118,47 @@ function runSearchWorkspace(
   options: WorkspaceSearchOptions
 ) {
   if (!window.pluma) {
+    notifyError("Cannot search the workspace because IPC is unavailable.");
     return Promise.resolve([]);
   }
 
-  return window.pluma.searchWorkspace(query, folderPath, options);
+  return window.pluma
+    .searchWorkspace(query, folderPath, options)
+    .catch((error: unknown) => {
+      notifyError(`Workspace search failed: ${getErrorMessage(error)}`);
+      return [];
+    });
 }
 
-function runSetEditorViewMode(
-  setShellState: ShellStateSetter,
-  mode: EditorViewMode
-): void {
-  if (!window.pluma) {
-    setShellState((current) => ({
-      ...current,
-      mode,
-      status: `Editor mode switched to ${mode}.`
-    }));
-    return;
-  }
-
-  setShellState((current) => ({
-    ...current,
-    documentViewModes: current.activeDocumentId
-      ? {
-          ...current.documentViewModes,
-          [current.activeDocumentId]: mode
-        }
-      : current.documentViewModes,
-    mode,
-    status: `Editor mode switched to ${mode}.`
-  }));
-  void window.pluma.setEditorMode(mode);
+function runSetEditorViewMode(mode: EditorViewMode): void {
+  invokePlumaOrNotify(
+    `Cannot switch to ${mode} mode because IPC is unavailable.`,
+    (pluma) => pluma.setEditorMode(mode)
+  );
 }
 
-function runSetActiveTabCommand(
-  setShellState: ShellStateSetter,
-  tabId: string
+function invokePlumaOrNotify(
+  fallbackMessage: string,
+  invoke: (pluma: NonNullable<typeof window.pluma>) => unknown
 ): void {
-  if (tabId === "settings") {
-    setShellState((current) => ({
-      ...current,
-      activeTabId: "settings"
-    }));
-    void window.pluma?.setActiveTab(tabId);
-    return;
-  }
-
-  setShellState((current) => {
-    if (!current.documents.some((document) => document.id === tabId)) {
-      return current;
-    }
-    const mode = current.documentViewModes[tabId] ?? current.mode;
-
-    return {
-      ...current,
-      activeDocumentId: tabId,
-      activeTabId: tabId,
-      mode
-    };
-  });
-
   if (!window.pluma) {
+    notifyError(fallbackMessage);
     return;
   }
 
-  void window.pluma.setActiveTab(tabId);
+  try {
+    void Promise.resolve(invoke(window.pluma)).catch((error: unknown) => {
+      notifyError(`${fallbackMessage} ${getErrorMessage(error)}`);
+    });
+  } catch (error) {
+    notifyError(`${fallbackMessage} ${getErrorMessage(error)}`);
+  }
 }
 
-function invokePlumaOrSetStatus(
-  setShellState: ShellStateSetter,
-  fallbackStatus: string,
-  invoke: (pluma: NonNullable<typeof window.pluma>) => void
-): void {
-  if (!window.pluma) {
-    setShellState((current) => ({
-      ...current,
-      status: fallbackStatus
-    }));
-    return;
-  }
+function notifyError(message: string): void {
+  usePlumaStore.getState().pushNotification(message, "error");
+}
 
-  invoke(window.pluma);
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Unexpected error.";
 }

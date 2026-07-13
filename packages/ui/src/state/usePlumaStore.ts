@@ -10,6 +10,8 @@ import type { PlumaShellSnapshot, PlumaStore } from "./plumaStoreTypes.js";
 
 export { initialPlumaStoreState } from "./plumaStoreInitialState.js";
 
+let nextNotificationId = 0;
+
 export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   ...initialPlumaStoreState,
 
@@ -60,6 +62,32 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     if (nextActiveTabId) {
       get().commands.commandHandlers.setActiveTabId(nextActiveTabId);
     }
+  },
+
+  dismissNotification: (notificationId) => {
+    set((state) => ({
+      status: {
+        ...state.status,
+        notifications: state.status.notifications.filter(
+          (notification) => notification.id !== notificationId
+        )
+      }
+    }));
+  },
+
+  hydrateEditorViewMode: (mode) => {
+    set((state) => ({
+      layout: {
+        ...state.layout,
+        documentViewModes: state.document.activeDocument
+          ? {
+              ...state.layout.documentViewModes,
+              [state.document.activeDocument.id]: mode
+            }
+          : state.layout.documentViewModes,
+        editorViewMode: mode
+      }
+    }));
   },
 
   hydrateShellSnapshot: (snapshot: PlumaShellSnapshot) => {
@@ -140,6 +168,35 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
         sidebarView: "search"
       }
     }));
+  },
+
+  pushNotification: (message, tone = "info") => {
+    set((state) => {
+      if (
+        state.status.notifications.some(
+          (notification) =>
+            notification.message === message && notification.tone === tone
+        )
+      ) {
+        return state;
+      }
+
+      nextNotificationId += 1;
+
+      return {
+        status: {
+          ...state.status,
+          notifications: [
+            ...state.status.notifications.slice(-3),
+            {
+              id: `notification-${nextNotificationId}`,
+              message,
+              tone
+            }
+          ]
+        }
+      };
+    });
   },
 
   reloadFromDisk: () => {

@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { PaneLayout } from "../panes/PaneLayout.js";
 import { usePlumaStore } from "../state/usePlumaStore.js";
 import { MainShellPanel } from "./MainShellPanel.js";
+import { NotificationCenter } from "./NotificationCenter.js";
 import { Sidebar } from "./Sidebar.js";
 
 export function PlumaShell() {
@@ -32,6 +33,7 @@ export function PlumaShell() {
       ) : (
         mainPane
       )}
+      <NotificationCenter />
     </main>
   );
 }

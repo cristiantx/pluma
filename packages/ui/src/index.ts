@@ -14,6 +14,8 @@ export type {
   CommandsSlice,
   EditorViewMode,
   LayoutSlice,
+  NotificationTone,
+  PlumaNotification,
   PlumaCommandHandlers,
   PlumaShellSnapshot,
   SidebarView,

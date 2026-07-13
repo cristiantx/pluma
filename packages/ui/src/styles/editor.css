@@ -443,3 +443,11 @@
 .source-lines li:nth-child(25) code {
   color: var(--string);
 }
+.editor-load-error {
+  margin: 16px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent);
+  border-radius: var(--radius-control);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 8%, var(--surface-bg));
+}

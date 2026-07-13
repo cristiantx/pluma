@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createDocumentSession } from "@pluma/core";
 
-import { initialShellState } from "../../src/shared/shellState";
+import { initialDesktopShellSnapshot } from "../../src/shared/shellState";
 import {
   getActiveDocument,
   extractLeafName,
@@ -23,7 +23,7 @@ describe("getWorkspaceLabel", () => {
   it("prefers the active folder over the active file", () => {
     expect(
       getWorkspaceLabel({
-        ...initialShellState,
+        ...initialDesktopShellSnapshot,
         workspacePath: "/tmp/pluma"
       })
     ).toBe("pluma");
@@ -32,7 +32,7 @@ describe("getWorkspaceLabel", () => {
 
 describe("getStatusMetrics", () => {
   it("returns placeholder metrics when no file is active", () => {
-    expect(getStatusMetrics(initialShellState)).toEqual([
+    expect(getStatusMetrics(initialDesktopShellSnapshot)).toEqual([
       { label: "Words", value: "--" },
       { label: "Lines", value: "--" },
       { label: "Mode", value: "Source" },
@@ -54,7 +54,7 @@ describe("getStatusMetrics", () => {
 
     expect(
       getStatusMetrics({
-        ...initialShellState,
+        ...initialDesktopShellSnapshot,
         activeDocumentId: session.id,
         documents: [session]
       }).find((metric) => metric.label === "Save")
@@ -64,8 +64,8 @@ describe("getStatusMetrics", () => {
   it("labels preview editor mode in the status metrics", () => {
     expect(
       getStatusMetrics({
-        ...initialShellState,
-        mode: "preview"
+        ...initialDesktopShellSnapshot,
+        editorViewMode: "preview"
       }).find((metric) => metric.label === "Mode")
     ).toEqual({ label: "Mode", value: "Preview" });
   });
@@ -75,7 +75,7 @@ describe("getExplorerNodes", () => {
   it("builds workspace-first entries when a folder is active", () => {
     expect(
       getExplorerNodes({
-        ...initialShellState,
+        ...initialDesktopShellSnapshot,
         workspaceEntries: [
           {
             depth: 0,
@@ -111,7 +111,7 @@ describe("getOpenTabs", () => {
 
     expect(
       getOpenTabs({
-        ...initialShellState,
+        ...initialDesktopShellSnapshot,
         documents: [session]
       }).map((tab) => tab.id)
     ).toEqual([session.id]);
@@ -130,7 +130,7 @@ describe("getOpenTabs", () => {
 
     expect(
       getOpenTabs({
-        ...initialShellState,
+        ...initialDesktopShellSnapshot,
         documents: [session]
       })[0]
     ).toMatchObject({
@@ -158,7 +158,7 @@ describe("getActiveDocument", () => {
 
     expect(
       getActiveDocument({
-        ...initialShellState,
+        ...initialDesktopShellSnapshot,
         activeDocumentId: session.id,
         documents: [session]
       })
@@ -168,7 +168,7 @@ describe("getActiveDocument", () => {
   it("returns null when documents are missing at runtime", () => {
     expect(
       getActiveDocument({
-        ...initialShellState,
+        ...initialDesktopShellSnapshot,
         documents: undefined
       } as never)
     ).toBeNull();
@@ -193,7 +193,7 @@ describe("getShellSnapshot", () => {
     expect(
       getShellSnapshot(
         {
-          ...initialShellState,
+          ...initialDesktopShellSnapshot,
           activeDocumentId: session.id,
           documents: [session],
           isDevelopment: true,

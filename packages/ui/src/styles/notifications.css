@@ -1,0 +1,53 @@
+.notification-center {
+  position: fixed;
+  z-index: 100;
+  right: 14px;
+  bottom: 14px;
+  display: grid;
+  width: min(360px, calc(100vw - 28px));
+  gap: 8px;
+  pointer-events: none;
+}
+
+.notification-toast {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  padding: 10px 10px 10px 12px;
+  border: 1px solid var(--border-default);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--surface-bg) 94%, transparent);
+  box-shadow: 0 10px 30px rgba(13, 22, 31, 0.2);
+  line-height: 1.45;
+  pointer-events: auto;
+}
+
+.notification-toast[data-tone="error"] {
+  border-left-color: var(--warning);
+}
+
+.notification-toast[data-tone="success"] {
+  border-left-color: var(--string);
+}
+
+.notification-dismiss {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--text-muted);
+}
+
+.notification-dismiss:hover {
+  color: var(--text-primary);
+  background: var(--active-control);
+}
+
+.notification-dismiss svg {
+  width: 14px;
+  height: 14px;
+}

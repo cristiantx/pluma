@@ -77,7 +77,16 @@ export type DocumentSlice = {
 };
 
 export type StatusSlice = {
+  notifications: PlumaNotification[];
   statusMetrics: StatusMetric[];
+};
+
+export type NotificationTone = "error" | "info" | "success";
+
+export type PlumaNotification = {
+  id: string;
+  message: string;
+  tone: NotificationTone;
 };
 
 export type CommandsSlice = {
@@ -126,6 +135,8 @@ export type PlumaStoreState = {
 export type PlumaStoreActions = {
   closeTab: (tabId: string) => void;
   closeSettingsTab: () => void;
+  dismissNotification: (notificationId: string) => void;
+  hydrateEditorViewMode: (mode: EditorViewMode) => void;
   hydrateShellSnapshot: (snapshot: PlumaShellSnapshot) => void;
   hydrateSettings: (settings: AppSettings) => void;
   reorderTabs: (tabs: PlumaTab[]) => void;
@@ -135,6 +146,7 @@ export type PlumaStoreActions = {
   openExternalUrl: (url: string) => void;
   openSettingsFile: () => void;
   openWorkspaceSearch: (folderPath: string | null) => void;
+  pushNotification: (message: string, tone?: NotificationTone) => void;
   revealWorkspaceSearchMatch: (match: WorkspaceSearchMatch) => void;
   setWorkspaceSearchHasSearched: (hasSearched: boolean) => void;
   setWorkspaceSearchOptions: (options: WorkspaceSearchOptions) => void;

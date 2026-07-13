@@ -13,6 +13,7 @@ export function PreviewView({
   "aria-label": ariaLabel = "Markdown preview",
   documentId,
   imageBaseUrl,
+  onError,
   onOpenLinkRequest,
   rawText,
   resolvedTheme
@@ -22,22 +23,32 @@ export function PreviewView({
     css: "",
     html: ""
   });
+  const [renderError, setRenderError] = useState<string | null>(null);
 
   useEffect(() => {
     let isDisposed = false;
+    setRenderError(null);
 
-    void renderPreviewContent({ rawText, resolvedTheme }).then(
-      (nextPreview) => {
+    void renderPreviewContent({ rawText, resolvedTheme })
+      .then((nextPreview) => {
         if (!isDisposed) {
           setRenderedPreview(nextPreview);
         }
-      }
-    );
+      })
+      .catch((error: unknown) => {
+        if (isDisposed) {
+          return;
+        }
+
+        const renderError = toError(error, "Markdown preview failed to load.");
+        setRenderError(renderError.message);
+        onError?.(renderError);
+      });
 
     return () => {
       isDisposed = true;
     };
-  }, [rawText, resolvedTheme]);
+  }, [onError, rawText, resolvedTheme]);
 
   useEffect(() => {
     const content = contentRef.current;
@@ -82,6 +93,11 @@ export function PreviewView({
       data-preview-document-id={documentId}
       data-preview-theme={resolvedTheme}
     >
+      {renderError ? (
+        <p className="editor-load-error" role="alert">
+          {renderError}
+        </p>
+      ) : null}
       <style>{renderedPreview.css}</style>
       <div
         ref={contentRef}
@@ -90,4 +106,8 @@ export function PreviewView({
       />
     </section>
   );
+}
+
+function toError(error: unknown, fallbackMessage: string): Error {
+  return error instanceof Error ? error : new Error(fallbackMessage);
 }

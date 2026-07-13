@@ -103,6 +103,7 @@ export class DesktopWindowSession {
       activeTabId: null,
       documentViewModes: {},
       documents: [],
+      editorViewMode: "source",
       isDevelopment: dependencies.isDevelopment,
       paneSizes: [],
       status: "Starting desktop shell...",
@@ -726,7 +727,8 @@ export class DesktopWindowSession {
       type: "shell-snapshot",
       snapshot: {
         ...this.shellData,
-        documentViewModes: this.getDocumentViewModesSnapshot()
+        documentViewModes: this.getDocumentViewModesSnapshot(),
+        editorViewMode: this.currentMode
       }
     });
   }

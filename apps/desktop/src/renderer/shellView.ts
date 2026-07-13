@@ -10,9 +10,9 @@ import type {
   StatusMetric
 } from "@pluma/ui";
 
-import type { ShellState } from "../shared/shellState";
+import type { DesktopShellSnapshot } from "../shared/shellState";
 
-function getDocuments(state: ShellState): DocumentSession[] {
+function getDocuments(state: DesktopShellSnapshot): DocumentSession[] {
   return state.documents ?? [];
 }
 
@@ -28,7 +28,7 @@ export function extractLeafName(path: string | null): string | null {
   return leaf || normalized;
 }
 
-export function getWorkspaceLabel(state: ShellState): string {
+export function getWorkspaceLabel(state: DesktopShellSnapshot): string {
   const firstDocument = getDocuments(state)[0] ?? null;
 
   return (
@@ -38,7 +38,7 @@ export function getWorkspaceLabel(state: ShellState): string {
   );
 }
 
-export function getStatusMetrics(state: ShellState): StatusMetric[] {
+export function getStatusMetrics(state: DesktopShellSnapshot): StatusMetric[] {
   const activeDocument = getActiveDocument(state);
   const sourceText = activeDocument?.rawText ?? "";
   const lines = sourceText ? sourceText.split(/\r?\n/).length : 0;
@@ -55,7 +55,7 @@ export function getStatusMetrics(state: ShellState): StatusMetric[] {
     },
     {
       label: "Mode",
-      value: toModeMetricValue(state.mode)
+      value: toModeMetricValue(state.editorViewMode)
     },
     {
       label: "Line",
@@ -70,7 +70,7 @@ export function getStatusMetrics(state: ShellState): StatusMetric[] {
   ];
 }
 
-export function getExplorerNodes(state: ShellState): ExplorerNode[] {
+export function getExplorerNodes(state: DesktopShellSnapshot): ExplorerNode[] {
   const activeDocument = getActiveDocument(state);
 
   return state.workspaceEntries.map((entry) => ({
@@ -93,7 +93,7 @@ export function getExplorerNodes(state: ShellState): ExplorerNode[] {
   }));
 }
 
-export function getOpenTabs(state: ShellState): EditorTab[] {
+export function getOpenTabs(state: DesktopShellSnapshot): EditorTab[] {
   return getDocuments(state).map((document) => ({
     id: document.id,
     isDirty: document.saveState !== "idle",
@@ -103,7 +103,9 @@ export function getOpenTabs(state: ShellState): EditorTab[] {
   }));
 }
 
-export function getActiveDocument(state: ShellState): DocumentSession | null {
+export function getActiveDocument(
+  state: DesktopShellSnapshot
+): DocumentSession | null {
   return (
     getDocuments(state).find(
       (document) => document.id === state.activeDocumentId
@@ -112,7 +114,7 @@ export function getActiveDocument(state: ShellState): DocumentSession | null {
 }
 
 export function getShellSnapshot(
-  shellState: ShellState,
+  shellState: DesktopShellSnapshot,
   isBridgeAvailable: boolean
 ): PlumaShellSnapshot {
   return {
@@ -125,7 +127,7 @@ export function getShellSnapshot(
     hasWorkspace: Boolean(shellState.workspacePath),
     isBridgeAvailable,
     isDevelopment: shellState.isDevelopment,
-    editorViewMode: shellState.mode,
+    editorViewMode: shellState.editorViewMode,
     paneSizes: shellState.paneSizes,
     statusMetrics: getStatusMetrics(shellState),
     tabs: getOpenTabs(shellState),
@@ -134,7 +136,9 @@ export function getShellSnapshot(
   };
 }
 
-function toModeMetricValue(mode: ShellState["mode"]): string {
+function toModeMetricValue(
+  mode: DesktopShellSnapshot["editorViewMode"]
+): string {
   switch (mode) {
     case "preview":
       return "Preview";

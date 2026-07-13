@@ -4,5 +4,6 @@ export type PreviewViewProps = {
   imageBaseUrl?: string | undefined;
   rawText: string;
   resolvedTheme: "dark" | "light";
+  onError?: (error: Error) => void;
   onOpenLinkRequest: (url: string) => void;
 };

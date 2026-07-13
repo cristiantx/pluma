@@ -100,6 +100,32 @@ beforeEach(() => {
 });
 
 describe("usePlumaStore", () => {
+  it("deduplicates and dismisses transient notifications", () => {
+    const store = usePlumaStore.getState();
+
+    store.pushNotification("Saved Notes.md.", "success");
+    store.pushNotification("Saved Notes.md.", "success");
+
+    expect(usePlumaStore.getState().status.notifications).toHaveLength(1);
+
+    const notificationId =
+      usePlumaStore.getState().status.notifications[0]?.id ?? "";
+    usePlumaStore.getState().dismissNotification(notificationId);
+
+    expect(usePlumaStore.getState().status.notifications).toEqual([]);
+  });
+
+  it("hydrates main-process mode changes without invoking IPC again", () => {
+    const setEditorViewMode = vi.fn();
+    usePlumaStore.getState().setCommandHandlers({ setEditorViewMode });
+    usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
+
+    usePlumaStore.getState().hydrateEditorViewMode("preview");
+
+    expect(usePlumaStore.getState().layout.editorViewMode).toBe("preview");
+    expect(setEditorViewMode).not.toHaveBeenCalled();
+  });
+
   it("hydrates shell data into shared slices", () => {
     usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
 

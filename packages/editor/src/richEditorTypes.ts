@@ -24,6 +24,7 @@ export type RichEditorProps = {
   imageBaseUrl?: string | undefined;
   resolvedTheme?: "dark" | "light";
   onCursorAnchorChange?: (anchor: EditorCursorAnchor) => void;
+  onError?: (error: Error) => void;
   onFocus?: () => void;
   onOpenLinkRequest?: (url: string) => void;
   onReady?: () => void;

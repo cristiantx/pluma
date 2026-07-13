@@ -31,6 +31,7 @@ export type DesktopShellSnapshot = {
   activeTabId: string | null;
   documentViewModes: Record<string, EditorViewMode>;
   documents: DocumentSession[];
+  editorViewMode: EditorViewMode;
   isDevelopment: boolean;
   paneSizes: number[];
   status: string;
@@ -68,91 +69,15 @@ export type CommandName =
   | "save-as"
   | "toggle-mode";
 
-export type ShellState = DesktopShellSnapshot & {
-  activity: string[];
-  mode: EditorViewMode;
-};
-
-export const initialShellState: ShellState = {
+export const initialDesktopShellSnapshot: DesktopShellSnapshot = {
   activeDocumentId: null,
   activeTabId: null,
-  activity: [],
   documentViewModes: {},
   documents: [],
+  editorViewMode: "source",
   isDevelopment: false,
-  mode: "source",
   paneSizes: [],
   status: "Starting desktop shell...",
   workspaceEntries: [],
   workspacePath: null
 };
-
-export function appendActivity(activity: string[], message: string): string[] {
-  return [message, ...activity].slice(0, 6);
-}
-
-function normalizeDesktopShellSnapshot(
-  snapshot: Partial<DesktopShellSnapshot>
-): DesktopShellSnapshot {
-  return {
-    activeDocumentId: snapshot.activeDocumentId ?? null,
-    activeTabId: snapshot.activeTabId ?? snapshot.activeDocumentId ?? null,
-    documentViewModes: snapshot.documentViewModes ?? {},
-    documents: snapshot.documents ?? [],
-    isDevelopment: snapshot.isDevelopment ?? false,
-    paneSizes: snapshot.paneSizes ?? [],
-    status: snapshot.status ?? initialShellState.status,
-    workspaceEntries: snapshot.workspaceEntries ?? [],
-    workspacePath: snapshot.workspacePath ?? null
-  };
-}
-
-export function reduceShellEvent(
-  current: ShellState,
-  event: RendererEvent
-): ShellState {
-  switch (event.type) {
-    case "editor-command":
-      return current;
-    case "find-in-folder":
-      return current;
-    case "mode-changed":
-      return {
-        ...current,
-        documentViewModes: current.activeDocumentId
-          ? {
-              ...current.documentViewModes,
-              [current.activeDocumentId]: event.mode
-            }
-          : current.documentViewModes,
-        mode: event.mode,
-        status: `Editor mode switched to ${event.mode}.`,
-        activity: appendActivity(current.activity, `Mode: ${event.mode}`)
-      };
-    case "close-settings-tab":
-      return current;
-    case "open-settings":
-      return current;
-    case "reveal-workspace-file":
-      return current;
-    case "settings-changed":
-      return current;
-    case "shell-snapshot": {
-      const normalizedSnapshot = normalizeDesktopShellSnapshot(
-        event.snapshot as Partial<DesktopShellSnapshot>
-      );
-
-      return {
-        ...current,
-        ...normalizedSnapshot,
-        activity: appendActivity(current.activity, normalizedSnapshot.status)
-      };
-    }
-    case "status":
-      return {
-        ...current,
-        status: event.message,
-        activity: appendActivity(current.activity, event.message)
-      };
-  }
-}

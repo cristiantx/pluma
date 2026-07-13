@@ -66,6 +66,7 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   const workspacePath = usePlumaStore((state) => state.workspace.workspacePath);
   const keepEditing = usePlumaStore((state) => state.keepEditing);
   const openExternalUrl = usePlumaStore((state) => state.openExternalUrl);
+  const pushNotification = usePlumaStore((state) => state.pushNotification);
   const reloadFromDisk = usePlumaStore((state) => state.reloadFromDisk);
   const searchRevealRequest = usePlumaStore(
     (state) => state.workspace.searchRevealRequest
@@ -200,6 +201,12 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
     },
     [activeDocumentId, updateDocumentText]
   );
+  const handleEditorLoadError = useCallback(
+    (error: Error) => {
+      pushNotification(error.message, "error");
+    },
+    [pushNotification]
+  );
 
   useEffect(() => {
     return addEditorCommandEventListener(handleEditorCommand);
@@ -273,6 +280,7 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
           documentId={activeDocument.id}
           imageBaseUrl={imageBaseUrl}
           onCursorAnchorChange={handleCursorAnchorChange}
+          onError={handleEditorLoadError}
           onFocus={handleRichEditorFocus}
           onOpenLinkRequest={handleOpenLinkRequest}
           onReady={scheduleReplayAnchors}
@@ -290,6 +298,7 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   const previewProps: PreviewViewProps = {
     documentId: activeDocument.id,
     imageBaseUrl,
+    onError: handleEditorLoadError,
     onOpenLinkRequest: handleOpenLinkRequest,
     rawText: activeDocument.rawText,
     resolvedTheme

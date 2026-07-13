@@ -46,6 +46,7 @@ export const initialPlumaStoreState: PlumaStoreInitializer = {
   },
   settings: defaultAppSettings,
   status: {
+    notifications: [],
     statusMetrics: []
   },
   tabs: {
