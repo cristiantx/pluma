@@ -103,8 +103,8 @@ describe("usePlumaStore", () => {
   it("deduplicates and dismisses transient notifications", () => {
     const store = usePlumaStore.getState();
 
-    store.pushNotification("Saved Notes.md.", "success");
-    store.pushNotification("Saved Notes.md.", "success");
+    store.pushNotification("Could not save Notes.md.", "error");
+    store.pushNotification("Could not save Notes.md.", "error");
 
     expect(usePlumaStore.getState().status.notifications).toHaveLength(1);
 

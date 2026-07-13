@@ -1,21 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import {
-  PlumaShell,
-  initialPlumaStoreState,
-  usePlumaStore,
-  type NotificationTone
-} from "@pluma/ui";
+import { PlumaShell, initialPlumaStoreState, usePlumaStore } from "@pluma/ui";
 import { getShellSnapshot } from "./shellView";
 import { createPlumaCommandHandlers } from "./plumaCommandHandlers";
 
-const quietShellStatuses = new Set([
-  "Document edited.",
-  "Workspace file tree updated."
-]);
 const errorStatusPattern =
   /cannot|conflict|could not|deleted|error|fail|ignored|unavailable/i;
-const successStatusPattern = /created|opened|ready|reloaded|restored|saved/i;
 
 export function App() {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -113,15 +103,11 @@ export function App() {
           hydrateShellSnapshot(
             getShellSnapshot(event.snapshot, Boolean(window.pluma))
           );
-          if (!quietShellStatuses.has(event.snapshot.status)) {
-            pushNotification(
-              event.snapshot.status,
-              getNotificationTone(event.snapshot.status)
-            );
-          }
           return;
         case "status":
-          pushNotification(event.message, getNotificationTone(event.message));
+          if (errorStatusPattern.test(event.message)) {
+            pushNotification(event.message, "error");
+          }
       }
     });
   }, [
@@ -228,14 +214,6 @@ export function App() {
   }, [pushNotification, resolvedTheme, settingsLoaded, themePreference]);
 
   return <PlumaShell />;
-}
-
-function getNotificationTone(message: string): NotificationTone {
-  if (errorStatusPattern.test(message)) {
-    return "error";
-  }
-
-  return successStatusPattern.test(message) ? "success" : "info";
 }
 
 function getErrorMessage(error: unknown): string {
