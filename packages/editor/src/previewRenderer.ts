@@ -49,7 +49,7 @@ export async function renderPreviewContent(
       theme,
       wrapperClass: plumaPreviewContentClassName
     }),
-    createPreviewViewCss(resolvedTheme)
+    createPreviewViewCss()
   ].join("\n\n");
 
   return { css, html };
@@ -82,7 +82,7 @@ export function resolvePreviewImageUrls(
 
 type DraftlyPluginsModule = typeof DraftlyPlugins;
 
-function createPreviewViewCss(_resolvedTheme: "dark" | "light"): string {
+function createPreviewViewCss(): string {
   return `.${plumaPreviewClassName} {
   --color-border: var(--border-default);
   --font-jetbrains-mono: var(--font-editor);

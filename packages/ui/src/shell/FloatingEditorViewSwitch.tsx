@@ -1,13 +1,14 @@
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { Code, Eye, NotepadText } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { memo } from "react";
-import type { ComponentType, CSSProperties, SVGProps } from "react";
+import type { CSSProperties } from "react";
 
 import type { EditorViewMode } from "../state/plumaStoreTypes.js";
 import { usePlumaStore } from "../state/usePlumaStore.js";
 
 const editorViewModes: {
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  icon: LucideIcon;
   label: string;
   mode: EditorViewMode;
 }[] = [

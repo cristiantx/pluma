@@ -1,10 +1,11 @@
 import * as Tooltip from "@radix-ui/react-tooltip";
-import type { ComponentType, MouseEventHandler, SVGProps } from "react";
+import type { LucideIcon } from "lucide-react";
+import type { MouseEventHandler } from "react";
 
 type TitleBarButtonProps = {
   "aria-label": string;
   className?: string;
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  icon: LucideIcon;
   isActive?: boolean;
   isPressed?: boolean;
   onClick?: MouseEventHandler<HTMLButtonElement>;
