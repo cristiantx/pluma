@@ -80,15 +80,22 @@ function createDraftStorage(): AppDraftStorage {
   };
 }
 
-function createSession(files: Record<string, string>) {
+function createSession(
+  files: Record<string, string>,
+  options: {
+    autosaveDelayMs?: number;
+    autosaveEnabled?: boolean;
+    draftStorage?: AppDraftStorage;
+  } = {}
+) {
   const onMenuStateChange = vi.fn();
   const send = vi.fn();
   const session = new DesktopWindowSession({
     appDocumentsPath: "/tmp",
-    autosaveDelayMs: 1,
-    draftStorage: createDraftStorage(),
+    autosaveDelayMs: options.autosaveDelayMs ?? 1,
+    draftStorage: options.draftStorage ?? createDraftStorage(),
     fileSystem: createFileSystem(files),
-    getAutosaveEnabled: () => false,
+    getAutosaveEnabled: () => options.autosaveEnabled ?? false,
     getDefaultLineEnding: () => "lf",
     getOpenExportedFile: () => false,
     getWorkspaceRespectGitIgnore: () => false,
@@ -806,5 +813,139 @@ describe("DesktopWindowSession", () => {
       "/workspace/notes.md"
     );
     expect(onMenuStateChange).toHaveBeenCalled();
+  });
+
+  it("keeps the current workspace when protected documents cancel a folder switch", async () => {
+    const files = {
+      "/workspace/notes.md": "# Saved\n",
+      "/next/readme.md": "# Next\n"
+    };
+    const { session } = createSession(files);
+    vi.mocked(dialog.showOpenDialog).mockResolvedValueOnce({
+      canceled: false,
+      filePaths: ["/next"]
+    });
+    vi.mocked(dialog.showMessageBox).mockResolvedValueOnce({
+      response: 2
+    } as Electron.MessageBoxReturnValue);
+
+    await session.restorePersistedState({
+      activeDocumentPath: "/workspace/notes.md",
+      documentPaths: ["/workspace/notes.md"],
+      editorMode: "source",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+    session.updateDocumentText("desktop:/workspace/notes.md", "# Dirty\n");
+
+    await session.handleCommand("open-folder");
+
+    expect(session.getPersistedState()).toMatchObject({
+      documentPaths: ["/workspace/notes.md"],
+      workspacePath: "/workspace"
+    });
+  });
+
+  it("closes documents after discarding changes during a folder switch", async () => {
+    const files = {
+      "/workspace/notes.md": "# Saved\n",
+      "/next/readme.md": "# Next\n"
+    };
+    const { session } = createSession(files);
+    vi.mocked(dialog.showOpenDialog).mockResolvedValueOnce({
+      canceled: false,
+      filePaths: ["/next"]
+    });
+    vi.mocked(dialog.showMessageBox).mockResolvedValueOnce({
+      response: 1
+    } as Electron.MessageBoxReturnValue);
+
+    await session.restorePersistedState({
+      activeDocumentPath: "/workspace/notes.md",
+      documentPaths: ["/workspace/notes.md"],
+      editorMode: "source",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+    session.updateDocumentText("desktop:/workspace/notes.md", "# Dirty\n");
+
+    await session.handleCommand("open-folder");
+
+    expect(session.getPersistedState()).toMatchObject({
+      documentPaths: [],
+      workspacePath: "/next"
+    });
+    expect(files["/workspace/notes.md"]).toBe("# Saved\n");
+  });
+
+  it("keeps edits dirty until the matching draft autosave reaches storage", async () => {
+    let resolveFirstWrite: ((metadata: FileMetadata) => void) | null = null;
+    let resolveSecondWrite: ((metadata: FileMetadata) => void) | null = null;
+    const writeDraft = vi
+      .fn<AppDraftStorage["writeDraft"]>()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirstWrite = resolve;
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecondWrite = resolve;
+          })
+      );
+    const draftStorage: AppDraftStorage = {
+      createDraft: vi.fn(),
+      deleteDraft: vi.fn(),
+      readDraft: vi.fn(async () => "# Saved draft\n"),
+      writeDraft
+    };
+    const { session } = createSession({}, { draftStorage });
+
+    await session.restorePersistedState({
+      activeDocumentPath: null,
+      activeDocumentRef: {
+        draftId: "draft-1",
+        kind: "app-draft",
+        name: "Untitled-1"
+      },
+      documentPaths: [],
+      documentRefs: [
+        {
+          draftId: "draft-1",
+          kind: "app-draft",
+          name: "Untitled-1"
+        }
+      ],
+      editorMode: "source",
+      workspacePath: null
+    });
+
+    session.updateDocumentText("draft:draft-1", "# First edit\n");
+    await vi.waitFor(() => expect(writeDraft).toHaveBeenCalledTimes(1));
+    session.updateDocumentText("draft:draft-1", "# Second edit\n");
+    await vi.waitFor(() => expect(resolveFirstWrite).not.toBeNull());
+    resolveFirstWrite?.({ fileId: "draft", mtimeMs: 1, size: 13 });
+
+    await vi.waitFor(() => expect(writeDraft).toHaveBeenCalledTimes(2));
+    expect(session.getProtectedDocuments()).toEqual([
+      expect.objectContaining({
+        rawText: "# Second edit\n",
+        saveState: "dirty"
+      })
+    ]);
+
+    resolveSecondWrite?.({ fileId: "draft", mtimeMs: 2, size: 14 });
+    await vi.waitFor(() =>
+      expect(getSessionShellData(session).documents[0]).toMatchObject({
+        rawText: "# Second edit\n",
+        saveState: "idle"
+      })
+    );
+    expect(writeDraft.mock.calls.map(([, rawText]) => rawText)).toEqual([
+      "# First edit\n",
+      "# Second edit\n"
+    ]);
   });
 });

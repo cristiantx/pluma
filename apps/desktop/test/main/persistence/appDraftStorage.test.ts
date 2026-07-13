@@ -26,8 +26,12 @@ describe("createAppDraftStorage", () => {
     });
     expect(await storage.readDraft(location)).toBe("# Untitled\n");
 
-    await storage.writeDraft(location, "# Edited\n");
+    const metadata = await storage.writeDraft(location, "# Edited\n");
     expect(await storage.readDraft(location)).toBe("# Edited\n");
+    expect(metadata).toMatchObject({
+      fileId: expect.any(String),
+      size: 9
+    });
 
     await storage.deleteDraft(location);
     expect(await storage.readDraft(location)).toBeNull();

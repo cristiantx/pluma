@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -93,6 +93,57 @@ describe("readAppSettings", () => {
     }
   });
 
+  it("preserves valid legacy fields when theme preference is missing", async () => {
+    const directoryPath = await mkdtemp(path.join(tmpdir(), "pluma-settings-"));
+
+    try {
+      const settingsPath = path.join(directoryPath, "settings.json");
+      await writeFile(
+        settingsPath,
+        JSON.stringify({
+          autosaveEnabled: false,
+          sourceEditorFontSize: 16,
+          workspaceShowHiddenFiles: false
+        }),
+        "utf8"
+      );
+
+      await expect(readAppSettings(settingsPath)).resolves.toMatchObject({
+        autosaveEnabled: false,
+        sourceEditorFontSize: 16,
+        themePreference: "system",
+        workspaceShowHiddenFiles: false
+      });
+    } finally {
+      await rm(directoryPath, { force: true, recursive: true });
+    }
+  });
+
+  it("defaults invalid fields individually instead of discarding valid fields", async () => {
+    const directoryPath = await mkdtemp(path.join(tmpdir(), "pluma-settings-"));
+
+    try {
+      const settingsPath = path.join(directoryPath, "settings.json");
+      await writeFile(
+        settingsPath,
+        JSON.stringify({
+          autosaveEnabled: false,
+          sourceEditorFontSize: 99,
+          themePreference: "dark"
+        }),
+        "utf8"
+      );
+
+      await expect(readAppSettings(settingsPath)).resolves.toMatchObject({
+        autosaveEnabled: false,
+        sourceEditorFontSize: 14,
+        themePreference: "dark"
+      });
+    } finally {
+      await rm(directoryPath, { force: true, recursive: true });
+    }
+  });
+
   it("loads editor settings from persisted settings", async () => {
     const directoryPath = await mkdtemp(path.join(tmpdir(), "pluma-settings-"));
 
@@ -171,6 +222,9 @@ describe("readAppSettings", () => {
       await expect(readAppSettings(settingsPath)).resolves.toEqual(
         defaultAppSettings
       );
+      await expect(readdir(directoryPath)).resolves.toEqual([
+        expect.stringMatching(/^settings\.json\.corrupt-\d+$/)
+      ]);
     } finally {
       await rm(directoryPath, { force: true, recursive: true });
     }

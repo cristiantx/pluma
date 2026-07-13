@@ -31,8 +31,7 @@ import {
   readAppSettings,
   readPersistedSessionState,
   writeAppSettings,
-  writePersistedSessionState,
-  type PersistedWindowSessionState
+  writePersistedSessionState
 } from "./persistence/appPersistence";
 import { createAppDraftStorage } from "./persistence/appDraftStorage";
 import {
@@ -71,6 +70,10 @@ let isDevelopment = false;
 let isQuitting = false;
 let latestFocusedWindowId: number | null = null;
 let pendingOpenTargets: string[] = [];
+let appSettingsSnapshot: AppSettings = { ...defaultAppSettings };
+let settingsMutationQueue: Promise<void> = Promise.resolve();
+let sessionPersistenceRequested = false;
+let sessionPersistenceRun: Promise<void> | null = null;
 
 const fileSystem = new DesktopFileSystemAdapter();
 const sessions = new Map<number, DesktopWindowSession>();
@@ -127,29 +130,29 @@ async function persistSessionState(): Promise<void> {
     return;
   }
 
-  const meaningfulSessions = getOrderedSessions()
-    .map((session) => session.getPersistedState())
-    .filter(isMeaningfulPersistedWindowState);
+  const meaningfulSessions = getOrderedSessions().flatMap((windowSession) => {
+    const state = windowSession.getPersistedState();
+
+    return isMeaningfulPersistedWindowState(state)
+      ? [{ state, windowSession }]
+      : [];
+  });
   const latestSession = getLatestFocusedSession();
-  const latestState = latestSession?.getPersistedState() ?? null;
-  const activeWindowIndex =
-    latestState && isMeaningfulPersistedWindowState(latestState)
-      ? Math.max(
-          0,
-          meaningfulSessions.findIndex((state) =>
-            arePersistedWindowStatesEqual(state, latestState)
-          )
-        )
-      : 0;
+  const activeWindowIndex = Math.max(
+    0,
+    meaningfulSessions.findIndex(
+      ({ windowSession }) => windowSession === latestSession
+    )
+  );
 
   await writePersistedSessionState(getSessionStatePath(), {
     activeWindowIndex,
-    windows: meaningfulSessions
+    windows: meaningfulSessions.map(({ state }) => state)
   });
 }
 
 function persistSessionStateSoon(): void {
-  void persistSessionState().catch((error) => {
+  void requestSessionPersistence().catch((error) => {
     getLatestFocusedSession()?.emitStatus(
       error instanceof Error
         ? `Failed to save session state: ${error.message}`
@@ -158,11 +161,21 @@ function persistSessionStateSoon(): void {
   });
 }
 
-function arePersistedWindowStatesEqual(
-  left: PersistedWindowSessionState,
-  right: PersistedWindowSessionState
-): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+function requestSessionPersistence(): Promise<void> {
+  sessionPersistenceRequested = true;
+
+  sessionPersistenceRun ??= drainSessionPersistence().finally(() => {
+    sessionPersistenceRun = null;
+  });
+
+  return sessionPersistenceRun;
+}
+
+async function drainSessionPersistence(): Promise<void> {
+  while (sessionPersistenceRequested) {
+    sessionPersistenceRequested = false;
+    await persistSessionState();
+  }
 }
 
 function getOrderedSessions(): DesktopWindowSession[] {
@@ -265,13 +278,52 @@ async function setSpellcheckEnabled(enabled: boolean): Promise<void> {
 async function updateStoredAppSettings(
   update: Partial<AppSettings>
 ): Promise<AppSettings> {
-  const currentSettings = await readAppSettings(getAppSettingsPath());
-  const nextSettings: AppSettings = {
-    ...currentSettings,
-    ...update
-  };
+  return enqueueSettingsMutation(async () => {
+    const currentSettings = appSettingsSnapshot;
+    const nextSettings: AppSettings = {
+      ...currentSettings,
+      ...update
+    };
 
-  await writeAppSettings(getAppSettingsPath(), nextSettings);
+    await writeAppSettings(getAppSettingsPath(), nextSettings);
+    applyAppSettingsSnapshot(nextSettings);
+
+    if (!autosaveEnabled) {
+      for (const session of sessions.values()) {
+        session.clearAutosaveTimers();
+      }
+    }
+
+    if (currentSettings.spellcheckEnabled !== nextSettings.spellcheckEnabled) {
+      applySpellcheckEnabled(spellcheckEnabled);
+    }
+
+    if (
+      currentSettings.workspaceShowHiddenFiles !==
+        nextSettings.workspaceShowHiddenFiles ||
+      currentSettings.workspaceRespectGitIgnore !==
+        nextSettings.workspaceRespectGitIgnore
+    ) {
+      for (const session of sessions.values()) {
+        void session.refreshSettingsSensitiveState().catch((error) => {
+          session.emitStatus(
+            error instanceof Error
+              ? `Failed to refresh workspace settings: ${error.message}`
+              : "Failed to refresh workspace settings."
+          );
+        });
+      }
+    }
+
+    emitSettingsChanged(nextSettings);
+    Menu.setApplicationMenu(getApplicationMenu());
+
+    return nextSettings;
+  });
+}
+
+function applyAppSettingsSnapshot(nextSettings: AppSettings): void {
+  appSettingsSnapshot = nextSettings;
   autosaveEnabled = nextSettings.autosaveEnabled;
   defaultLineEnding = nextSettings.defaultLineEnding;
   openExportedFile = nextSettings.openExportedFile;
@@ -279,37 +331,18 @@ async function updateStoredAppSettings(
   spellcheckEnabled = nextSettings.spellcheckEnabled;
   workspaceRespectGitIgnore = nextSettings.workspaceRespectGitIgnore;
   workspaceShowHiddenFiles = nextSettings.workspaceShowHiddenFiles;
+}
 
-  if (!autosaveEnabled) {
-    for (const session of sessions.values()) {
-      session.clearAutosaveTimers();
-    }
-  }
-
-  if (currentSettings.spellcheckEnabled !== nextSettings.spellcheckEnabled) {
-    applySpellcheckEnabled(spellcheckEnabled);
-  }
-
-  if (
-    currentSettings.workspaceShowHiddenFiles !==
-      nextSettings.workspaceShowHiddenFiles ||
-    currentSettings.workspaceRespectGitIgnore !==
-      nextSettings.workspaceRespectGitIgnore
-  ) {
-    for (const session of sessions.values()) {
-      void session.refreshSettingsSensitiveState();
-    }
-  }
-
-  emitSettingsChanged(nextSettings);
-
-  Menu.setApplicationMenu(getApplicationMenu());
-
-  return nextSettings;
+function enqueueSettingsMutation<T>(operation: () => Promise<T>): Promise<T> {
+  const result = settingsMutationQueue.then(operation, operation);
+  settingsMutationQueue = result.then(
+    () => undefined,
+    () => undefined
+  );
+  return result;
 }
 
 async function resetStoredAppSettings(): Promise<AppSettings> {
-  await writeAppSettings(getAppSettingsPath(), defaultAppSettings);
   return updateStoredAppSettings(defaultAppSettings);
 }
 
@@ -560,7 +593,7 @@ async function quitApplicationWithSessionPersistence(): Promise<void> {
   }
 
   isQuitting = true;
-  await persistSessionState();
+  await requestSessionPersistence();
   app.quit();
 }
 
@@ -605,17 +638,7 @@ function registerDesktopIpcHandlers(): void {
       getSessionForEvent(event)?.updateDocumentText(documentId, rawText);
     },
     getSettings: async () => {
-      const settings = await readAppSettings(getAppSettingsPath());
-      autosaveEnabled = settings.autosaveEnabled;
-      defaultLineEnding = settings.defaultLineEnding;
-      openExportedFile = settings.openExportedFile;
-      restorePreviousSession = settings.restorePreviousSession;
-      spellcheckEnabled = settings.spellcheckEnabled;
-      workspaceRespectGitIgnore = settings.workspaceRespectGitIgnore;
-      workspaceShowHiddenFiles = settings.workspaceShowHiddenFiles;
-      applySpellcheckEnabled(spellcheckEnabled);
-
-      return settings;
+      return appSettingsSnapshot;
     },
     openAppDataFolder: async () => {
       await shell.openPath(app.getPath("userData"));
@@ -629,10 +652,7 @@ function registerDesktopIpcHandlers(): void {
       await shell.openExternal(url);
     },
     openSettingsFile: async () => {
-      await writeAppSettings(
-        getAppSettingsPath(),
-        await readAppSettings(getAppSettingsPath())
-      );
+      await writeAppSettings(getAppSettingsPath(), appSettingsSnapshot);
       await shell.openPath(getAppSettingsPath());
     },
     resetSettings: async () => resetStoredAppSettings(),
@@ -697,13 +717,7 @@ export function startDesktopMainProcess(
     setApplicationIcon();
     await installDevelopmentExtensions();
     const settings = await readAppSettings(getAppSettingsPath());
-    autosaveEnabled = settings.autosaveEnabled;
-    defaultLineEnding = settings.defaultLineEnding;
-    openExportedFile = settings.openExportedFile;
-    restorePreviousSession = settings.restorePreviousSession;
-    spellcheckEnabled = settings.spellcheckEnabled;
-    workspaceRespectGitIgnore = settings.workspaceRespectGitIgnore;
-    workspaceShowHiddenFiles = settings.workspaceShowHiddenFiles;
+    applyAppSettingsSnapshot(settings);
     applySpellcheckEnabled(spellcheckEnabled);
     Menu.setApplicationMenu(getApplicationMenu());
     await restorePersistedSessionState();

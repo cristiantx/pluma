@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { readFile, rm, stat } from "node:fs/promises";
 import path from "node:path";
 
-import type { AppDraftFileLocation } from "@pluma/core";
+import type { AppDraftFileLocation, FileMetadata } from "@pluma/core";
+
+import { writeTextFileAtomic } from "./atomicFile";
 
 export type AppDraftStorage = {
   createDraft: (name: string, rawText: string) => Promise<AppDraftFileLocation>;
@@ -11,7 +13,7 @@ export type AppDraftStorage = {
   writeDraft: (
     location: AppDraftFileLocation,
     rawText: string
-  ) => Promise<void>;
+  ) => Promise<FileMetadata>;
 };
 
 export function createAppDraftStorage(
@@ -57,9 +59,16 @@ export function createAppDraftStorage(
   async function writeDraft(
     location: AppDraftFileLocation,
     rawText: string
-  ): Promise<void> {
-    await mkdir(draftsDirectory, { recursive: true });
-    await writeFile(getDraftPath(location), rawText, "utf8");
+  ): Promise<FileMetadata> {
+    const draftPath = getDraftPath(location);
+    await writeTextFileAtomic(draftPath, rawText);
+    const metadata = await stat(draftPath);
+
+    return {
+      fileId: `${metadata.dev}:${metadata.ino}`,
+      mtimeMs: Number(metadata.mtimeMs),
+      size: Number(metadata.size)
+    };
   }
 
   async function deleteDraft(location: AppDraftFileLocation): Promise<void> {

@@ -3,7 +3,11 @@ import path from "node:path";
 
 import type { DocumentSession } from "@pluma/core";
 
-export type ProtectedDocumentAction = "close-tab" | "quit" | "reload";
+export type ProtectedDocumentAction =
+  | "close-tab"
+  | "quit"
+  | "reload"
+  | "switch-workspace";
 export type ProtectedDocumentCloseChoice = "save" | "discard" | "cancel";
 
 export async function chooseProtectedDocumentCloseAction(
@@ -20,7 +24,13 @@ export async function chooseProtectedDocumentCloseAction(
       ? `${getDocumentDisplayName(documents[0])} has unsaved, draft, saving, or conflicted changes.`
       : `${documents.length} documents have unsaved, saving, or conflicted changes:\n${formatDocumentNameList(documents)}`;
   const actionLabel =
-    action === "quit" ? "Quit" : action === "reload" ? "Reload" : "Close";
+    action === "quit"
+      ? "Quit"
+      : action === "reload"
+        ? "Reload"
+        : action === "switch-workspace"
+          ? "Switch workspace"
+          : "Close";
   const result = await dialog.showMessageBox(window, {
     buttons: ["Save", "Don't Save", "Cancel"],
     cancelId: 2,

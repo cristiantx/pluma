@@ -10,7 +10,6 @@ import {
   markDocumentSessionConflict,
   markDocumentSessionExternalChange,
   markDocumentSessionSaveError,
-  markDocumentSessionSaved,
   markDocumentSessionSaving,
   shouldProtectDocumentSessionClose,
   updateDocumentSessionText,
@@ -91,6 +90,7 @@ export class DesktopWindowSession {
   private readonly autosaveScheduler: AutosaveScheduler;
   private readonly documentModes = new Map<string, EditorViewMode>();
   private readonly replacementDocumentIds = new Map<string, string>();
+  private readonly saveQueues = new Map<string, Promise<boolean>>();
   private readonly workspaceWatcher: WorkspaceWatcher;
   private currentMode: EditorViewMode = "source";
   private shellData: DesktopShellSnapshot;
@@ -1037,7 +1037,7 @@ export class DesktopWindowSession {
     const closingDocument = this.getDocumentById(documentId);
 
     if (closingDocument?.location.kind === "app-draft") {
-      void this.dependencies.draftStorage.deleteDraft(closingDocument.location);
+      this.deleteDraftSoon(closingDocument);
     }
 
     this.autosaveScheduler.clear(documentId);
@@ -1080,9 +1080,7 @@ export class DesktopWindowSession {
       const closingDocument = this.getDocumentById(documentId);
 
       if (closingDocument?.location.kind === "app-draft") {
-        void this.dependencies.draftStorage.deleteDraft(
-          closingDocument.location
-        );
+        this.deleteDraftSoon(closingDocument);
       }
 
       this.autosaveScheduler.clear(documentId);
@@ -1236,7 +1234,7 @@ export class DesktopWindowSession {
 
   private async resolveProtectedDocumentClose(
     documents: DocumentSession[],
-    action: "close-tab" | "quit"
+    action: "close-tab" | "quit" | "switch-workspace"
   ): Promise<boolean> {
     const choice = await chooseProtectedDocumentCloseActionDialog(
       this.window,
@@ -1479,6 +1477,31 @@ export class DesktopWindowSession {
   }
 
   private async openFolderPath(directoryPath: string): Promise<void> {
+    if (directoryPath === this.shellData.workspacePath) {
+      this.emitToRenderer({
+        type: "status",
+        message: `Workspace ${path.basename(directoryPath)} is already open.`
+      });
+      return;
+    }
+
+    const protectedDocuments = this.getProtectedDocuments();
+
+    if (
+      protectedDocuments.length > 0 &&
+      !(await this.resolveProtectedDocumentClose(
+        protectedDocuments,
+        "switch-workspace"
+      ))
+    ) {
+      this.emitToRenderer({
+        type: "status",
+        message: "Workspace switch cancelled."
+      });
+      this.emitShellSnapshot();
+      return;
+    }
+
     const workspaceEntries = await collectWorkspaceEntries(
       this.dependencies.fileSystem,
       directoryPath,
@@ -1487,6 +1510,11 @@ export class DesktopWindowSession {
         respectGitIgnore: this.dependencies.getWorkspaceRespectGitIgnore(),
         showHiddenFiles: this.dependencies.getWorkspaceShowHiddenFiles()
       }
+    );
+
+    this.closeDocumentSessions(
+      this.shellData.documents.map((document) => document.id),
+      "Closed documents for workspace switch."
     );
 
     this.updateShellData({
@@ -1595,18 +1623,20 @@ export class DesktopWindowSession {
     }
 
     this.autosaveScheduler.clear(document.id);
-    await this.dependencies.draftStorage.writeDraft(
+    const savedText = document.rawText;
+    const metadata = await this.dependencies.draftStorage.writeDraft(
       document.location,
-      document.rawText
+      savedText
     );
     this.updateShellData({
       documents: this.shellData.documents.map((candidate) =>
         candidate.id === document.id
-          ? markDocumentSessionSaved(candidate, {
-              fileId: null,
-              mtimeMs: Date.now(),
-              size: document.rawText.length
-            })
+          ? markDocumentAfterSuccessfulWrite(
+              candidate,
+              savedText,
+              metadata,
+              savedText
+            )
           : candidate
       ),
       status: `Draft saved for ${document.location.name}.`
@@ -1792,7 +1822,46 @@ export class DesktopWindowSession {
     this.emitShellSnapshot();
   }
 
-  private async saveDocument(
+  private saveDocument(
+    documentId: string,
+    trigger: "autosave" | "manual"
+  ): Promise<boolean> {
+    const previousSave = this.saveQueues.get(documentId);
+    const nextSave = (previousSave ?? Promise.resolve(true))
+      .catch(() => false)
+      .then(() => this.performSaveDocument(documentId, trigger))
+      .catch((error: unknown) => {
+        const document = this.getDocumentById(documentId);
+
+        if (document) {
+          this.updateShellData({
+            documents: this.shellData.documents.map((candidate) =>
+              candidate.id === documentId
+                ? markDocumentSessionSaveError(candidate)
+                : candidate
+            ),
+            status:
+              error instanceof Error
+                ? `Save failed: ${error.message}`
+                : "Save failed."
+          });
+          this.emitShellSnapshot();
+        }
+
+        return false;
+      });
+
+    this.saveQueues.set(documentId, nextSave);
+    void nextSave.then(() => {
+      if (this.saveQueues.get(documentId) === nextSave) {
+        this.saveQueues.delete(documentId);
+      }
+    });
+
+    return nextSave;
+  }
+
+  private async performSaveDocument(
     documentId: string,
     trigger: "autosave" | "manual"
   ): Promise<boolean> {
@@ -2107,6 +2176,27 @@ export class DesktopWindowSession {
     }
 
     await this.openFolderPath(selectedPath);
+  }
+
+  private deleteDraftSoon(document: DocumentSession): void {
+    if (document.location.kind !== "app-draft") {
+      return;
+    }
+
+    const draftLocation = document.location;
+    const pendingSave =
+      this.saveQueues.get(document.id) ?? Promise.resolve(true);
+    void pendingSave
+      .then(() => this.dependencies.draftStorage.deleteDraft(draftLocation))
+      .catch((error) => {
+        this.emitToRenderer({
+          type: "status",
+          message:
+            error instanceof Error
+              ? `Could not delete draft: ${error.message}`
+              : "Could not delete draft."
+        });
+      });
   }
 
   private getWorkspaceFileActions(): WorkspaceFileActions {

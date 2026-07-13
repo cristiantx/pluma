@@ -1,5 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { readFile, rename } from "node:fs/promises";
 
 import {
   defaultAppSettings,
@@ -7,6 +6,7 @@ import {
   isEditorWidthPreference,
   isRichEditorDensity,
   isSourceEditorFontFamily,
+  isSourceEditorColorScheme,
   isSourceEditorFontSize,
   isSourceEditorTabSize,
   isThemePreference,
@@ -14,6 +14,7 @@ import {
 } from "@pluma/ui";
 
 import type { EditorViewMode } from "../../shared/shellState";
+import { writeTextFileAtomic } from "./atomicFile";
 
 export { defaultAppSettings };
 
@@ -68,7 +69,7 @@ export function isEditorViewMode(value: unknown): value is EditorViewMode {
 export async function readAppSettings(filePath: string): Promise<AppSettings> {
   const parsedSettings = await readJsonFile(filePath);
 
-  if (!isAppSettings(parsedSettings)) {
+  if (!isRecord(parsedSettings)) {
     return defaultAppSettings;
   }
 
@@ -162,6 +163,7 @@ async function readJsonFile(filePath: string): Promise<unknown | null> {
     }
 
     if (error instanceof SyntaxError) {
+      await preserveCorruptJsonFile(filePath);
       return null;
     }
 
@@ -170,100 +172,89 @@ async function readJsonFile(filePath: string): Promise<unknown | null> {
 }
 
 async function writeJsonFile(filePath: string, value: unknown): Promise<void> {
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  await writeTextFileAtomic(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function isAppSettings(value: unknown): value is AppSettings {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const candidate = value as Partial<AppSettings>;
-
-  return (
-    (candidate.autosaveEnabled === undefined ||
-      typeof candidate.autosaveEnabled === "boolean") &&
-    (candidate.spellcheckEnabled === undefined ||
-      typeof candidate.spellcheckEnabled === "boolean") &&
-    (candidate.richEditorWidth === undefined ||
-      isEditorWidthPreference(candidate.richEditorWidth)) &&
-    (candidate.sourceEditorWidth === undefined ||
-      isEditorWidthPreference(candidate.sourceEditorWidth)) &&
-    (candidate.sourceEditorFontFamily === undefined ||
-      isSourceEditorFontFamily(candidate.sourceEditorFontFamily)) &&
-    (candidate.sourceEditorColorScheme === undefined ||
-      candidate.sourceEditorColorScheme === "follow-theme" ||
-      candidate.sourceEditorColorScheme === "pluma-dark" ||
-      candidate.sourceEditorColorScheme === "pluma-light") &&
-    (candidate.sourceEditorFontSize === undefined ||
-      isSourceEditorFontSize(candidate.sourceEditorFontSize)) &&
-    (candidate.sourceEditorLineNumbers === undefined ||
-      typeof candidate.sourceEditorLineNumbers === "boolean") &&
-    (candidate.sourceEditorTabSize === undefined ||
-      isSourceEditorTabSize(candidate.sourceEditorTabSize)) &&
-    (candidate.sourceEditorWordWrap === undefined ||
-      typeof candidate.sourceEditorWordWrap === "boolean") &&
-    (candidate.richEditorDensity === undefined ||
-      isRichEditorDensity(candidate.richEditorDensity)) &&
-    (candidate.defaultLineEnding === undefined ||
-      isDefaultLineEnding(candidate.defaultLineEnding)) &&
-    (candidate.openExportedFile === undefined ||
-      typeof candidate.openExportedFile === "boolean") &&
-    (candidate.restorePreviousSession === undefined ||
-      typeof candidate.restorePreviousSession === "boolean") &&
-    (candidate.workspaceRespectGitIgnore === undefined ||
-      typeof candidate.workspaceRespectGitIgnore === "boolean") &&
-    (candidate.workspaceShowHiddenFiles === undefined ||
-      typeof candidate.workspaceShowHiddenFiles === "boolean") &&
-    typeof candidate.themePreference === "string" &&
-    isThemePreference(candidate.themePreference)
-  );
-}
-
-function normalizeAppSettings(settings: Partial<AppSettings>): AppSettings {
+function normalizeAppSettings(settings: Record<string, unknown>): AppSettings {
   return {
     autosaveEnabled:
-      settings.autosaveEnabled ?? defaultAppSettings.autosaveEnabled,
-    defaultLineEnding:
-      settings.defaultLineEnding ?? defaultAppSettings.defaultLineEnding,
+      typeof settings.autosaveEnabled === "boolean"
+        ? settings.autosaveEnabled
+        : defaultAppSettings.autosaveEnabled,
+    defaultLineEnding: isDefaultLineEnding(settings.defaultLineEnding)
+      ? settings.defaultLineEnding
+      : defaultAppSettings.defaultLineEnding,
     openExportedFile:
-      settings.openExportedFile ?? defaultAppSettings.openExportedFile,
-    richEditorDensity:
-      settings.richEditorDensity ?? defaultAppSettings.richEditorDensity,
-    richEditorWidth:
-      settings.richEditorWidth ?? defaultAppSettings.richEditorWidth,
+      typeof settings.openExportedFile === "boolean"
+        ? settings.openExportedFile
+        : defaultAppSettings.openExportedFile,
+    richEditorDensity: isRichEditorDensity(settings.richEditorDensity)
+      ? settings.richEditorDensity
+      : defaultAppSettings.richEditorDensity,
+    richEditorWidth: isEditorWidthPreference(settings.richEditorWidth)
+      ? settings.richEditorWidth
+      : defaultAppSettings.richEditorWidth,
     restorePreviousSession:
-      settings.restorePreviousSession ??
-      defaultAppSettings.restorePreviousSession,
-    sourceEditorColorScheme:
-      settings.sourceEditorColorScheme ??
-      defaultAppSettings.sourceEditorColorScheme,
-    sourceEditorFontFamily:
-      settings.sourceEditorFontFamily ??
-      defaultAppSettings.sourceEditorFontFamily,
-    sourceEditorFontSize:
-      settings.sourceEditorFontSize ?? defaultAppSettings.sourceEditorFontSize,
+      typeof settings.restorePreviousSession === "boolean"
+        ? settings.restorePreviousSession
+        : defaultAppSettings.restorePreviousSession,
+    sourceEditorColorScheme: isSourceEditorColorScheme(
+      settings.sourceEditorColorScheme
+    )
+      ? settings.sourceEditorColorScheme
+      : defaultAppSettings.sourceEditorColorScheme,
+    sourceEditorFontFamily: isSourceEditorFontFamily(
+      settings.sourceEditorFontFamily
+    )
+      ? settings.sourceEditorFontFamily
+      : defaultAppSettings.sourceEditorFontFamily,
+    sourceEditorFontSize: isSourceEditorFontSize(settings.sourceEditorFontSize)
+      ? settings.sourceEditorFontSize
+      : defaultAppSettings.sourceEditorFontSize,
     sourceEditorLineNumbers:
-      settings.sourceEditorLineNumbers ??
-      defaultAppSettings.sourceEditorLineNumbers,
-    sourceEditorTabSize:
-      settings.sourceEditorTabSize ?? defaultAppSettings.sourceEditorTabSize,
+      typeof settings.sourceEditorLineNumbers === "boolean"
+        ? settings.sourceEditorLineNumbers
+        : defaultAppSettings.sourceEditorLineNumbers,
+    sourceEditorTabSize: isSourceEditorTabSize(settings.sourceEditorTabSize)
+      ? settings.sourceEditorTabSize
+      : defaultAppSettings.sourceEditorTabSize,
     sourceEditorWordWrap:
-      settings.sourceEditorWordWrap ?? defaultAppSettings.sourceEditorWordWrap,
-    sourceEditorWidth:
-      settings.sourceEditorWidth ?? defaultAppSettings.sourceEditorWidth,
+      typeof settings.sourceEditorWordWrap === "boolean"
+        ? settings.sourceEditorWordWrap
+        : defaultAppSettings.sourceEditorWordWrap,
+    sourceEditorWidth: isEditorWidthPreference(settings.sourceEditorWidth)
+      ? settings.sourceEditorWidth
+      : defaultAppSettings.sourceEditorWidth,
     spellcheckEnabled:
-      settings.spellcheckEnabled ?? defaultAppSettings.spellcheckEnabled,
+      typeof settings.spellcheckEnabled === "boolean"
+        ? settings.spellcheckEnabled
+        : defaultAppSettings.spellcheckEnabled,
     themePreference:
-      settings.themePreference ?? defaultAppSettings.themePreference,
+      typeof settings.themePreference === "string" &&
+      isThemePreference(settings.themePreference)
+        ? settings.themePreference
+        : defaultAppSettings.themePreference,
     workspaceRespectGitIgnore:
-      settings.workspaceRespectGitIgnore ??
-      defaultAppSettings.workspaceRespectGitIgnore,
+      typeof settings.workspaceRespectGitIgnore === "boolean"
+        ? settings.workspaceRespectGitIgnore
+        : defaultAppSettings.workspaceRespectGitIgnore,
     workspaceShowHiddenFiles:
-      settings.workspaceShowHiddenFiles ??
-      defaultAppSettings.workspaceShowHiddenFiles
+      typeof settings.workspaceShowHiddenFiles === "boolean"
+        ? settings.workspaceShowHiddenFiles
+        : defaultAppSettings.workspaceShowHiddenFiles
   };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function preserveCorruptJsonFile(filePath: string): Promise<void> {
+  try {
+    await rename(filePath, `${filePath}.corrupt-${Date.now()}`);
+  } catch {
+    // Recovery should still fall back to defaults if preserving the file fails.
+  }
 }
 
 function isPersistedSessionState(
