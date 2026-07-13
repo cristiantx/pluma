@@ -39,7 +39,26 @@ const bundleStats = await stat(bundlePath);
 const result = {
   file: path.relative(process.cwd(), bundlePath),
   gzipBytes: gzipSync(bundle).byteLength,
-  rawBytes: bundleStats.size
+  rawBytes: bundleStats.size,
+  worker: await getWorkerStats(buildDirectory)
 };
 
 process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+
+async function getWorkerStats(directory) {
+  const workerPath = path.join(directory, "markdownAnalysisWorker.js");
+  const worker = await readFile(workerPath);
+  const source = worker.toString("utf8");
+
+  if (!source.includes("Inline or block HTML")) {
+    throw new Error(
+      "Markdown analysis worker is missing its capability pipeline."
+    );
+  }
+
+  return {
+    file: path.relative(process.cwd(), workerPath),
+    gzipBytes: gzipSync(worker).byteLength,
+    rawBytes: (await stat(workerPath)).size
+  };
+}

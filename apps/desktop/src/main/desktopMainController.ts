@@ -33,6 +33,7 @@ import {
 import { buildApplicationMenu } from "./menus/applicationMenu";
 import { registerIpcHandlers } from "./ipc/registerIpcHandlers";
 import { DocumentTextFlushCoordinator } from "./ipc/documentTextFlushCoordinator";
+import { MarkdownAnalysisService } from "./markdown/markdownAnalysisService";
 import { getAppSettingsUpdate } from "./settings/appSettingsUpdate";
 import {
   shouldPersistAfterWindowClosed,
@@ -70,6 +71,7 @@ let latestFocusedWindowId: number | null = null;
 let pendingOpenTargets: string[] = [];
 let appSettingsSnapshot: AppSettings = { ...defaultAppSettings };
 let settingsMutationQueue: Promise<void> = Promise.resolve();
+let markdownAnalysisService: MarkdownAnalysisService | null = null;
 
 const fileSystem = new DesktopFileSystemAdapter();
 const sessions = new Map<number, DesktopWindowSession>();
@@ -395,7 +397,8 @@ function refreshApplicationMenu(): void {
 }
 
 function createWindowDependencies(
-  window: BrowserWindow
+  window: BrowserWindow,
+  waitForRendererReady: () => Promise<void>
 ): DesktopWindowSessionDependencies {
   return {
     appDocumentsPath: app.getPath("documents"),
@@ -408,13 +411,25 @@ function createWindowDependencies(
     getWorkspaceRespectGitIgnore: () => workspaceRespectGitIgnore,
     getWorkspaceShowHiddenFiles: () => workspaceShowHiddenFiles,
     isDevelopment,
+    analyzeMarkdownMode: (rawText) => {
+      const service = markdownAnalysisService;
+
+      return service
+        ? service.analyze(rawText)
+        : Promise.resolve("source-only");
+    },
     onMenuStateChange: refreshApplicationMenu,
     onPersistSessionState: persistSessionStateSoon,
+    waitForRendererReady,
     window
   };
 }
 
 function createWindow(): DesktopWindowSession {
+  let markRendererReady: () => void = () => undefined;
+  const rendererReady = new Promise<void>((resolve) => {
+    markRendererReady = resolve;
+  });
   const window = createMainWindow({
     appIconPath: getAppIconPath(),
     mainBundleDirectory,
@@ -422,6 +437,7 @@ function createWindow(): DesktopWindowSession {
     rendererName,
     spellcheckEnabled,
     onClosed: () => {
+      markRendererReady();
       const session = sessions.get(window.id);
       session?.dispose();
       documentTextFlushCoordinator.cancelSender(window.webContents.id);
@@ -461,10 +477,13 @@ function createWindow(): DesktopWindowSession {
     onLoaded: () => {
       const session = sessions.get(window.id);
       session?.emitInitialState();
+      markRendererReady();
       void flushPendingOpenTargets();
     }
   });
-  const session = new DesktopWindowSession(createWindowDependencies(window));
+  const session = new DesktopWindowSession(
+    createWindowDependencies(window, () => rendererReady)
+  );
 
   sessions.set(window.id, session);
   latestFocusedWindowId = window.id;
@@ -511,13 +530,12 @@ async function restorePersistedSessionState(): Promise<void> {
     return;
   }
 
-  const restoredSessions: DesktopWindowSession[] = [];
-
-  for (const windowState of persistedState.windows) {
-    const session = createWindow();
-    await session.restorePersistedState(windowState);
-    restoredSessions.push(session);
-  }
+  const restoredSessions = persistedState.windows.map(() => createWindow());
+  await Promise.all(
+    restoredSessions.map((session, index) =>
+      session.restorePersistedState(persistedState.windows[index]!)
+    )
+  );
 
   const activeSession =
     restoredSessions[persistedState.activeWindowIndex] ?? restoredSessions[0];
@@ -668,6 +686,10 @@ export function startDesktopMainProcess(
   rendererDevServerUrl = options.rendererDevServerUrl;
   rendererName = options.rendererName;
   isDevelopment = Boolean(rendererDevServerUrl);
+  markdownAnalysisService = new MarkdownAnalysisService({
+    onError: (message) => getLatestFocusedSession()?.emitStatus(message),
+    workerPath: path.join(mainBundleDirectory, "markdownAnalysisWorker.js")
+  });
   registerDesktopIpcHandlers();
 
   app.whenReady().then(async () => {
@@ -733,5 +755,10 @@ export function startDesktopMainProcess(
     if (process.platform !== "darwin") {
       app.quit();
     }
+  });
+
+  app.on("will-quit", () => {
+    markdownAnalysisService?.dispose();
+    markdownAnalysisService = null;
   });
 }

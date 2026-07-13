@@ -47,9 +47,9 @@ import { buildTabContextMenu } from "../menus/tabContextMenu";
 import { ActiveFileWatcher } from "../watching/activeFileWatcher";
 import { WorkspaceWatcher } from "../watching/workspaceWatcher";
 import {
-  collectWorkspaceEntries,
   createSessionForFilePath,
   isPathInsideDirectory,
+  type MarkdownModeAnalyzer,
   tryCollectWorkspaceEntries,
   tryCreateSessionForFilePath
 } from "../workspace/desktopWorkspace";
@@ -58,6 +58,7 @@ import {
   type WorkspaceFileActions
 } from "../workspace/workspaceFileActions";
 import { WorkspaceSearchController } from "../workspace/workspaceSearch";
+import { mapWithConcurrency } from "../runtime/asyncConcurrency";
 import {
   exportDocument,
   type ExportDocumentResult
@@ -65,12 +66,12 @@ import {
 import type { AppSettings } from "@pluma/ui/settings";
 import type { ExportDocumentFormat } from "../export/exportDocumentHtml";
 import { markDocumentAfterSuccessfulWrite } from "./documentSaveState";
-import {
-  getActivePersistedDocument,
-  getPersistedDocumentReference
-} from "./persistedDocumentRefs";
+import { getPersistedDocumentReference } from "./persistedDocumentRefs";
+
+const restoredDocumentConcurrency = 2;
 
 export type DesktopWindowSessionDependencies = {
+  analyzeMarkdownMode: MarkdownModeAnalyzer;
   appDocumentsPath: string;
   autosaveDelayMs: number;
   draftStorage: AppDraftStorage;
@@ -83,6 +84,7 @@ export type DesktopWindowSessionDependencies = {
   isDevelopment: boolean;
   onMenuStateChange: () => void;
   onPersistSessionState: () => void;
+  waitForRendererReady: () => Promise<void>;
   window: BrowserWindow;
 };
 
@@ -98,6 +100,8 @@ export class DesktopWindowSession {
   private currentMode: EditorViewMode = "source";
   private shellData: DesktopShellSnapshot;
   private workspaceFileActions: WorkspaceFileActions | null = null;
+  private workspaceRefreshPromise: Promise<void> | null = null;
+  private workspaceRefreshVersion = 0;
 
   constructor(private readonly dependencies: DesktopWindowSessionDependencies) {
     this.shellData = {
@@ -219,63 +223,92 @@ export class DesktopWindowSession {
   ): Promise<void> {
     this.currentMode = persistedState.editorMode;
     this.documentModes.clear();
-
-    const workspaceEntries = await tryCollectWorkspaceEntries(
-      this.dependencies.fileSystem,
-      persistedState.workspacePath,
-      {
-        respectGitIgnore: this.dependencies.getWorkspaceRespectGitIgnore(),
-        showHiddenFiles: this.dependencies.getWorkspaceShowHiddenFiles()
-      }
-    );
     const documentRefs: PersistedDocumentReference[] =
       persistedState.documentRefs ??
       persistedState.documentPaths.map((documentPath) => ({
         kind: "desktop-path" as const,
         path: documentPath
       }));
-    const documents = (
-      await Promise.all(
-        documentRefs.map((documentRef) =>
-          this.createSessionForPersistedDocumentRef(documentRef)
-        )
-      )
-    ).filter((session) => session !== null);
-    documents.forEach((document) => {
-      const documentRef = getPersistedDocumentReference(document);
-      const persistedDocumentRef = documentRefs.find(
-        (candidate) =>
-          createDocumentModeKeyFromPersistedReference(candidate) ===
-          (documentRef
-            ? createDocumentModeKeyFromPersistedReference(documentRef)
-            : null)
-      );
-
-      this.setStoredDocumentMode(
-        document,
-        persistedDocumentRef?.editorMode ?? persistedState.editorMode
-      );
-    });
-    const activeDocument = getActivePersistedDocument(
-      documents,
+    const prioritizedRefs = prioritizeActiveDocumentRef(
+      documentRefs,
       persistedState
     );
+    const attemptedKeys = new Set<string>();
+    const loadedDocuments = new Map<string, DocumentSession>();
+    let activeDocument: DocumentSession | null = null;
+
+    for (const documentRef of prioritizedRefs) {
+      const key = createDocumentModeKeyFromPersistedReference(documentRef);
+      attemptedKeys.add(key);
+      const document =
+        await this.createSessionForPersistedDocumentRef(documentRef);
+
+      if (document) {
+        activeDocument = document;
+        loadedDocuments.set(key, document);
+        this.setStoredDocumentMode(
+          document,
+          documentRef.editorMode ?? persistedState.editorMode
+        );
+        break;
+      }
+    }
 
     this.updateShellData({
       activeDocumentId: activeDocument?.id ?? null,
       activeTabId: activeDocument?.id ?? null,
-      documents,
+      documents: activeDocument ? [activeDocument] : [],
       paneSizes: persistedState.paneSizes ?? [],
       status:
-        documents.length > 0 || persistedState.workspacePath
+        activeDocument || persistedState.workspacePath
           ? "Restored previous session."
           : "Desktop shell ready.",
-      workspaceEntries,
+      workspaceEntries: [],
       workspacePath: persistedState.workspacePath
     });
     this.syncEditorModeForActiveDocument({ emit: false });
     this.updateActiveFileWatcher();
     this.updateWorkspaceWatcher();
+    this.emitShellSnapshot();
+    await this.dependencies.waitForRendererReady();
+
+    const remainingRefs = documentRefs.filter(
+      (documentRef) =>
+        !attemptedKeys.has(
+          createDocumentModeKeyFromPersistedReference(documentRef)
+        )
+    );
+    const restoreDocuments = mapWithConcurrency(
+      remainingRefs,
+      restoredDocumentConcurrency,
+      async (documentRef) => {
+        const document =
+          await this.createSessionForPersistedDocumentRef(documentRef);
+
+        if (!document) {
+          return;
+        }
+
+        loadedDocuments.set(
+          createDocumentModeKeyFromPersistedReference(documentRef),
+          document
+        );
+        this.setStoredDocumentMode(
+          document,
+          documentRef.editorMode ?? persistedState.editorMode
+        );
+        this.updateShellData({
+          documents: getLoadedDocumentsInPersistedOrder(
+            documentRefs,
+            loadedDocuments
+          )
+        });
+        this.emitShellSnapshot();
+      }
+    );
+    const restoreWorkspace = this.refreshWorkspaceEntries();
+
+    await Promise.all([restoreDocuments, restoreWorkspace]);
   }
 
   async handleOpenTarget(targetPath: string): Promise<void> {
@@ -1007,7 +1040,8 @@ export class DesktopWindowSession {
     if (documentRef.kind === "desktop-path") {
       return tryCreateSessionForFilePath(
         this.dependencies.fileSystem,
-        documentRef.path
+        documentRef.path,
+        this.dependencies.analyzeMarkdownMode
       );
     }
 
@@ -1022,9 +1056,13 @@ export class DesktopWindowSession {
       return null;
     }
 
+    const modeConstraint = await this.dependencies.analyzeMarkdownMode(rawText);
+
     return createDocumentSession({
       location,
       metadata: null,
+      mode: modeConstraint === "source-only" ? "source" : "rich",
+      modeConstraint,
       rawText
     });
   }
@@ -1329,25 +1367,54 @@ export class DesktopWindowSession {
     this.workspaceWatcher.update(this.shellData.workspacePath);
   }
 
-  private async refreshWorkspaceEntries(): Promise<void> {
-    if (!this.shellData.workspacePath) {
-      return;
+  private refreshWorkspaceEntries(): Promise<void> {
+    this.workspaceRefreshVersion += 1;
+
+    if (this.workspaceRefreshPromise) {
+      return this.workspaceRefreshPromise;
     }
 
-    const workspaceEntries = await tryCollectWorkspaceEntries(
-      this.dependencies.fileSystem,
-      this.shellData.workspacePath,
-      {
-        respectGitIgnore: this.dependencies.getWorkspaceRespectGitIgnore(),
-        showHiddenFiles: this.dependencies.getWorkspaceShowHiddenFiles()
-      }
-    );
+    const refresh = async () => {
+      let completedVersion = 0;
 
-    this.updateShellData({
-      workspaceEntries,
-      status: "Workspace file tree updated."
+      while (completedVersion !== this.workspaceRefreshVersion) {
+        const refreshVersion = this.workspaceRefreshVersion;
+        const workspacePath = this.shellData.workspacePath;
+        completedVersion = refreshVersion;
+
+        if (!workspacePath) {
+          continue;
+        }
+
+        const workspaceEntries = await tryCollectWorkspaceEntries(
+          this.dependencies.fileSystem,
+          workspacePath,
+          {
+            respectGitIgnore: this.dependencies.getWorkspaceRespectGitIgnore(),
+            showHiddenFiles: this.dependencies.getWorkspaceShowHiddenFiles()
+          }
+        );
+
+        if (
+          refreshVersion !== this.workspaceRefreshVersion ||
+          workspacePath !== this.shellData.workspacePath
+        ) {
+          continue;
+        }
+
+        this.updateShellData({
+          workspaceEntries
+        });
+        this.emitShellSnapshot();
+      }
+    };
+    const refreshPromise = refresh().finally(() => {
+      if (this.workspaceRefreshPromise === refreshPromise) {
+        this.workspaceRefreshPromise = null;
+      }
     });
-    this.emitShellSnapshot();
+    this.workspaceRefreshPromise = refreshPromise;
+    return refreshPromise;
   }
 
   private async handleActiveFileExternalChange(
@@ -1416,7 +1483,8 @@ export class DesktopWindowSession {
     if (documentToReconcile.rawText === documentToReconcile.lastSavedText) {
       const nextSession = await createSessionForFilePath(
         this.dependencies.fileSystem,
-        documentToReconcile.location.path
+        documentToReconcile.location.path,
+        this.dependencies.analyzeMarkdownMode
       );
 
       if (!nextSession) {
@@ -1482,7 +1550,8 @@ export class DesktopWindowSession {
 
     const session = await createSessionForFilePath(
       this.dependencies.fileSystem,
-      filePath
+      filePath,
+      this.dependencies.analyzeMarkdownMode
     );
 
     if (!session) {
@@ -1538,16 +1607,6 @@ export class DesktopWindowSession {
       return;
     }
 
-    const workspaceEntries = await collectWorkspaceEntries(
-      this.dependencies.fileSystem,
-      directoryPath,
-      0,
-      {
-        respectGitIgnore: this.dependencies.getWorkspaceRespectGitIgnore(),
-        showHiddenFiles: this.dependencies.getWorkspaceShowHiddenFiles()
-      }
-    );
-
     this.closeDocumentSessions(
       this.shellData.documents.map((document) => document.id),
       "Closed documents for workspace switch."
@@ -1558,7 +1617,7 @@ export class DesktopWindowSession {
       activeTabId: null,
       documents: [],
       status: `Opened workspace ${path.basename(directoryPath)}.`,
-      workspaceEntries,
+      workspaceEntries: [],
       workspacePath: directoryPath
     });
     this.syncEditorModeForActiveDocument();
@@ -1567,6 +1626,7 @@ export class DesktopWindowSession {
     this.updateWorkspaceWatcher();
     this.persistSessionStateSoon();
     this.emitShellSnapshot();
+    await this.refreshWorkspaceEntries();
   }
 
   private async saveActiveDocument(): Promise<void> {
@@ -1725,7 +1785,8 @@ export class DesktopWindowSession {
     const nextSession =
       (await createSessionForFilePath(
         this.dependencies.fileSystem,
-        result.filePath
+        result.filePath,
+        this.dependencies.analyzeMarkdownMode
       )) ??
       createDocumentSession({
         location: fileLocation,
@@ -1807,7 +1868,8 @@ export class DesktopWindowSession {
 
     const nextSession = await createSessionForFilePath(
       this.dependencies.fileSystem,
-      targetPath
+      targetPath,
+      this.dependencies.analyzeMarkdownMode
     );
 
     if (!nextSession) {
@@ -2050,7 +2112,8 @@ export class DesktopWindowSession {
 
     const nextSession = await createSessionForFilePath(
       this.dependencies.fileSystem,
-      activeDocument.location.path
+      activeDocument.location.path,
+      this.dependencies.analyzeMarkdownMode
     );
 
     if (!nextSession) {
@@ -2286,4 +2349,59 @@ function createDocumentModeKeyFromPersistedReference(
   return documentRef.kind === "app-draft"
     ? `app-draft:${documentRef.draftId}`
     : `desktop-path:${documentRef.path}`;
+}
+
+function prioritizeActiveDocumentRef(
+  documentRefs: PersistedDocumentReference[],
+  persistedState: PersistedWindowSessionState
+): PersistedDocumentReference[] {
+  const activeKey = persistedState.activeDocumentRef
+    ? createDocumentModeKeyFromPersistedReference(
+        persistedState.activeDocumentRef
+      )
+    : persistedState.activeDocumentPath
+      ? createDocumentModeKeyFromPersistedReference({
+          kind: "desktop-path",
+          path: persistedState.activeDocumentPath
+        })
+      : null;
+
+  if (!activeKey) {
+    return documentRefs;
+  }
+
+  const activeIndex = documentRefs.findIndex(
+    (documentRef) =>
+      createDocumentModeKeyFromPersistedReference(documentRef) === activeKey
+  );
+
+  if (activeIndex <= 0) {
+    return documentRefs;
+  }
+
+  return [
+    documentRefs[activeIndex]!,
+    ...documentRefs.slice(0, activeIndex),
+    ...documentRefs.slice(activeIndex + 1)
+  ];
+}
+
+function getLoadedDocumentsInPersistedOrder(
+  documentRefs: PersistedDocumentReference[],
+  loadedDocuments: ReadonlyMap<string, DocumentSession>
+): DocumentSession[] {
+  const includedDocumentIds = new Set<string>();
+
+  return documentRefs.flatMap((documentRef) => {
+    const document = loadedDocuments.get(
+      createDocumentModeKeyFromPersistedReference(documentRef)
+    );
+
+    if (!document || includedDocumentIds.has(document.id)) {
+      return [];
+    }
+
+    includedDocumentIds.add(document.id);
+    return [document];
+  });
 }

@@ -149,8 +149,13 @@ function matchesGitIgnoreRule(
 export async function collectWorkspaceGitIgnoreRules(
   fileSystem: FileSystemAdapter<DesktopFileLocation>,
   directoryPath: string,
-  inheritedRules: WorkspaceGitIgnoreRule[]
+  inheritedRules: WorkspaceGitIgnoreRule[],
+  hasGitIgnoreFile = true
 ): Promise<WorkspaceGitIgnoreRule[]> {
+  if (!hasGitIgnoreFile) {
+    return inheritedRules;
+  }
+
   return inheritedRules.concat(
     await readGitIgnoreRules(fileSystem, directoryPath)
   );

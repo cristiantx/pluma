@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type {
   DesktopFileLocation,
@@ -105,6 +105,11 @@ describe("collectWorkspaceEntries", () => {
       {
         "/workspace": [
           {
+            kind: "file",
+            location: { kind: "desktop-path", path: "/workspace/.gitignore" },
+            name: ".gitignore"
+          },
+          {
             kind: "directory",
             location: { kind: "desktop-path", path: "/workspace/keep" },
             name: "keep"
@@ -126,6 +131,14 @@ describe("collectWorkspaceEntries", () => {
           }
         ],
         "/workspace/keep": [
+          {
+            kind: "file",
+            location: {
+              kind: "desktop-path",
+              path: "/workspace/keep/.gitignore"
+            },
+            name: ".gitignore"
+          },
           {
             kind: "file",
             location: { kind: "desktop-path", path: "/workspace/keep/A.md" },
@@ -280,6 +293,11 @@ describe("collectWorkspaceEntries", () => {
         "/workspace": [
           {
             kind: "file",
+            location: { kind: "desktop-path", path: "/workspace/.gitignore" },
+            name: ".gitignore"
+          },
+          {
+            kind: "file",
             location: { kind: "desktop-path", path: "/workspace/Notes.md" },
             name: "Notes.md"
           }
@@ -303,5 +321,78 @@ describe("collectWorkspaceEntries", () => {
         path: "/workspace/Notes.md"
       }
     ]);
+  });
+
+  it("does not probe for gitignore files absent from directory listings", async () => {
+    const readText = vi.fn(() => Promise.resolve("ignored.md\n"));
+    const fileSystem = {
+      ...createFileSystem({
+        "/workspace": [
+          {
+            kind: "file" as const,
+            location: {
+              kind: "desktop-path" as const,
+              path: "/workspace/Notes.md"
+            },
+            name: "Notes.md"
+          }
+        ]
+      }),
+      readText
+    };
+
+    await collectWorkspaceEntries(fileSystem, "/workspace", 0, {
+      respectGitIgnore: true,
+      showHiddenFiles: true
+    });
+
+    expect(readText).not.toHaveBeenCalled();
+  });
+
+  it("bounds concurrent directory reads while preserving entry order", async () => {
+    let activeReads = 0;
+    let maxActiveReads = 0;
+    const directories = Array.from({ length: 20 }, (_, index) => ({
+      kind: "directory" as const,
+      location: {
+        kind: "desktop-path" as const,
+        path: `/workspace/folder-${index}`
+      },
+      name: `folder-${index}`
+    }));
+    const fileSystem = createFileSystem({
+      "/workspace": directories,
+      ...Object.fromEntries(
+        directories.map((directory, index) => [
+          directory.location.path,
+          [
+            {
+              kind: "file" as const,
+              location: {
+                kind: "desktop-path" as const,
+                path: `${directory.location.path}/Note-${index}.md`
+              },
+              name: `Note-${index}.md`
+            }
+          ]
+        ])
+      )
+    });
+    const listDirectory = fileSystem.listDirectory.bind(fileSystem);
+    fileSystem.listDirectory = async (location) => {
+      activeReads += 1;
+      maxActiveReads = Math.max(maxActiveReads, activeReads);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      activeReads -= 1;
+      return listDirectory(location);
+    };
+
+    const entries = await collectWorkspaceEntries(fileSystem, "/workspace", 0, {
+      showHiddenFiles: true
+    });
+
+    expect(maxActiveReads).toBe(8);
+    expect(entries[0]?.path).toBe("/workspace/folder-0");
+    expect(entries.at(-1)?.path).toBe("/workspace/folder-19/Note-19.md");
   });
 });

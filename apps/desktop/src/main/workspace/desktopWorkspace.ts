@@ -2,9 +2,8 @@ import path from "node:path";
 
 import {
   createDocumentSession,
-  getMarkdownDocumentModeConstraint,
   isMarkdownFilePath,
-  markdownPipeline,
+  type DocumentModeConstraint,
   type DesktopFileLocation,
   type DocumentSession,
   type FileSystemAdapter
@@ -16,6 +15,13 @@ import {
   isWorkspaceEntryGitIgnored,
   type WorkspaceGitIgnoreRule
 } from "./workspaceGitIgnore";
+import { AsyncConcurrencyLimiter } from "../runtime/asyncConcurrency";
+
+const workspaceScanConcurrency = 8;
+
+export type MarkdownModeAnalyzer = (
+  rawText: string
+) => Promise<DocumentModeConstraint>;
 
 export function isPathInsideDirectory(
   directoryPath: string,
@@ -41,7 +47,8 @@ function toDesktopFileLocation(filePath: string): DesktopFileLocation {
 
 export async function createSessionForFilePath(
   fileSystem: FileSystemAdapter<DesktopFileLocation>,
-  filePath: string
+  filePath: string,
+  analyzeMarkdownMode: MarkdownModeAnalyzer
 ): Promise<DocumentSession | null> {
   const fileLocation = toDesktopFileLocation(filePath);
   const metadata = await fileSystem.getMetadata(fileLocation);
@@ -51,8 +58,7 @@ export async function createSessionForFilePath(
   }
 
   const rawText = await fileSystem.readText(fileLocation);
-  const analysis = markdownPipeline.analyze(markdownPipeline.parse(rawText));
-  const modeConstraint = getMarkdownDocumentModeConstraint(analysis);
+  const modeConstraint = await analyzeMarkdownMode(rawText);
 
   return createDocumentSession({
     location: fileLocation,
@@ -65,10 +71,15 @@ export async function createSessionForFilePath(
 
 export async function tryCreateSessionForFilePath(
   fileSystem: FileSystemAdapter<DesktopFileLocation>,
-  filePath: string
+  filePath: string,
+  analyzeMarkdownMode: MarkdownModeAnalyzer
 ): Promise<DocumentSession | null> {
   try {
-    return await createSessionForFilePath(fileSystem, filePath);
+    return await createSessionForFilePath(
+      fileSystem,
+      filePath,
+      analyzeMarkdownMode
+    );
   } catch {
     return null;
   }
@@ -85,11 +96,14 @@ export async function collectWorkspaceEntries(
   depth = 0,
   options: CollectWorkspaceEntriesOptions = { showHiddenFiles: true }
 ): Promise<WorkspaceTreeEntry[]> {
+  const limiter = new AsyncConcurrencyLimiter(workspaceScanConcurrency);
   return collectWorkspaceEntriesForDirectory(
     fileSystem,
     directoryPath,
     depth,
-    options
+    options,
+    [],
+    limiter
   );
 }
 
@@ -98,65 +112,81 @@ async function collectWorkspaceEntriesForDirectory(
   directoryPath: string,
   depth: number,
   options: CollectWorkspaceEntriesOptions,
-  inheritedGitIgnoreRules: WorkspaceGitIgnoreRule[] = []
+  inheritedGitIgnoreRules: WorkspaceGitIgnoreRule[],
+  limiter: AsyncConcurrencyLimiter
 ): Promise<WorkspaceTreeEntry[]> {
-  const directoryEntries = await fileSystem.listDirectory(
-    toDesktopFileLocation(directoryPath)
+  const directoryEntries = await limiter.run(() =>
+    fileSystem.listDirectory(toDesktopFileLocation(directoryPath))
   );
   const workspaceEntries: WorkspaceTreeEntry[] = [];
   const gitIgnoreRules = options.respectGitIgnore
-    ? await collectWorkspaceGitIgnoreRules(
-        fileSystem,
-        directoryPath,
-        inheritedGitIgnoreRules
+    ? await limiter.run(() =>
+        collectWorkspaceGitIgnoreRules(
+          fileSystem,
+          directoryPath,
+          inheritedGitIgnoreRules,
+          directoryEntries.some(
+            (entry) => entry.kind === "file" && entry.name === ".gitignore"
+          )
+        )
       )
     : inheritedGitIgnoreRules;
 
-  for (const directoryEntry of directoryEntries) {
-    if (
-      options.respectGitIgnore &&
-      isWorkspaceEntryGitIgnored(gitIgnoreRules, {
-        kind: directoryEntry.kind,
-        name: directoryEntry.name,
-        path: directoryEntry.location.path
-      })
-    ) {
-      continue;
-    }
+  const entryGroups = await Promise.all(
+    directoryEntries.map(async (directoryEntry) => {
+      if (
+        options.respectGitIgnore &&
+        isWorkspaceEntryGitIgnored(gitIgnoreRules, {
+          kind: directoryEntry.kind,
+          name: directoryEntry.name,
+          path: directoryEntry.location.path
+        })
+      ) {
+        return [];
+      }
 
-    if (!options.showHiddenFiles && directoryEntry.name.startsWith(".")) {
-      continue;
-    }
+      if (!options.showHiddenFiles && directoryEntry.name.startsWith(".")) {
+        return [];
+      }
 
-    if (directoryEntry.kind === "directory") {
-      const childEntries = await collectWorkspaceEntriesForDirectory(
-        fileSystem,
-        directoryEntry.location.path,
-        depth + 1,
-        options,
-        gitIgnoreRules
-      );
+      if (directoryEntry.kind === "directory") {
+        const childEntries = await collectWorkspaceEntriesForDirectory(
+          fileSystem,
+          directoryEntry.location.path,
+          depth + 1,
+          options,
+          gitIgnoreRules,
+          limiter
+        );
 
-      workspaceEntries.push({
-        depth,
-        kind: "folder",
-        name: directoryEntry.name,
-        path: directoryEntry.location.path
-      });
-      workspaceEntries.push(...childEntries);
-      continue;
-    }
+        return [
+          {
+            depth,
+            kind: "folder" as const,
+            name: directoryEntry.name,
+            path: directoryEntry.location.path
+          },
+          ...childEntries
+        ];
+      }
 
-    if (!isMarkdownFilePath(directoryEntry.location.path)) {
-      continue;
-    }
+      if (!isMarkdownFilePath(directoryEntry.location.path)) {
+        return [];
+      }
 
-    workspaceEntries.push({
-      depth,
-      kind: "file",
-      name: directoryEntry.name,
-      path: directoryEntry.location.path
-    });
+      return [
+        {
+          depth,
+          kind: "file" as const,
+          name: directoryEntry.name,
+          path: directoryEntry.location.path
+        }
+      ];
+    })
+  );
+
+  for (const entryGroup of entryGroups) {
+    workspaceEntries.push(...entryGroup);
   }
 
   return workspaceEntries;

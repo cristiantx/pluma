@@ -20,6 +20,7 @@ import type {
   FileMetadata,
   FileSystemAdapter
 } from "@pluma/core";
+import { analyzeMarkdownText } from "@pluma/core";
 
 import { DesktopWindowSession } from "../../../src/main/windows/DesktopWindowSession";
 import type { AppDraftStorage } from "../../../src/main/persistence/appDraftStorage";
@@ -83,18 +84,24 @@ function createDraftStorage(): AppDraftStorage {
 function createSession(
   files: Record<string, string>,
   options: {
+    analyzeMarkdownMode?: (rawText: string) => Promise<"none" | "source-only">;
     autosaveDelayMs?: number;
     autosaveEnabled?: boolean;
     draftStorage?: AppDraftStorage;
+    fileSystem?: FileSystemAdapter<DesktopFileLocation>;
+    waitForRendererReady?: () => Promise<void>;
   } = {}
 ) {
   const onMenuStateChange = vi.fn();
   const send = vi.fn();
   const session = new DesktopWindowSession({
+    analyzeMarkdownMode:
+      options.analyzeMarkdownMode ??
+      (async (rawText) => analyzeMarkdownText(rawText).modeConstraint),
     appDocumentsPath: "/tmp",
     autosaveDelayMs: options.autosaveDelayMs ?? 1,
     draftStorage: options.draftStorage ?? createDraftStorage(),
-    fileSystem: createFileSystem(files),
+    fileSystem: options.fileSystem ?? createFileSystem(files),
     getAutosaveEnabled: () => options.autosaveEnabled ?? false,
     getDefaultLineEnding: () => "lf",
     getOpenExportedFile: () => false,
@@ -103,6 +110,8 @@ function createSession(
     isDevelopment: false,
     onMenuStateChange,
     onPersistSessionState: vi.fn(),
+    waitForRendererReady:
+      options.waitForRendererReady ?? (() => Promise.resolve()),
     window: {
       isDestroyed: () => false,
       webContents: {
@@ -235,6 +244,95 @@ describe("DesktopWindowSession", () => {
       mode: "rich",
       type: "mode-changed"
     });
+  });
+
+  it("restores the active document before bounded background tabs", async () => {
+    let markRendererReady: () => void = () => undefined;
+    const rendererReady = new Promise<void>((resolve) => {
+      markRendererReady = resolve;
+    });
+    const pendingAnalyses: Array<() => void> = [];
+    let activeAnalyses = 0;
+    let maxActiveAnalyses = 0;
+    const analyzeMarkdownMode = vi.fn((rawText: string) => {
+      if (rawText.includes("Active")) {
+        return Promise.resolve<"none" | "source-only">("none");
+      }
+
+      activeAnalyses += 1;
+      maxActiveAnalyses = Math.max(maxActiveAnalyses, activeAnalyses);
+      return new Promise<"none" | "source-only">((resolve) => {
+        pendingAnalyses.push(() => {
+          activeAnalyses -= 1;
+          resolve("none");
+        });
+      });
+    });
+    const { send, session } = createSession(
+      {
+        "/workspace/active.md": "# Active\n",
+        "/workspace/one.md": "# One\n",
+        "/workspace/three.md": "# Three\n",
+        "/workspace/two.md": "# Two\n"
+      },
+      {
+        analyzeMarkdownMode,
+        waitForRendererReady: () => rendererReady
+      }
+    );
+    const restore = session.restorePersistedState({
+      activeDocumentPath: "/workspace/active.md",
+      documentPaths: [
+        "/workspace/one.md",
+        "/workspace/active.md",
+        "/workspace/two.md",
+        "/workspace/three.md"
+      ],
+      editorMode: "source",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+
+    await vi.waitFor(() => {
+      expect(getLastShellSnapshot(send).documents.map(({ id }) => id)).toEqual([
+        "desktop:/workspace/active.md"
+      ]);
+    });
+    expect(analyzeMarkdownMode).toHaveBeenCalledTimes(1);
+
+    markRendererReady();
+    await vi.waitFor(() => expect(pendingAnalyses).toHaveLength(2));
+    pendingAnalyses.shift()?.();
+    await vi.waitFor(() => expect(pendingAnalyses).toHaveLength(2));
+    pendingAnalyses.shift()?.();
+    pendingAnalyses.shift()?.();
+    await restore;
+
+    expect(maxActiveAnalyses).toBe(2);
+    expect(getLastShellSnapshot(send).documents.map(({ id }) => id)).toEqual([
+      "desktop:/workspace/one.md",
+      "desktop:/workspace/active.md",
+      "desktop:/workspace/two.md",
+      "desktop:/workspace/three.md"
+    ]);
+  });
+
+  it("falls back to the next readable document when the active file is gone", async () => {
+    const { session } = createSession({
+      "/workspace/readable.md": "# Readable\n"
+    });
+
+    await session.restorePersistedState({
+      activeDocumentPath: "/workspace/missing.md",
+      documentPaths: ["/workspace/missing.md", "/workspace/readable.md"],
+      editorMode: "source",
+      paneSizes: [],
+      workspacePath: null
+    });
+
+    expect(session.getPersistedState().activeDocumentPath).toBe(
+      "/workspace/readable.md"
+    );
   });
 
   it("cycles editor mode from source to rich to preview to source", async () => {
@@ -864,6 +962,75 @@ describe("DesktopWindowSession", () => {
       documentPaths: ["/workspace/notes.md"],
       workspacePath: "/workspace"
     });
+  });
+
+  it("coalesces workspace refreshes and discards stale scan results", async () => {
+    const pendingDirectoryReads: Array<
+      (
+        entries: Awaited<
+          ReturnType<FileSystemAdapter<DesktopFileLocation>["listDirectory"]>
+        >
+      ) => void
+    > = [];
+    const fileSystem: FileSystemAdapter<DesktopFileLocation> = {
+      getMetadata: () => Promise.resolve(null),
+      listDirectory: vi.fn(
+        () =>
+          new Promise((resolve) => {
+            pendingDirectoryReads.push(resolve);
+          })
+      ),
+      readText: () => Promise.resolve(""),
+      writeTextAtomic: async (location) => ({
+        kind: "success",
+        location,
+        metadata: { fileId: location.path, mtimeMs: 1, size: 1 }
+      })
+    };
+    const { session } = createSession({}, { fileSystem });
+    updateSessionShellData(session, { workspacePath: "/workspace" });
+    const refreshWorkspaceEntries = (
+      session as unknown as {
+        refreshWorkspaceEntries(): Promise<void>;
+      }
+    ).refreshWorkspaceEntries.bind(session);
+    const firstRefresh = refreshWorkspaceEntries();
+
+    await vi.waitFor(() => expect(pendingDirectoryReads).toHaveLength(1));
+    const secondRefresh = refreshWorkspaceEntries();
+    pendingDirectoryReads.shift()?.([
+      {
+        kind: "file",
+        location: {
+          kind: "desktop-path",
+          path: "/workspace/Stale.md"
+        },
+        name: "Stale.md"
+      }
+    ]);
+    await vi.waitFor(() => expect(pendingDirectoryReads).toHaveLength(1));
+    pendingDirectoryReads.shift()?.([
+      {
+        kind: "file",
+        location: {
+          kind: "desktop-path",
+          path: "/workspace/Fresh.md"
+        },
+        name: "Fresh.md"
+      }
+    ]);
+
+    await Promise.all([firstRefresh, secondRefresh]);
+
+    expect(getSessionShellData(session).workspaceEntries).toEqual([
+      {
+        depth: 0,
+        kind: "file",
+        name: "Fresh.md",
+        path: "/workspace/Fresh.md"
+      }
+    ]);
+    expect(fileSystem.listDirectory).toHaveBeenCalledTimes(2);
   });
 
   it("closes documents after discarding changes during a folder switch", async () => {
