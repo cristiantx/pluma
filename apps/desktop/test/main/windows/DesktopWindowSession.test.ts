@@ -103,7 +103,6 @@ function createSession(
     isDevelopment: false,
     onMenuStateChange,
     onPersistSessionState: vi.fn(),
-    selfWritePaths: new Set(),
     window: {
       isDestroyed: () => false,
       webContents: {
@@ -165,6 +164,27 @@ function getSessionShellData(
 describe("DesktopWindowSession", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("rejects workspace context actions for paths outside the current tree", async () => {
+    const { send, session } = createSession({
+      "/workspace/notes.md": "# Notes\n"
+    });
+
+    await session.restorePersistedState({
+      activeDocumentPath: null,
+      documentPaths: [],
+      editorMode: "source",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+
+    session.showWorkspaceContextMenu("/outside/notes.md", "file");
+
+    expect(send).toHaveBeenCalledWith("pluma:event", {
+      message: "Workspace action was ignored.",
+      type: "status"
+    });
   });
 
   it("restores and switches editor mode per document", async () => {

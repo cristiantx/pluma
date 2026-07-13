@@ -1,4 +1,5 @@
 import { net, protocol, type Session } from "electron";
+import { realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -31,17 +32,51 @@ export function registerLocalAssetProtocolScheme(): void {
 }
 
 export function registerLocalAssetProtocolHandler(
-  electronSession: Session
+  electronSession: Session,
+  getAuthorizedRoots: () => string[]
 ): void {
-  electronSession.protocol.handle(localAssetProtocolScheme, (request) => {
+  electronSession.protocol.handle(localAssetProtocolScheme, async (request) => {
     const filePath = getLocalAssetPathFromUrl(request.url);
 
-    if (!filePath || !isSupportedImagePath(filePath)) {
+    if (
+      !filePath ||
+      !isSupportedImagePath(filePath) ||
+      !(await isLocalAssetPathAuthorized(filePath, getAuthorizedRoots()))
+    ) {
       return new Response("Not found", { status: 404 });
     }
 
     return net.fetch(pathToFileURL(filePath).href);
   });
+}
+
+export async function isLocalAssetPathAuthorized(
+  filePath: string,
+  authorizedRoots: string[]
+): Promise<boolean> {
+  try {
+    const canonicalFilePath = await realpath(filePath);
+    const fileStats = await stat(canonicalFilePath);
+
+    if (!fileStats.isFile()) {
+      return false;
+    }
+
+    for (const rootPath of authorizedRoots) {
+      const canonicalRootPath = await realpath(rootPath).catch(() => null);
+
+      if (
+        canonicalRootPath &&
+        isPathWithinRoot(canonicalRootPath, canonicalFilePath)
+      ) {
+        return true;
+      }
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
 }
 
 function getLocalAssetPathFromUrl(url: string): string | null {
@@ -69,4 +104,14 @@ function getLocalAssetPathFromUrl(url: string): string | null {
 
 function isSupportedImagePath(filePath: string): boolean {
   return supportedImageExtensions.has(path.extname(filePath).toLowerCase());
+}
+
+function isPathWithinRoot(rootPath: string, filePath: string): boolean {
+  const relativePath = path.relative(rootPath, filePath);
+
+  return (
+    relativePath !== ".." &&
+    !relativePath.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relativePath)
+  );
 }

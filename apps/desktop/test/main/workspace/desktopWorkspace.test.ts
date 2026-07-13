@@ -6,7 +6,28 @@ import type {
   FileSystemEntry
 } from "@pluma/core";
 
-import { collectWorkspaceEntries } from "../../../src/main/workspace/desktopWorkspace";
+import {
+  collectWorkspaceEntries,
+  isPathInsideDirectory
+} from "../../../src/main/workspace/desktopWorkspace";
+
+describe("isPathInsideDirectory", () => {
+  it("accepts nested names that begin with two dots", () => {
+    expect(
+      isPathInsideDirectory("/workspace", "/workspace/..notes/Entry.md")
+    ).toBe(true);
+  });
+
+  it("rejects the directory itself and paths outside it", () => {
+    expect(isPathInsideDirectory("/workspace", "/workspace")).toBe(false);
+    expect(
+      isPathInsideDirectory("/workspace", "/workspace-other/Entry.md")
+    ).toBe(false);
+    expect(isPathInsideDirectory("/workspace", "/outside/Entry.md")).toBe(
+      false
+    );
+  });
+});
 
 function createFileSystem(
   entries: Record<string, FileSystemEntry<DesktopFileLocation>[]>,

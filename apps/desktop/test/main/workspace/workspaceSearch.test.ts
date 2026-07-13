@@ -161,6 +161,32 @@ describe("parseRipgrepLine", () => {
 });
 
 describe("searchMarkdownWorkspace", () => {
+  it("caps results before collecting unbounded ripgrep output", async () => {
+    const workspacePath = await mkdtemp(path.join(tmpdir(), "pluma-search-"));
+
+    try {
+      await writeFile(
+        path.join(workspacePath, "Many.md"),
+        Array.from({ length: 250 }, (_, index) => `needle ${index}`).join("\n")
+      );
+
+      await expect(
+        searchMarkdownWorkspace({
+          folderPath: null,
+          options: {
+            caseSensitive: false,
+            regexp: false,
+            wholeWord: false
+          },
+          query: "needle",
+          workspacePath
+        })
+      ).resolves.toHaveLength(200);
+    } finally {
+      await rm(workspacePath, { force: true, recursive: true });
+    }
+  });
+
   it("applies case, regex, and whole-word search modifiers", async () => {
     const workspacePath = await mkdtemp(path.join(tmpdir(), "pluma-search-"));
 

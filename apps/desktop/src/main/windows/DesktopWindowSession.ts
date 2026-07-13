@@ -55,7 +55,7 @@ import {
   createWorkspaceFileActions,
   type WorkspaceFileActions
 } from "../workspace/workspaceFileActions";
-import { searchMarkdownWorkspace } from "../workspace/workspaceSearch";
+import { WorkspaceSearchController } from "../workspace/workspaceSearch";
 import {
   exportDocument,
   type ExportDocumentResult
@@ -81,7 +81,6 @@ export type DesktopWindowSessionDependencies = {
   isDevelopment: boolean;
   onMenuStateChange: () => void;
   onPersistSessionState: () => void;
-  selfWritePaths: Set<string>;
   window: BrowserWindow;
 };
 
@@ -91,7 +90,9 @@ export class DesktopWindowSession {
   private readonly documentModes = new Map<string, EditorViewMode>();
   private readonly replacementDocumentIds = new Map<string, string>();
   private readonly saveQueues = new Map<string, Promise<boolean>>();
+  private readonly selfWritePaths = new Set<string>();
   private readonly workspaceWatcher: WorkspaceWatcher;
+  private readonly workspaceSearchController = new WorkspaceSearchController();
   private currentMode: EditorViewMode = "source";
   private shellData: DesktopShellSnapshot;
   private workspaceFileActions: WorkspaceFileActions | null = null;
@@ -141,6 +142,7 @@ export class DesktopWindowSession {
     this.autosaveScheduler.clearAll();
     this.activeFileWatcher.close();
     this.workspaceWatcher.close();
+    this.workspaceSearchController.dispose();
   }
 
   emitInitialState(): void {
@@ -180,6 +182,29 @@ export class DesktopWindowSession {
 
   getProtectedDocuments(): DocumentSession[] {
     return this.shellData.documents.filter(shouldProtectDocumentSessionClose);
+  }
+
+  getAuthorizedAssetRoots(): string[] {
+    const roots = new Set<string>();
+
+    if (this.shellData.workspacePath) {
+      roots.add(this.shellData.workspacePath);
+    }
+
+    for (const document of this.shellData.documents) {
+      if (
+        document.location.kind === "desktop-path" &&
+        (!this.shellData.workspacePath ||
+          !isPathInsideDirectory(
+            this.shellData.workspacePath,
+            document.location.path
+          ))
+      ) {
+        roots.add(path.dirname(document.location.path));
+      }
+    }
+
+    return [...roots];
   }
 
   hasActiveDocument(): boolean {
@@ -342,7 +367,7 @@ export class DesktopWindowSession {
       return [];
     }
 
-    return searchMarkdownWorkspace({
+    return this.workspaceSearchController.search({
       folderPath: typeof folderPath === "string" ? folderPath : null,
       options: {
         ...options,
@@ -549,8 +574,13 @@ export class DesktopWindowSession {
   showWorkspaceContextMenu(targetPath: unknown, kind: unknown): void {
     if (
       typeof targetPath !== "string" ||
-      (kind !== "file" && kind !== "folder")
+      (kind !== "file" && kind !== "folder") ||
+      !this.isValidWorkspaceTarget(targetPath, kind)
     ) {
+      this.emitToRenderer({
+        type: "status",
+        message: "Workspace action was ignored."
+      });
       return;
     }
 
@@ -1341,7 +1371,7 @@ export class DesktopWindowSession {
     if (
       !documentToReconcile ||
       documentToReconcile.location.kind !== "desktop-path" ||
-      this.dependencies.selfWritePaths.has(documentToReconcile.location.path)
+      this.selfWritePaths.has(documentToReconcile.location.path)
     ) {
       return;
     }
@@ -1752,8 +1782,8 @@ export class DesktopWindowSession {
         return;
       }
 
-      this.dependencies.selfWritePaths.add(document.location.path);
-      this.dependencies.selfWritePaths.add(targetPath);
+      this.selfWritePaths.add(document.location.path);
+      this.selfWritePaths.add(targetPath);
       await rename(document.location.path, targetPath);
     } catch (error) {
       this.emitToRenderer({
@@ -1765,8 +1795,8 @@ export class DesktopWindowSession {
       });
       return;
     } finally {
-      this.dependencies.selfWritePaths.delete(document.location.path);
-      this.dependencies.selfWritePaths.delete(targetPath);
+      this.selfWritePaths.delete(document.location.path);
+      this.selfWritePaths.delete(targetPath);
     }
 
     const nextSession = await createSessionForFilePath(
@@ -1933,7 +1963,7 @@ export class DesktopWindowSession {
 
     const activeDocumentPath = activeDocument.location.path;
 
-    this.dependencies.selfWritePaths.add(activeDocumentPath);
+    this.selfWritePaths.add(activeDocumentPath);
     const saveResult = await this.dependencies.fileSystem.writeTextAtomic(
       activeDocument.location,
       textToSave,
@@ -1942,7 +1972,7 @@ export class DesktopWindowSession {
       }
     );
     setTimeout(() => {
-      this.dependencies.selfWritePaths.delete(activeDocumentPath);
+      this.selfWritePaths.delete(activeDocumentPath);
     }, 150);
 
     if (saveResult.kind === "success") {
@@ -2217,10 +2247,32 @@ export class DesktopWindowSession {
         this.emitToRenderer({ type: "find-in-folder", path: folderPath }),
       persistSessionStateSoon: () => this.persistSessionStateSoon(),
       refreshWorkspaceEntries: () => this.refreshWorkspaceEntries(),
-      selfWritePaths: this.dependencies.selfWritePaths
+      selfWritePaths: this.selfWritePaths
     });
 
     return this.workspaceFileActions;
+  }
+
+  private isValidWorkspaceTarget(
+    targetPath: string,
+    kind: "file" | "folder"
+  ): boolean {
+    const workspacePath = this.shellData.workspacePath;
+
+    if (!workspacePath) {
+      return false;
+    }
+
+    if (targetPath === workspacePath) {
+      return kind === "folder";
+    }
+
+    return (
+      isPathInsideDirectory(workspacePath, targetPath) &&
+      this.shellData.workspaceEntries.some(
+        (entry) => entry.path === targetPath && entry.kind === kind
+      )
+    );
   }
 }
 

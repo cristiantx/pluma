@@ -78,7 +78,6 @@ let sessionPersistenceRun: Promise<void> | null = null;
 const fileSystem = new DesktopFileSystemAdapter();
 const sessions = new Map<number, DesktopWindowSession>();
 const windowsAllowedToClose = new Set<number>();
-const selfWritePaths = new Set<string>();
 const sessionStateFileName = "session-state.json";
 const appSettingsFileName = "settings.json";
 const autosaveDelayMs = 900;
@@ -182,6 +181,16 @@ function getOrderedSessions(): DesktopWindowSession[] {
   return [...sessions.values()].filter(
     (session) => !session.window.isDestroyed()
   );
+}
+
+function getAuthorizedLocalAssetRoots(): string[] {
+  return [
+    ...new Set(
+      getOrderedSessions().flatMap((session) =>
+        session.getAuthorizedAssetRoots()
+      )
+    )
+  ];
 }
 
 function getLatestFocusedSession(): DesktopWindowSession | null {
@@ -474,7 +483,6 @@ function createWindowDependencies(
     isDevelopment,
     onMenuStateChange: refreshApplicationMenu,
     onPersistSessionState: persistSessionStateSoon,
-    selfWritePaths,
     window
   };
 }
@@ -713,7 +721,10 @@ export function startDesktopMainProcess(
   registerDesktopIpcHandlers();
 
   app.whenReady().then(async () => {
-    registerLocalAssetProtocolHandler(session.defaultSession);
+    registerLocalAssetProtocolHandler(
+      session.defaultSession,
+      getAuthorizedLocalAssetRoots
+    );
     setApplicationIcon();
     await installDevelopmentExtensions();
     const settings = await readAppSettings(getAppSettingsPath());

@@ -30,8 +30,45 @@ export type WorkspaceSearchOptions = {
   folderPath?: string | null;
   options: WorkspaceSearchModifiers;
   query: string;
+  signal?: AbortSignal;
   workspacePath: string;
 };
+
+const maximumWorkspaceSearchMatches = 200;
+
+export class WorkspaceSearchController {
+  private abortController: AbortController | null = null;
+
+  dispose(): void {
+    this.abortController?.abort();
+    this.abortController = null;
+  }
+
+  async search(
+    options: Omit<WorkspaceSearchOptions, "signal">
+  ): Promise<WorkspaceSearchMatch[]> {
+    this.abortController?.abort();
+    const abortController = new AbortController();
+    this.abortController = abortController;
+
+    try {
+      return await searchMarkdownWorkspace({
+        ...options,
+        signal: abortController.signal
+      });
+    } catch (error) {
+      if (abortController.signal.aborted) {
+        return [];
+      }
+
+      throw error;
+    } finally {
+      if (this.abortController === abortController) {
+        this.abortController = null;
+      }
+    }
+  }
+}
 
 export async function searchMarkdownWorkspace(
   options: WorkspaceSearchOptions
@@ -48,12 +85,7 @@ export async function searchMarkdownWorkspace(
     return [];
   }
 
-  const output = await runRipgrep(query, searchRoot, options.options);
-
-  return output
-    .split("\n")
-    .flatMap((line) => parseRipgrepLine(line))
-    .slice(0, 200);
+  return runRipgrep(query, searchRoot, options.options, options.signal);
 }
 
 function getSearchRoot(options: WorkspaceSearchOptions): string | null {
@@ -70,8 +102,9 @@ function getSearchRoot(options: WorkspaceSearchOptions): string | null {
 async function runRipgrep(
   query: string,
   searchRoot: string,
-  options: WorkspaceSearchModifiers
-): Promise<string> {
+  options: WorkspaceSearchModifiers,
+  signal?: AbortSignal
+): Promise<WorkspaceSearchMatch[]> {
   const ripgrepPath = await resolveRipgrepPath();
   const args = createRipgrepArgs(query, searchRoot, options);
 
@@ -79,22 +112,71 @@ async function runRipgrep(
     const child = spawn(ripgrepPath, args, {
       cwd: path.dirname(searchRoot)
     });
-    const output: string[] = [];
+    const matches: WorkspaceSearchMatch[] = [];
     const errors: string[] = [];
+    let bufferedOutput = "";
+    let didReachLimit = false;
+    let isSettled = false;
 
-    child.stdout.setEncoding("utf8");
-    child.stderr.setEncoding("utf8");
-    child.stdout.on("data", (chunk: string) => output.push(chunk));
-    child.stderr.on("data", (chunk: string) => errors.push(chunk));
-    child.on("error", reject);
-    child.on("close", (code) => {
-      if (code === 0 || code === 1) {
-        resolve(output.join(""));
+    const settle = (callback: () => void, removeAbortListener = true): void => {
+      if (isSettled) {
         return;
       }
 
-      reject(new Error(errors.join("").trim() || "Workspace search failed."));
+      isSettled = true;
+      if (removeAbortListener) {
+        signal?.removeEventListener("abort", handleAbort);
+      }
+      callback();
+    };
+
+    const collectLine = (line: string): void => {
+      if (!line || didReachLimit) {
+        return;
+      }
+
+      const remainingCount = maximumWorkspaceSearchMatches - matches.length;
+      matches.push(...parseRipgrepLine(line).slice(0, remainingCount));
+
+      if (matches.length >= maximumWorkspaceSearchMatches) {
+        didReachLimit = true;
+        child.kill();
+      }
+    };
+
+    const handleAbort = (): void => {
+      child.kill();
+      settle(() => resolve([]), false);
+    };
+
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      bufferedOutput += chunk;
+      const lines = bufferedOutput.split("\n");
+      bufferedOutput = lines.pop() ?? "";
+      lines.forEach(collectLine);
     });
+    child.stderr.on("data", (chunk: string) => errors.push(chunk));
+    child.on("error", (error) => settle(() => reject(error)));
+    child.on("close", (code) => {
+      collectLine(bufferedOutput);
+
+      if (code === 0 || code === 1 || didReachLimit || signal?.aborted) {
+        settle(() => resolve(signal?.aborted ? [] : matches));
+        return;
+      }
+
+      settle(() =>
+        reject(new Error(errors.join("").trim() || "Workspace search failed."))
+      );
+    });
+
+    if (signal?.aborted) {
+      handleAbort();
+    } else {
+      signal?.addEventListener("abort", handleAbort, { once: true });
+    }
   });
 }
 

@@ -31,7 +31,8 @@ export function isPathInsideDirectory(
   return (
     relativePath !== "" &&
     relativePath !== "." &&
-    !relativePath.startsWith("..") &&
+    relativePath !== ".." &&
+    !relativePath.startsWith(`..${path.sep}`) &&
     !path.isAbsolute(relativePath)
   );
 }
