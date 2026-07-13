@@ -15,9 +15,8 @@ import type {
   EditorSearchStatus
 } from "./editorTypes.js";
 import {
-  projectMarkdownVisibleText,
-  sourceOffsetFromVisibleOffset,
-  visibleOffsetFromSourceOffset
+  sourceOffsetFromMarkdownVisible,
+  visibleOffsetFromMarkdownSource
 } from "./markdownVisibleTextProjection.js";
 import type { SourceSearchMatch } from "./sourceEditorTypes.js";
 import { editorSearchQueryFromCodeMirror } from "./sourceSearchQuery.js";
@@ -108,20 +107,19 @@ export function getSourceScrollAnchor(
 export function getSourceCursorAnchor(
   view: EditorView | null,
   documentId: string,
-  kind: EditorKind = "source"
+  kind: EditorKind = "source",
+  rawText = view?.state.doc.toString() ?? ""
 ): EditorCursorAnchor | null {
   if (!view) {
     return null;
   }
 
   const position = view.state.selection.main.head;
-  const projection = projectMarkdownVisibleText(view.state.doc.toString());
-
   return {
     documentId,
     kind,
     position,
-    visibleOffset: visibleOffsetFromSourceOffset(projection, position)
+    visibleOffset: visibleOffsetFromMarkdownSource(rawText, position)
   };
 }
 
@@ -136,8 +134,8 @@ export function applySourceCursorAnchor(
   const docLength = view.state.doc.length;
   const projectedPosition =
     anchor.visibleOffset !== null
-      ? sourceOffsetFromVisibleOffset(
-          projectMarkdownVisibleText(view.state.doc.toString()),
+      ? sourceOffsetFromMarkdownVisible(
+          view.state.doc.toString(),
           anchor.visibleOffset
         )
       : null;

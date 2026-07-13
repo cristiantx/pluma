@@ -12,3 +12,12 @@ Measured from a production Forge package on 2026-07-13.
 | After direct settings entry  |   418,638 |    131,210 |
 
 Run `pnpm --filter @pluma/desktop check:main-bundle` after packaging to verify that renderer-only dependencies are absent and print the current sizes.
+
+## Editor cursor mapping
+
+Median of 20 local runs against a 1 MB synthetic Markdown document, mapping a source cursor at the document midpoint.
+
+| Implementation               | Median time |
+| ---------------------------- | ----------: |
+| Full visible-text projection |     12.8 ms |
+| Streaming offset conversion  |      2.3 ms |

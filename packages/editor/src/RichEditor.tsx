@@ -77,6 +77,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
     ref
   ) {
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const editorTextRef = useRef(rawText);
     const onCursorAnchorChangeRef = useRef(onCursorAnchorChange);
     const onChangeRef = useRef(onChange);
     const onFocusRef = useRef(onFocus);
@@ -97,7 +98,12 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
         runSourceEditorCommand(viewRef.current, findPrevious, options),
       focus: () => viewRef.current?.focus(),
       getCursorAnchor: () =>
-        getSourceCursorAnchor(viewRef.current, documentId, "rich"),
+        getSourceCursorAnchor(
+          viewRef.current,
+          documentId,
+          "rich",
+          editorTextRef.current
+        ),
       getScrollAnchor: () =>
         getSourceScrollAnchor(viewRef.current, documentId, "rich"),
       getSearchStatus: () => getSourceSearchStatus(viewRef.current),
@@ -122,7 +128,6 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
     useEffect(() => {
       onChangeRef.current = onChange;
       imageBaseUrlRef.current = imageBaseUrl;
-      rawTextRef.current = rawText;
     }, [imageBaseUrl, onChange]);
 
     useEffect(() => {
@@ -155,6 +160,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
       let cancelRenderRefresh: (() => void) | null = null;
       let teardownListeners: (() => void) | null = null;
       let imageObserver: MutationObserver | null = null;
+      let cursorAnchorFrame: number | null = null;
       setLoadError(null);
 
       void Promise.all([
@@ -169,6 +175,22 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
           const plugins = createDraftlyPlugins(draftlyPlugins);
           const draftlyTheme =
             resolvedTheme === "dark" ? ThemeEnum.DARK : ThemeEnum.LIGHT;
+          editorTextRef.current = rawTextRef.current;
+          const scheduleCursorAnchor = (updatedView: EditorView) => {
+            if (cursorAnchorFrame !== null) {
+              return;
+            }
+
+            cursorAnchorFrame = window.requestAnimationFrame(() => {
+              cursorAnchorFrame = null;
+              emitRichCursorAnchor(
+                updatedView,
+                documentId,
+                editorTextRef,
+                onCursorAnchorChangeRef
+              );
+            });
+          };
           const view = new EditorView({
             doc: rawTextRef.current,
             extensions: createRichEditorExtensions(
@@ -184,15 +206,14 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
                 })
               ],
               (nextText) => {
+                if (editorTextRef.current === nextText) {
+                  return;
+                }
+
+                editorTextRef.current = nextText;
                 onChangeRef.current(nextText);
               },
-              (updatedView) => {
-                emitRichCursorAnchor(
-                  updatedView,
-                  documentId,
-                  onCursorAnchorChangeRef
-                );
-              }
+              scheduleCursorAnchor
             ),
             parent
           });
@@ -208,10 +229,7 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
 
           const handleFocusIn = () => {
             onFocusRef.current?.();
-            emitRichCursorAnchor(view, documentId, onCursorAnchorChangeRef);
-          };
-          const handleSelectionChange = () => {
-            emitRichCursorAnchor(view, documentId, onCursorAnchorChangeRef);
+            scheduleCursorAnchor(view);
           };
           const handleScroll = () => {
             const anchor = getSourceScrollAnchor(view, documentId, "rich");
@@ -237,9 +255,6 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
           };
 
           view.dom.addEventListener("focusin", handleFocusIn);
-          view.dom.addEventListener("focusout", handleSelectionChange);
-          view.dom.addEventListener("keyup", handleSelectionChange);
-          view.dom.addEventListener("mouseup", handleSelectionChange);
           view.dom.addEventListener("click", handleClick, { capture: true });
           view.scrollDOM.addEventListener("scroll", handleScroll, {
             passive: true
@@ -261,9 +276,6 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
 
           teardownListeners = () => {
             view.dom.removeEventListener("focusin", handleFocusIn);
-            view.dom.removeEventListener("focusout", handleSelectionChange);
-            view.dom.removeEventListener("keyup", handleSelectionChange);
-            view.dom.removeEventListener("mouseup", handleSelectionChange);
             view.dom.removeEventListener("click", handleClick, {
               capture: true
             });
@@ -287,6 +299,9 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
         const view = initializedView ?? viewRef.current;
 
         if (view) {
+          if (cursorAnchorFrame !== null) {
+            window.cancelAnimationFrame(cursorAnchorFrame);
+          }
           imageObserver?.disconnect();
           cancelRenderRefresh?.();
           teardownListeners?.();
@@ -314,10 +329,11 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
     useEffect(() => {
       const view = viewRef.current;
 
-      if (!view || view.state.doc.toString() === rawText) {
+      if (!view || editorTextRef.current === rawText) {
         return;
       }
 
+      editorTextRef.current = rawText;
       view.dispatch({
         changes: {
           from: 0,
@@ -394,9 +410,15 @@ function createRichEditorExtensions(
 function emitRichCursorAnchor(
   view: EditorView,
   documentId: string,
+  rawTextRef: RefObject<string>,
   callbackRef: RefObject<((anchor: EditorCursorAnchor) => void) | undefined>
 ): void {
-  const anchor = getSourceCursorAnchor(view, documentId, "rich");
+  const anchor = getSourceCursorAnchor(
+    view,
+    documentId,
+    "rich",
+    rawTextRef.current
+  );
 
   if (anchor) {
     callbackRef.current?.(anchor);

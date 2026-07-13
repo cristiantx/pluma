@@ -9,23 +9,42 @@ import {
 } from "@codemirror/view";
 
 import { findTextMatches } from "./editorSearch.js";
+import type { TextSearchMatch } from "./editorSearch.js";
+import type { EditorSearchQuery } from "./editorTypes.js";
 import { editorSearchQueryFromCodeMirror } from "./sourceSearchQuery.js";
 
 export const sourceSearchDecorations = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
+    matchCache: SourceSearchMatchCache;
 
     constructor(view: EditorView) {
-      this.decorations = createSourceSearchDecorations(view.state);
+      this.matchCache = updateSourceSearchMatchCache(
+        null,
+        editorSearchQueryFromCodeMirror(getSearchQuery(view.state)),
+        true,
+        () => view.state.doc.toString()
+      );
+      this.decorations = createSourceSearchDecorations(
+        view.state,
+        this.matchCache.matches
+      );
     }
 
     update(update: ViewUpdate): void {
-      if (
-        update.docChanged ||
-        update.selectionSet ||
-        update.transactions.length > 0
-      ) {
-        this.decorations = createSourceSearchDecorations(update.state);
+      const previousCache = this.matchCache;
+      this.matchCache = updateSourceSearchMatchCache(
+        previousCache,
+        editorSearchQueryFromCodeMirror(getSearchQuery(update.state)),
+        update.docChanged,
+        () => update.state.doc.toString()
+      );
+
+      if (this.matchCache !== previousCache || update.selectionSet) {
+        this.decorations = createSourceSearchDecorations(
+          update.state,
+          this.matchCache.matches
+        );
       }
     }
   },
@@ -34,12 +53,59 @@ export const sourceSearchDecorations = ViewPlugin.fromClass(
   }
 );
 
-function createSourceSearchDecorations(state: EditorState): DecorationSet {
-  const query = editorSearchQueryFromCodeMirror(getSearchQuery(state));
-  const result = findTextMatches(state.doc.toString(), query);
+export type SourceSearchMatchCache = {
+  matches: readonly TextSearchMatch[];
+  query: EditorSearchQuery;
+};
+
+export function updateSourceSearchMatchCache(
+  cache: SourceSearchMatchCache | null,
+  query: EditorSearchQuery,
+  documentChanged: boolean,
+  readText: () => string
+): SourceSearchMatchCache {
+  if (!query.search) {
+    if (cache && areEditorSearchQueriesEqual(cache.query, query)) {
+      return cache;
+    }
+
+    return { matches: [], query };
+  }
+
+  if (
+    cache &&
+    !documentChanged &&
+    areEditorSearchQueriesEqual(cache.query, query)
+  ) {
+    return cache;
+  }
+
+  return {
+    matches: findTextMatches(readText(), query).matches,
+    query
+  };
+}
+
+function areEditorSearchQueriesEqual(
+  left: EditorSearchQuery,
+  right: EditorSearchQuery
+): boolean {
+  return (
+    left.caseSensitive === right.caseSensitive &&
+    left.regexp === right.regexp &&
+    left.replace === right.replace &&
+    left.search === right.search &&
+    left.wholeWord === right.wholeWord
+  );
+}
+
+function createSourceSearchDecorations(
+  state: EditorState,
+  matches: readonly TextSearchMatch[]
+): DecorationSet {
   const selectionFrom = state.selection.main.from;
   const selectionTo = state.selection.main.to;
-  const decorations = result.matches.map((match) =>
+  const decorations = matches.map((match) =>
     Decoration.mark({
       class:
         match.from === selectionFrom && match.to === selectionTo

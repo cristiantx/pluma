@@ -76,6 +76,7 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
     ref
   ) {
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const editorTextRef = useRef(rawText);
     const onCursorAnchorChangeRef = useRef(onCursorAnchorChange);
     const onChangeRef = useRef(onChange);
     const onFocusRef = useRef(onFocus);
@@ -90,7 +91,13 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
       findPrevious: (options) =>
         runSourceEditorCommand(viewRef.current, findPrevious, options),
       focus: () => viewRef.current?.focus(),
-      getCursorAnchor: () => getSourceCursorAnchor(viewRef.current, documentId),
+      getCursorAnchor: () =>
+        getSourceCursorAnchor(
+          viewRef.current,
+          documentId,
+          "source",
+          editorTextRef.current
+        ),
       getScrollAnchor: () => getSourceScrollAnchor(viewRef.current, documentId),
       getSearchStatus: () => getSourceSearchStatus(viewRef.current),
       applyCursorAnchor: (anchor) =>
@@ -129,6 +136,24 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
         return;
       }
 
+      let cursorAnchorFrame: number | null = null;
+      editorTextRef.current = rawText;
+
+      const scheduleCursorAnchor = (updatedView: EditorView) => {
+        if (cursorAnchorFrame !== null) {
+          return;
+        }
+
+        cursorAnchorFrame = window.requestAnimationFrame(() => {
+          cursorAnchorFrame = null;
+          emitSourceCursorAnchor(
+            updatedView,
+            documentId,
+            editorTextRef,
+            onCursorAnchorChangeRef
+          );
+        });
+      };
       const view = new EditorView({
         doc: rawText,
         extensions: createSourceEditorExtensions(
@@ -138,15 +163,14 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
             wordWrap: sourceWordWrap
           },
           (nextText) => {
+            if (editorTextRef.current === nextText) {
+              return;
+            }
+
+            editorTextRef.current = nextText;
             onChangeRef.current(nextText);
           },
-          (updatedView) => {
-            emitSourceCursorAnchor(
-              updatedView,
-              documentId,
-              onCursorAnchorChangeRef
-            );
-          }
+          scheduleCursorAnchor
         ),
         parent
       });
@@ -157,10 +181,7 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
 
       const handleFocusIn = () => {
         onFocusRef.current?.();
-        emitSourceCursorAnchor(view, documentId, onCursorAnchorChangeRef);
-      };
-      const handleSelectionChange = () => {
-        emitSourceCursorAnchor(view, documentId, onCursorAnchorChangeRef);
+        scheduleCursorAnchor(view);
       };
       const handleScroll = () => {
         const anchor = getSourceScrollAnchor(view, documentId);
@@ -171,9 +192,6 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
       };
 
       view.dom.addEventListener("focusin", handleFocusIn);
-      view.dom.addEventListener("focusout", handleSelectionChange);
-      view.dom.addEventListener("keyup", handleSelectionChange);
-      view.dom.addEventListener("mouseup", handleSelectionChange);
       view.scrollDOM.addEventListener("scroll", handleScroll, {
         passive: true
       });
@@ -184,10 +202,10 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
 
       return () => {
         view.dom.removeEventListener("focusin", handleFocusIn);
-        view.dom.removeEventListener("focusout", handleSelectionChange);
-        view.dom.removeEventListener("keyup", handleSelectionChange);
-        view.dom.removeEventListener("mouseup", handleSelectionChange);
         view.scrollDOM.removeEventListener("scroll", handleScroll);
+        if (cursorAnchorFrame !== null) {
+          window.cancelAnimationFrame(cursorAnchorFrame);
+        }
         viewRef.current = null;
         view.destroy();
       };
@@ -207,10 +225,11 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
     useEffect(() => {
       const view = viewRef.current;
 
-      if (!view || view.state.doc.toString() === rawText) {
+      if (!view || editorTextRef.current === rawText) {
         return;
       }
 
+      editorTextRef.current = rawText;
       view.dispatch({
         changes: {
           from: 0,
@@ -246,9 +265,15 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
 function emitSourceCursorAnchor(
   view: EditorView,
   documentId: string,
+  rawTextRef: RefObject<string>,
   callbackRef: RefObject<((anchor: EditorCursorAnchor) => void) | undefined>
 ): void {
-  const anchor = getSourceCursorAnchor(view, documentId);
+  const anchor = getSourceCursorAnchor(
+    view,
+    documentId,
+    "source",
+    rawTextRef.current
+  );
 
   if (anchor) {
     callbackRef.current?.(anchor);

@@ -18,29 +18,106 @@ export type PreviewRenderResult = {
   html: string;
 };
 
+type PreviewRuntime = {
+  ThemeEnum: typeof DraftlyEditor.ThemeEnum;
+  generateCSS: typeof DraftlyPreview.generateCSS;
+  preview: typeof DraftlyPreview.preview;
+};
+
+const pluginCache = new WeakMap<
+  DraftlyPluginsModule,
+  DraftlyPluginInstance[]
+>();
+const cssCache = new WeakMap<DraftlyPluginsModule, Map<string, string>>();
+let previewRuntimePromise: Promise<PreviewRuntime> | null = null;
+let defaultPluginsPromise: Promise<DraftlyPluginsModule> | null = null;
+
 export async function renderPreviewContent(
   { rawText, resolvedTheme }: PreviewRenderOptions,
   draftlyPluginsModule?: DraftlyPluginsModule
 ): Promise<PreviewRenderResult> {
-  const [{ ThemeEnum }, draftlyPlugins, { generateCSS, preview }] =
-    await Promise.all([
-      import("draftly/editor") as Promise<typeof DraftlyEditor>,
-      draftlyPluginsModule
-        ? Promise.resolve(draftlyPluginsModule)
-        : (import("draftly/plugins") as Promise<DraftlyPluginsModule>),
-      import("draftly/preview") as Promise<typeof DraftlyPreview>
-    ]);
-  const plugins = createDraftlyPlugins(draftlyPlugins).map(
-    ensurePreviewPluginMethods
-  );
-  const theme = resolvedTheme === "dark" ? ThemeEnum.DARK : ThemeEnum.LIGHT;
+  const [runtime, draftlyPlugins] = await Promise.all([
+    loadPreviewRuntime(),
+    draftlyPluginsModule
+      ? Promise.resolve(draftlyPluginsModule)
+      : loadDefaultPlugins()
+  ]);
+  const plugins = getPreviewPlugins(draftlyPlugins);
+  const theme =
+    resolvedTheme === "dark" ? runtime.ThemeEnum.DARK : runtime.ThemeEnum.LIGHT;
 
-  const html = await preview(rawText, {
+  const html = await runtime.preview(rawText, {
     plugins,
     theme,
     wrapperClass: plumaPreviewContentClassName,
     wrapperTag: "article"
   });
+
+  const css = getPreviewCss(
+    draftlyPlugins,
+    resolvedTheme,
+    runtime.generateCSS,
+    plugins,
+    theme
+  );
+
+  return { css, html };
+}
+
+function loadPreviewRuntime(): Promise<PreviewRuntime> {
+  previewRuntimePromise ??= Promise.all([
+    import("draftly/editor") as Promise<typeof DraftlyEditor>,
+    import("draftly/preview") as Promise<typeof DraftlyPreview>
+  ]).then(([{ ThemeEnum }, { generateCSS, preview }]) => ({
+    ThemeEnum,
+    generateCSS,
+    preview
+  }));
+
+  return previewRuntimePromise;
+}
+
+function loadDefaultPlugins(): Promise<DraftlyPluginsModule> {
+  defaultPluginsPromise ??=
+    import("draftly/plugins") as Promise<DraftlyPluginsModule>;
+  return defaultPluginsPromise;
+}
+
+function getPreviewPlugins(
+  draftlyPlugins: DraftlyPluginsModule
+): DraftlyPluginInstance[] {
+  const cached = pluginCache.get(draftlyPlugins);
+
+  if (cached) {
+    return cached;
+  }
+
+  const plugins = createDraftlyPlugins(draftlyPlugins).map(
+    ensurePreviewPluginMethods
+  );
+  pluginCache.set(draftlyPlugins, plugins);
+  return plugins;
+}
+
+function getPreviewCss(
+  draftlyPlugins: DraftlyPluginsModule,
+  resolvedTheme: PreviewRenderOptions["resolvedTheme"],
+  generateCSS: typeof DraftlyPreview.generateCSS,
+  plugins: DraftlyPluginInstance[],
+  theme: DraftlyEditor.ThemeEnum
+): string {
+  let themeCache = cssCache.get(draftlyPlugins);
+
+  if (!themeCache) {
+    themeCache = new Map();
+    cssCache.set(draftlyPlugins, themeCache);
+  }
+
+  const cached = themeCache.get(resolvedTheme);
+
+  if (cached) {
+    return cached;
+  }
 
   const css = [
     generateCSS({
@@ -49,10 +126,10 @@ export async function renderPreviewContent(
       theme,
       wrapperClass: plumaPreviewContentClassName
     }),
-    createPreviewViewCss()
+    previewViewCss
   ].join("\n\n");
-
-  return { css, html };
+  themeCache.set(resolvedTheme, css);
+  return css;
 }
 
 type DraftlyPluginInstance = ReturnType<typeof createDraftlyPlugins>[number];
@@ -81,6 +158,8 @@ export function resolvePreviewImageUrls(
 }
 
 type DraftlyPluginsModule = typeof DraftlyPlugins;
+
+const previewViewCss = createPreviewViewCss();
 
 function createPreviewViewCss(): string {
   return `.${plumaPreviewClassName} {
