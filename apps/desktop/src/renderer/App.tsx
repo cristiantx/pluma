@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { PlumaShell, initialPlumaStoreState, usePlumaStore } from "@pluma/ui";
-import { getShellSnapshot } from "./shellView";
+import {
+  getExplorerNodesFromEntries,
+  getShellSnapshot,
+  getWorkspaceLabelFromState
+} from "./shellView";
 import { createPlumaCommandHandlers } from "./plumaCommandHandlers";
 
 const errorStatusPattern =
@@ -74,6 +78,33 @@ export function App() {
 
     return window.pluma.onEvent((event) => {
       switch (event.type) {
+        case "active-document-changed":
+          usePlumaStore
+            .getState()
+            .hydrateActiveDocumentChange(
+              event.activeDocumentId,
+              event.activeTabId,
+              event.editorViewMode
+            );
+          return;
+        case "document-closed":
+          usePlumaStore.getState().hydrateDocumentClosed(event.documentId);
+          return;
+        case "document-opened":
+          usePlumaStore
+            .getState()
+            .hydrateDocumentOpened(event.document, event.index, event.viewMode);
+          return;
+        case "document-patched":
+          usePlumaStore
+            .getState()
+            .hydrateDocumentPatch(event.documentId, event.patch);
+          return;
+        case "document-view-mode-changed":
+          usePlumaStore
+            .getState()
+            .hydrateDocumentViewMode(event.documentId, event.viewMode);
+          return;
         case "editor-command":
           window.dispatchEvent(
             new CustomEvent("pluma:editor-command", {
@@ -108,6 +139,23 @@ export function App() {
           if (errorStatusPattern.test(event.message)) {
             pushNotification(event.message, "error");
           }
+          return;
+        case "workspace-changed": {
+          const store = usePlumaStore.getState();
+          const workspacePath = event.workspacePath ?? "~/Documents/Pluma Docs";
+          store.hydrateDesktopWorkspace({
+            explorerNodes: getExplorerNodesFromEntries(
+              event.workspaceEntries,
+              store.document.activeDocument
+            ),
+            hasWorkspace: Boolean(event.workspacePath),
+            workspaceLabel: getWorkspaceLabelFromState(
+              event.workspacePath,
+              store.document.documents
+            ),
+            workspacePath
+          });
+        }
       }
     });
   }, [

@@ -48,8 +48,7 @@ export function hydratePlumaShellSnapshot(
       paneSizes: snapshot.paneSizes
     },
     status: {
-      notifications: state.status.notifications,
-      statusMetrics: snapshot.statusMetrics
+      notifications: state.status.notifications
     },
     tabs: {
       activeTabId,

@@ -26,6 +26,8 @@ import { DesktopWindowSession } from "../../../src/main/windows/DesktopWindowSes
 import type { AppDraftStorage } from "../../../src/main/persistence/appDraftStorage";
 import type { DesktopShellSnapshot } from "../../../src/shared/shellState";
 
+const sessionBySend = new WeakMap<object, DesktopWindowSession>();
+
 function createFileSystem(
   files: Record<string, string>
 ): FileSystemAdapter<DesktopFileLocation> {
@@ -119,6 +121,8 @@ function createSession(
       }
     } as never
   });
+  sessionBySend.set(send, session);
+  session.emitInitialState();
 
   return { onMenuStateChange, send, session };
 }
@@ -134,6 +138,16 @@ function getMetadata(filePath: string, text: string): FileMetadata {
 function getLastShellSnapshot(
   send: ReturnType<typeof vi.fn>
 ): DesktopShellSnapshot {
+  const session = sessionBySend.get(send);
+
+  if (session) {
+    return (
+      session as unknown as {
+        getShellSnapshot(): DesktopShellSnapshot;
+      }
+    ).getShellSnapshot();
+  }
+
   const shellSnapshotCall = [...send.mock.calls]
     .reverse()
     .find(([channel, event]) => {
@@ -173,6 +187,33 @@ function getSessionShellData(
 describe("DesktopWindowSession", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("uses a full snapshot only for bootstrap and deltas afterward", async () => {
+    const { send, session } = createSession({
+      "/workspace/notes.md": "# Notes\n"
+    });
+
+    await session.restorePersistedState({
+      activeDocumentPath: "/workspace/notes.md",
+      documentPaths: ["/workspace/notes.md"],
+      editorMode: "source",
+      paneSizes: [],
+      workspacePath: "/workspace"
+    });
+
+    const rendererEvents = send.mock.calls
+      .filter(([channel]) => channel === "pluma:event")
+      .map(([, event]) => event);
+    expect(
+      rendererEvents.filter((event) => event.type === "shell-snapshot")
+    ).toHaveLength(1);
+    expect(rendererEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: "document-opened" }),
+        expect.objectContaining({ type: "workspace-changed" })
+      ])
+    );
   });
 
   it("rejects workspace context actions for paths outside the current tree", async () => {
@@ -892,21 +933,15 @@ describe("DesktopWindowSession", () => {
 
     session.convertActiveDocumentLineEndings("crlf");
 
-    expect(send).toHaveBeenLastCalledWith(
-      "pluma:event",
-      expect.objectContaining({
-        snapshot: expect.objectContaining({
-          documents: [
-            expect.objectContaining({
-              lineEnding: "crlf",
-              rawText: "# Notes\r\nBody\r\n",
-              saveState: "dirty"
-            })
-          ]
-        }),
-        type: "shell-snapshot"
-      })
-    );
+    expect(send).toHaveBeenLastCalledWith("pluma:event", {
+      documentId: "desktop:/workspace/notes.md",
+      patch: expect.objectContaining({
+        lineEnding: "crlf",
+        rawText: "# Notes\r\nBody\r\n",
+        saveState: "dirty"
+      }),
+      type: "document-patched"
+    });
   });
 
   it("does not treat the remembered document as active when settings is selected", async () => {

@@ -9,8 +9,3 @@ export type ExplorerNode = {
   label: string;
   location?: FileLocation;
 };
-
-export type StatusMetric = {
-  label: string;
-  value: string;
-};

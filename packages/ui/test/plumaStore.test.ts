@@ -83,10 +83,6 @@ const baseSnapshot: PlumaShellSnapshot = {
   isBridgeAvailable: true,
   isDevelopment: false,
   paneSizes: [210, 770],
-  statusMetrics: [
-    { label: "Words", value: "312" },
-    { label: "Lines", value: "28" }
-  ],
   tabs: baseTabs,
   workspaceLabel: "PLUMA DOCS",
   workspacePath: "/Users/cristianc/Documents/Pluma Docs"
@@ -100,6 +96,71 @@ beforeEach(() => {
 });
 
 describe("usePlumaStore", () => {
+  it("hydrates focused desktop document deltas without replacing the shell", () => {
+    usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
+    const opened = createDocumentSession({
+      location: {
+        kind: "desktop-path",
+        path: "/Users/cristianc/Documents/Pluma Docs/New.md"
+      },
+      metadata: { fileId: "3", mtimeMs: 1, size: 6 },
+      rawText: "# New\n"
+    });
+
+    usePlumaStore.getState().hydrateDocumentOpened(opened, 1, "preview");
+    usePlumaStore.getState().hydrateDocumentPatch(opened.id, {
+      rawText: "# Edited\n",
+      saveState: "dirty"
+    });
+    usePlumaStore
+      .getState()
+      .hydrateActiveDocumentChange(opened.id, opened.id, "preview");
+
+    const updated = usePlumaStore.getState();
+    expect(updated.document.documents.map(({ id }) => id)).toEqual([
+      baseDocuments[0]?.id,
+      opened.id,
+      baseDocuments[1]?.id
+    ]);
+    expect(updated.document.activeDocument).toMatchObject({
+      id: opened.id,
+      rawText: "# Edited\n",
+      saveState: "dirty"
+    });
+    expect(updated.layout.documentViewModes[opened.id]).toBe("preview");
+    expect(updated.tabs.tabs.find((tab) => tab.id === opened.id)).toMatchObject(
+      { isDirty: true }
+    );
+
+    usePlumaStore.getState().hydrateDocumentClosed(opened.id);
+    expect(
+      usePlumaStore
+        .getState()
+        .document.documents.some((document) => document.id === opened.id)
+    ).toBe(false);
+  });
+
+  it("hydrates workspace deltas while preserving unrelated state", () => {
+    usePlumaStore.getState().hydrateShellSnapshot(baseSnapshot);
+    usePlumaStore.getState().setWorkspaceSearchQuery("existing query");
+    const settingsBefore = usePlumaStore.getState().settings;
+
+    usePlumaStore.getState().hydrateDesktopWorkspace({
+      explorerNodes: [
+        { depth: 0, id: "/new/Note.md", kind: "file", label: "Note.md" }
+      ],
+      hasWorkspace: true,
+      workspaceLabel: "new",
+      workspacePath: "/new"
+    });
+
+    const state = usePlumaStore.getState();
+    expect(state.workspace.workspacePath).toBe("/new");
+    expect(state.workspace.explorerNodes).toHaveLength(1);
+    expect(state.workspace.searchQuery).toBe("");
+    expect(state.settings).toBe(settingsBefore);
+  });
+
   it("deduplicates and dismisses transient notifications", () => {
     const store = usePlumaStore.getState();
 
@@ -145,7 +206,6 @@ describe("usePlumaStore", () => {
     );
     expect(state.layout.editorViewMode).toBe("source");
     expect(state.layout.isSidebarVisible).toBe(true);
-    expect(state.status.statusMetrics[0]?.value).toBe("312");
   });
 
   it("replaces tabs when a new shell snapshot arrives", () => {

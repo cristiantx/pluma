@@ -1,14 +1,5 @@
-import {
-  formatLineEndingLabel,
-  getFileLocationName,
-  type DocumentSession
-} from "@pluma/core";
-import type {
-  EditorTab,
-  ExplorerNode,
-  PlumaShellSnapshot,
-  StatusMetric
-} from "@pluma/ui";
+import { getFileLocationName, type DocumentSession } from "@pluma/core";
+import type { EditorTab, ExplorerNode, PlumaShellSnapshot } from "@pluma/ui";
 
 import type { DesktopShellSnapshot } from "../shared/shellState";
 
@@ -29,51 +20,34 @@ export function extractLeafName(path: string | null): string | null {
 }
 
 export function getWorkspaceLabel(state: DesktopShellSnapshot): string {
-  const firstDocument = getDocuments(state)[0] ?? null;
+  return getWorkspaceLabelFromState(state.workspacePath, getDocuments(state));
+}
+
+export function getWorkspaceLabelFromState(
+  workspacePath: string | null,
+  documents: DocumentSession[]
+): string {
+  const firstDocument = documents[0] ?? null;
 
   return (
-    extractLeafName(state.workspacePath) ??
+    extractLeafName(workspacePath) ??
     (firstDocument ? getFileLocationName(firstDocument.location) : null) ??
     "No workspace open"
   );
 }
 
-export function getStatusMetrics(state: DesktopShellSnapshot): StatusMetric[] {
-  const activeDocument = getActiveDocument(state);
-  const sourceText = activeDocument?.rawText ?? "";
-  const lines = sourceText ? sourceText.split(/\r?\n/).length : 0;
-  const words = sourceText.trim() ? sourceText.trim().split(/\s+/).length : 0;
-
-  return [
-    {
-      label: "Words",
-      value: activeDocument ? String(words) : "--"
-    },
-    {
-      label: "Lines",
-      value: activeDocument ? String(lines) : "--"
-    },
-    {
-      label: "Mode",
-      value: toModeMetricValue(state.editorViewMode)
-    },
-    {
-      label: "Line",
-      value: activeDocument
-        ? formatLineEndingLabel(activeDocument.lineEnding)
-        : "--"
-    },
-    {
-      label: "Save",
-      value: activeDocument ? toSaveMetricValue(activeDocument) : "Idle shell"
-    }
-  ];
+export function getExplorerNodes(state: DesktopShellSnapshot): ExplorerNode[] {
+  return getExplorerNodesFromEntries(
+    state.workspaceEntries,
+    getActiveDocument(state)
+  );
 }
 
-export function getExplorerNodes(state: DesktopShellSnapshot): ExplorerNode[] {
-  const activeDocument = getActiveDocument(state);
-
-  return state.workspaceEntries.map((entry) => ({
+export function getExplorerNodesFromEntries(
+  workspaceEntries: DesktopShellSnapshot["workspaceEntries"],
+  activeDocument: DocumentSession | null
+): ExplorerNode[] {
+  return workspaceEntries.map((entry) => ({
     depth: entry.depth,
     id: entry.path,
     isActive:
@@ -129,43 +103,8 @@ export function getShellSnapshot(
     isDevelopment: shellState.isDevelopment,
     editorViewMode: shellState.editorViewMode,
     paneSizes: shellState.paneSizes,
-    statusMetrics: getStatusMetrics(shellState),
     tabs: getOpenTabs(shellState),
     workspaceLabel: getWorkspaceLabel(shellState),
     workspacePath: shellState.workspacePath ?? "~/Documents/Pluma Docs"
   };
-}
-
-function toModeMetricValue(
-  mode: DesktopShellSnapshot["editorViewMode"]
-): string {
-  switch (mode) {
-    case "preview":
-      return "Preview";
-    case "rich":
-      return "Rich";
-    case "source":
-      return "Source";
-  }
-}
-
-function toSaveMetricValue(document: DocumentSession): string {
-  if (document.location.kind === "app-draft") {
-    return document.saveState === "dirty" ? "Draft edited" : "Draft";
-  }
-
-  switch (document.saveState) {
-    case "idle":
-      return "Saved";
-    case "dirty":
-      return "Dirty";
-    case "error":
-      return "Save error";
-    case "external-change":
-      return "Changed on disk";
-    case "saving":
-      return "Saving";
-    case "conflict":
-      return "Conflict";
-  }
 }

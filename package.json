@@ -9,6 +9,7 @@
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "lint:markdown": "markdownlint-cli2",
+    "perf": "pnpm build && node scripts/performance/runBenchmarks.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "desktop:dev": "pnpm --filter @pluma/desktop dev",

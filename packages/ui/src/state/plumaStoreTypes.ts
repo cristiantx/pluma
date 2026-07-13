@@ -2,7 +2,7 @@ import type { DocumentSession } from "@pluma/core";
 
 import type { PlumaTab } from "../adapters/tabModel.js";
 import type { AppSettings } from "../settings.js";
-import type { ExplorerNode, StatusMetric } from "../shell/types.js";
+import type { ExplorerNode } from "../shell/types.js";
 import type { ResolvedTheme, ThemePreference } from "../theme.js";
 
 export type PlumaCommandHandlers = {
@@ -76,9 +76,17 @@ export type DocumentSlice = {
   documents: DocumentSession[];
 };
 
+export type DocumentSessionPatch = Partial<Omit<DocumentSession, "id">>;
+
+export type DesktopWorkspaceHydration = {
+  explorerNodes: ExplorerNode[];
+  hasWorkspace: boolean;
+  workspaceLabel: string;
+  workspacePath: string;
+};
+
 export type StatusSlice = {
   notifications: PlumaNotification[];
-  statusMetrics: StatusMetric[];
 };
 
 export type NotificationTone = "error" | "info" | "success";
@@ -114,7 +122,6 @@ export type PlumaShellSnapshot = {
   isDevelopment: boolean;
   editorViewMode: EditorViewMode;
   paneSizes: number[];
-  statusMetrics: StatusMetric[];
   tabs: PlumaTab[];
   workspaceLabel: string;
   workspacePath: string;
@@ -137,6 +144,23 @@ export type PlumaStoreActions = {
   closeSettingsTab: () => void;
   dismissNotification: (notificationId: string) => void;
   hydrateEditorViewMode: (mode: EditorViewMode) => void;
+  hydrateActiveDocumentChange: (
+    activeDocumentId: string | null,
+    activeTabId: string | null,
+    mode: EditorViewMode
+  ) => void;
+  hydrateDesktopWorkspace: (workspace: DesktopWorkspaceHydration) => void;
+  hydrateDocumentClosed: (documentId: string) => void;
+  hydrateDocumentOpened: (
+    document: DocumentSession,
+    index: number,
+    viewMode: EditorViewMode
+  ) => void;
+  hydrateDocumentPatch: (
+    documentId: string,
+    patch: DocumentSessionPatch
+  ) => void;
+  hydrateDocumentViewMode: (documentId: string, mode: EditorViewMode) => void;
   hydrateShellSnapshot: (snapshot: PlumaShellSnapshot) => void;
   hydrateSettings: (settings: AppSettings) => void;
   reorderTabs: (tabs: PlumaTab[]) => void;

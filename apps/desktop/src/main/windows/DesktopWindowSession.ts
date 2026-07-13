@@ -66,6 +66,7 @@ import {
 import type { AppSettings } from "@pluma/ui/settings";
 import type { ExportDocumentFormat } from "../export/exportDocumentHtml";
 import { markDocumentAfterSuccessfulWrite } from "./documentSaveState";
+import { getShellStateEvents } from "./shellEventDiff";
 import { getPersistedDocumentReference } from "./persistedDocumentRefs";
 
 const restoredDocumentConcurrency = 2;
@@ -99,6 +100,7 @@ export class DesktopWindowSession {
   private readonly workspaceSearchController = new WorkspaceSearchController();
   private currentMode: EditorViewMode = "source";
   private shellData: DesktopShellSnapshot;
+  private lastEmittedShellData: DesktopShellSnapshot | null = null;
   private workspaceFileActions: WorkspaceFileActions | null = null;
   private workspaceRefreshPromise: Promise<void> | null = null;
   private workspaceRefreshVersion = 0;
@@ -158,7 +160,9 @@ export class DesktopWindowSession {
       status:
         "Desktop shell ready. Workspace loading and document sessions are available."
     });
-    this.emitShellSnapshot();
+    const snapshot = this.getShellSnapshot();
+    this.lastEmittedShellData = snapshot;
+    this.emitToRenderer({ type: "shell-snapshot", snapshot });
   }
 
   getPersistedState(): PersistedWindowSessionState {
@@ -760,14 +764,25 @@ export class DesktopWindowSession {
   }
 
   private emitShellSnapshot(): void {
-    this.emitToRenderer({
-      type: "shell-snapshot",
-      snapshot: {
-        ...this.shellData,
-        documentViewModes: this.getDocumentViewModesSnapshot(),
-        editorViewMode: this.currentMode
-      }
-    });
+    const previous = this.lastEmittedShellData;
+
+    if (!previous) {
+      return;
+    }
+
+    const current = this.getShellSnapshot();
+    this.lastEmittedShellData = current;
+    for (const event of getShellStateEvents(previous, current)) {
+      this.emitToRenderer(event);
+    }
+  }
+
+  private getShellSnapshot(): DesktopShellSnapshot {
+    return {
+      ...this.shellData,
+      documentViewModes: this.getDocumentViewModesSnapshot(),
+      editorViewMode: this.currentMode
+    };
   }
 
   private updateShellData(

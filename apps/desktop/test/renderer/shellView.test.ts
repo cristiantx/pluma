@@ -8,7 +8,6 @@ import {
   getExplorerNodes,
   getOpenTabs,
   getShellSnapshot,
-  getStatusMetrics,
   getWorkspaceLabel
 } from "../../src/renderer/shellView";
 
@@ -27,47 +26,6 @@ describe("getWorkspaceLabel", () => {
         workspacePath: "/tmp/pluma"
       })
     ).toBe("pluma");
-  });
-});
-
-describe("getStatusMetrics", () => {
-  it("returns placeholder metrics when no file is active", () => {
-    expect(getStatusMetrics(initialDesktopShellSnapshot)).toEqual([
-      { label: "Words", value: "--" },
-      { label: "Lines", value: "--" },
-      { label: "Mode", value: "Source" },
-      { label: "Line", value: "--" },
-      { label: "Save", value: "Idle shell" }
-    ]);
-  });
-
-  it("labels app drafts as drafts rather than saved files", () => {
-    const session = createDocumentSession({
-      location: {
-        draftId: "draft-1",
-        kind: "app-draft",
-        name: "Untitled-1"
-      },
-      metadata: null,
-      rawText: "# Untitled\n"
-    });
-
-    expect(
-      getStatusMetrics({
-        ...initialDesktopShellSnapshot,
-        activeDocumentId: session.id,
-        documents: [session]
-      }).find((metric) => metric.label === "Save")
-    ).toEqual({ label: "Save", value: "Draft" });
-  });
-
-  it("labels preview editor mode in the status metrics", () => {
-    expect(
-      getStatusMetrics({
-        ...initialDesktopShellSnapshot,
-        editorViewMode: "preview"
-      }).find((metric) => metric.label === "Mode")
-    ).toEqual({ label: "Mode", value: "Preview" });
   });
 });
 

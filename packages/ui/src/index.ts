@@ -5,7 +5,7 @@ export {
   reorderTabsFromDragEvent
 } from "./adapters/tabModel.js";
 export type { EditorTab } from "./adapters/tabModel.js";
-export type { ExplorerNode, StatusMetric } from "./shell/types.js";
+export type { ExplorerNode } from "./shell/types.js";
 export {
   initialPlumaStoreState,
   usePlumaStore
