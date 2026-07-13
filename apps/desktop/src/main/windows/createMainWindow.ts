@@ -7,9 +7,14 @@ export type CreateMainWindowOptions = {
   rendererDevServerUrl: string | undefined;
   rendererName: string;
   onClose: (event: Electron.Event) => void;
-  onClosed: () => void;
+  onClosed: (identifiers: ClosedWindowIdentifiers) => void;
   onLoaded: () => void;
   spellcheckEnabled: boolean;
+};
+
+export type ClosedWindowIdentifiers = {
+  webContentsId: number;
+  windowId: number;
 };
 
 export function createMainWindow(
@@ -31,6 +36,10 @@ export function createMainWindow(
       spellcheck: options.spellcheckEnabled
     }
   });
+  const closedWindowIdentifiers = {
+    webContentsId: window.webContents.id,
+    windowId: window.id
+  };
 
   if (options.rendererDevServerUrl) {
     void window.loadURL(options.rendererDevServerUrl);
@@ -43,7 +52,7 @@ export function createMainWindow(
     );
   }
 
-  window.on("closed", options.onClosed);
+  window.on("closed", () => options.onClosed(closedWindowIdentifiers));
   window.on("close", options.onClose);
   window.webContents.on("did-finish-load", options.onLoaded);
 

@@ -436,15 +436,15 @@ function createWindow(): DesktopWindowSession {
     rendererDevServerUrl,
     rendererName,
     spellcheckEnabled,
-    onClosed: () => {
+    onClosed: ({ webContentsId, windowId }) => {
       markRendererReady();
-      const session = sessions.get(window.id);
+      const session = sessions.get(windowId);
       session?.dispose();
-      documentTextFlushCoordinator.cancelSender(window.webContents.id);
-      sessions.delete(window.id);
-      windowsAllowedToClose.delete(window.id);
+      documentTextFlushCoordinator.cancelSender(webContentsId);
+      sessions.delete(windowId);
+      windowsAllowedToClose.delete(windowId);
 
-      if (latestFocusedWindowId === window.id) {
+      if (latestFocusedWindowId === windowId) {
         latestFocusedWindowId = getOrderedSessions().at(-1)?.window.id ?? null;
       }
 
