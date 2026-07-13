@@ -7,10 +7,12 @@ import {
   applyLineEnding,
   detectLineEnding,
   getFileLocationName,
+  isMarkdownFilePath,
   markDocumentSessionConflict,
   markDocumentSessionExternalChange,
   markDocumentSessionSaveError,
   markDocumentSessionSaving,
+  resolveDefaultLineEnding,
   shouldProtectDocumentSessionClose,
   updateDocumentSessionText,
   type AppDraftFileLocation,
@@ -33,6 +35,7 @@ import {
   type PersistedWindowSessionState
 } from "../persistence/appPersistence";
 import type { AppDraftStorage } from "../persistence/appDraftStorage";
+import { DocumentSaveQueue } from "../persistence/documentSaveQueue";
 import { AutosaveScheduler } from "../autosave/autosaveScheduler";
 import {
   chooseProtectedDocumentCloseAction as chooseProtectedDocumentCloseActionDialog,
@@ -46,7 +49,6 @@ import { WorkspaceWatcher } from "../watching/workspaceWatcher";
 import {
   collectWorkspaceEntries,
   createSessionForFilePath,
-  isMarkdownFilePath,
   isPathInsideDirectory,
   tryCollectWorkspaceEntries,
   tryCreateSessionForFilePath
@@ -89,7 +91,7 @@ export class DesktopWindowSession {
   private readonly autosaveScheduler: AutosaveScheduler;
   private readonly documentModes = new Map<string, EditorViewMode>();
   private readonly replacementDocumentIds = new Map<string, string>();
-  private readonly saveQueues = new Map<string, Promise<boolean>>();
+  private readonly saveQueue = new DocumentSaveQueue();
   private readonly selfWritePaths = new Set<string>();
   private readonly workspaceWatcher: WorkspaceWatcher;
   private readonly workspaceSearchController = new WorkspaceSearchController();
@@ -1858,11 +1860,8 @@ export class DesktopWindowSession {
     documentId: string,
     trigger: "autosave" | "manual"
   ): Promise<boolean> {
-    const previousSave = this.saveQueues.get(documentId);
-    const nextSave = (previousSave ?? Promise.resolve(true))
-      .catch(() => false)
-      .then(() => this.performSaveDocument(documentId, trigger))
-      .catch((error: unknown) => {
+    return this.saveQueue.enqueue(documentId, () =>
+      this.performSaveDocument(documentId, trigger).catch((error: unknown) => {
         const document = this.getDocumentById(documentId);
 
         if (document) {
@@ -1881,16 +1880,8 @@ export class DesktopWindowSession {
         }
 
         return false;
-      });
-
-    this.saveQueues.set(documentId, nextSave);
-    void nextSave.then(() => {
-      if (this.saveQueues.get(documentId) === nextSave) {
-        this.saveQueues.delete(documentId);
-      }
-    });
-
-    return nextSave;
+      })
+    );
   }
 
   private async performSaveDocument(
@@ -2094,13 +2085,10 @@ export class DesktopWindowSession {
   }
 
   private getWritableDefaultLineEnding(): "crlf" | "lf" {
-    const preference = this.dependencies.getDefaultLineEnding();
-
-    if (preference === "crlf" || preference === "lf") {
-      return preference;
-    }
-
-    return process.platform === "win32" ? "crlf" : "lf";
+    return resolveDefaultLineEnding(
+      this.dependencies.getDefaultLineEnding(),
+      process.platform
+    );
   }
 
   private async keepEditingActiveDocument(): Promise<void> {
@@ -2216,8 +2204,7 @@ export class DesktopWindowSession {
     }
 
     const draftLocation = document.location;
-    const pendingSave =
-      this.saveQueues.get(document.id) ?? Promise.resolve(true);
+    const pendingSave = this.saveQueue.waitFor(document.id);
     void pendingSave
       .then(() => this.dependencies.draftStorage.deleteDraft(draftLocation))
       .catch((error) => {

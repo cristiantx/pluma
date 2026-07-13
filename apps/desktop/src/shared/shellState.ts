@@ -1,29 +1,17 @@
 import type { DocumentSession } from "@pluma/core";
-import type { AppSettings } from "@pluma/ui";
+import type { AppSettings, EditorViewMode } from "@pluma/ui";
 
-type EditorMode = "preview" | "rich" | "source";
-export type EditorViewMode = EditorMode;
+export type {
+  EditorViewMode,
+  WorkspaceSearchMatch,
+  WorkspaceSearchOptions
+} from "@pluma/ui";
 
 export type WorkspaceTreeEntry = {
   depth: number;
   kind: "folder" | "file";
   name: string;
   path: string;
-};
-
-export type WorkspaceSearchMatch = {
-  filePath: string;
-  line: number;
-  lineText: string;
-  matchEnd: number;
-  matchStart: number;
-  preview: string;
-};
-
-export type WorkspaceSearchOptions = {
-  caseSensitive: boolean;
-  regexp: boolean;
-  wholeWord: boolean;
 };
 
 export type DesktopShellSnapshot = {

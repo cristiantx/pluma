@@ -12,13 +12,6 @@ import path from "node:path";
 import { DesktopFileSystemAdapter } from "@pluma/core-desktop";
 import {
   defaultAppSettings,
-  isDefaultLineEnding,
-  isEditorWidthPreference,
-  isRichEditorDensity,
-  isSourceEditorFontFamily,
-  isSourceEditorFontSize,
-  isSourceEditorTabSize,
-  isThemePreference,
   type AppSettings,
   type DefaultLineEnding
 } from "@pluma/ui";
@@ -27,11 +20,9 @@ import started from "electron-squirrel-startup";
 
 import type { CommandName } from "../shared/shellState";
 import {
-  isMeaningfulPersistedWindowState,
   readAppSettings,
   readPersistedSessionState,
-  writeAppSettings,
-  writePersistedSessionState
+  writeAppSettings
 } from "./persistence/appPersistence";
 import { createAppDraftStorage } from "./persistence/appDraftStorage";
 import {
@@ -40,10 +31,15 @@ import {
 } from "./assets/localAssetProtocol";
 import { buildApplicationMenu } from "./menus/applicationMenu";
 import { registerIpcHandlers } from "./ipc/registerIpcHandlers";
+import { getAppSettingsUpdate } from "./settings/appSettingsUpdate";
 import {
   shouldPersistAfterWindowClosed,
   shouldRouteWindowCloseThroughAppQuit
 } from "./session/quitPersistence";
+import {
+  SessionStatePersistence,
+  writeDesktopSessionState
+} from "./session/sessionStatePersistence";
 import { createMainWindow } from "./windows/createMainWindow";
 import {
   DesktopWindowSession,
@@ -72,8 +68,6 @@ let latestFocusedWindowId: number | null = null;
 let pendingOpenTargets: string[] = [];
 let appSettingsSnapshot: AppSettings = { ...defaultAppSettings };
 let settingsMutationQueue: Promise<void> = Promise.resolve();
-let sessionPersistenceRequested = false;
-let sessionPersistenceRun: Promise<void> | null = null;
 
 const fileSystem = new DesktopFileSystemAdapter();
 const sessions = new Map<number, DesktopWindowSession>();
@@ -83,6 +77,17 @@ const appSettingsFileName = "settings.json";
 const autosaveDelayMs = 900;
 const draftsDirectoryName = "drafts";
 const reactDeveloperToolsExtensionId = "fmkadmapgofadopljbjfkapdkoienihi";
+const sessionStatePersistence = new SessionStatePersistence(async () => {
+  if (!app.isReady()) {
+    return;
+  }
+
+  await writeDesktopSessionState(
+    getSessionStatePath(),
+    getOrderedSessions(),
+    getLatestFocusedSession()
+  );
+});
 
 if (started) {
   app.quit();
@@ -124,57 +129,14 @@ function getDraftsDirectory(): string {
   return path.join(app.getPath("userData"), draftsDirectoryName);
 }
 
-async function persistSessionState(): Promise<void> {
-  if (!app.isReady()) {
-    return;
-  }
-
-  const meaningfulSessions = getOrderedSessions().flatMap((windowSession) => {
-    const state = windowSession.getPersistedState();
-
-    return isMeaningfulPersistedWindowState(state)
-      ? [{ state, windowSession }]
-      : [];
-  });
-  const latestSession = getLatestFocusedSession();
-  const activeWindowIndex = Math.max(
-    0,
-    meaningfulSessions.findIndex(
-      ({ windowSession }) => windowSession === latestSession
-    )
-  );
-
-  await writePersistedSessionState(getSessionStatePath(), {
-    activeWindowIndex,
-    windows: meaningfulSessions.map(({ state }) => state)
-  });
-}
-
 function persistSessionStateSoon(): void {
-  void requestSessionPersistence().catch((error) => {
+  void sessionStatePersistence.request().catch((error) => {
     getLatestFocusedSession()?.emitStatus(
       error instanceof Error
         ? `Failed to save session state: ${error.message}`
         : "Failed to save session state."
     );
   });
-}
-
-function requestSessionPersistence(): Promise<void> {
-  sessionPersistenceRequested = true;
-
-  sessionPersistenceRun ??= drainSessionPersistence().finally(() => {
-    sessionPersistenceRun = null;
-  });
-
-  return sessionPersistenceRun;
-}
-
-async function drainSessionPersistence(): Promise<void> {
-  while (sessionPersistenceRequested) {
-    sessionPersistenceRequested = false;
-    await persistSessionState();
-  }
 }
 
 function getOrderedSessions(): DesktopWindowSession[] {
@@ -355,81 +317,6 @@ async function resetStoredAppSettings(): Promise<AppSettings> {
   return updateStoredAppSettings(defaultAppSettings);
 }
 
-function getAppSettingsUpdate(settings: unknown): Partial<AppSettings> {
-  if (!isRecord(settings)) {
-    return {};
-  }
-
-  return {
-    ...(typeof settings.autosaveEnabled === "boolean"
-      ? { autosaveEnabled: settings.autosaveEnabled }
-      : {}),
-    ...(typeof settings.spellcheckEnabled === "boolean"
-      ? { spellcheckEnabled: settings.spellcheckEnabled }
-      : {}),
-    ...(typeof settings.openExportedFile === "boolean"
-      ? { openExportedFile: settings.openExportedFile }
-      : {}),
-    ...(typeof settings.restorePreviousSession === "boolean"
-      ? { restorePreviousSession: settings.restorePreviousSession }
-      : {}),
-    ...(typeof settings.workspaceRespectGitIgnore === "boolean"
-      ? { workspaceRespectGitIgnore: settings.workspaceRespectGitIgnore }
-      : {}),
-    ...(typeof settings.workspaceShowHiddenFiles === "boolean"
-      ? { workspaceShowHiddenFiles: settings.workspaceShowHiddenFiles }
-      : {}),
-    ...(isEditorWidthPreference(settings.richEditorWidth)
-      ? { richEditorWidth: settings.richEditorWidth }
-      : {}),
-    ...(isEditorWidthPreference(settings.sourceEditorWidth)
-      ? { sourceEditorWidth: settings.sourceEditorWidth }
-      : {}),
-    ...(isSourceEditorFontFamily(settings.sourceEditorFontFamily)
-      ? { sourceEditorFontFamily: settings.sourceEditorFontFamily }
-      : {}),
-    ...(isSourceEditorColorSchemeSetting(settings.sourceEditorColorScheme)
-      ? { sourceEditorColorScheme: settings.sourceEditorColorScheme }
-      : {}),
-    ...(isSourceEditorFontSize(settings.sourceEditorFontSize)
-      ? { sourceEditorFontSize: settings.sourceEditorFontSize }
-      : {}),
-    ...(typeof settings.sourceEditorLineNumbers === "boolean"
-      ? { sourceEditorLineNumbers: settings.sourceEditorLineNumbers }
-      : {}),
-    ...(isSourceEditorTabSize(settings.sourceEditorTabSize)
-      ? { sourceEditorTabSize: settings.sourceEditorTabSize }
-      : {}),
-    ...(typeof settings.sourceEditorWordWrap === "boolean"
-      ? { sourceEditorWordWrap: settings.sourceEditorWordWrap }
-      : {}),
-    ...(isRichEditorDensity(settings.richEditorDensity)
-      ? { richEditorDensity: settings.richEditorDensity }
-      : {}),
-    ...(isDefaultLineEnding(settings.defaultLineEnding)
-      ? { defaultLineEnding: settings.defaultLineEnding }
-      : {}),
-    ...(typeof settings.themePreference === "string" &&
-    isThemePreference(settings.themePreference)
-      ? { themePreference: settings.themePreference }
-      : {})
-  };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isSourceEditorColorSchemeSetting(
-  value: unknown
-): value is AppSettings["sourceEditorColorScheme"] {
-  return (
-    value === "follow-theme" ||
-    value === "pluma-dark" ||
-    value === "pluma-light"
-  );
-}
-
 async function handleMenuCommand(command: CommandName): Promise<void> {
   if (command === "new-window") {
     createWindow();
@@ -601,7 +488,7 @@ async function quitApplicationWithSessionPersistence(): Promise<void> {
   }
 
   isQuitting = true;
-  await requestSessionPersistence();
+  await sessionStatePersistence.request();
   app.quit();
 }
 

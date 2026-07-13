@@ -4,6 +4,7 @@ import path from "node:path";
 
 import {
   applyLineEnding,
+  resolveDefaultLineEnding,
   shouldProtectDocumentSessionClose,
   type DesktopFileLocation,
   type DocumentSession,
@@ -132,13 +133,10 @@ export function createWorkspaceFileActions(
   }
 
   function getWritableDefaultLineEnding(): "crlf" | "lf" {
-    const preference = dependencies.getDefaultLineEnding();
-
-    if (preference === "crlf" || preference === "lf") {
-      return preference;
-    }
-
-    return process.platform === "win32" ? "crlf" : "lf";
+    return resolveDefaultLineEnding(
+      dependencies.getDefaultLineEnding(),
+      process.platform
+    );
   }
 
   async function createWorkspaceDirectory(

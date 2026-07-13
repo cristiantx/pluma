@@ -3,6 +3,7 @@ import path from "node:path";
 import {
   createDocumentSession,
   getMarkdownDocumentModeConstraint,
+  isMarkdownFilePath,
   markdownPipeline,
   type DesktopFileLocation,
   type DocumentSession,
@@ -15,12 +16,6 @@ import {
   isWorkspaceEntryGitIgnored,
   type WorkspaceGitIgnoreRule
 } from "./workspaceGitIgnore";
-
-const markdownExtensions = new Set([".md", ".markdown", ".mdown"]);
-
-export function isMarkdownFilePath(filePath: string): boolean {
-  return markdownExtensions.has(path.extname(filePath).toLowerCase());
-}
 
 export function isPathInsideDirectory(
   directoryPath: string,

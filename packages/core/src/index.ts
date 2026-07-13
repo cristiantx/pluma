@@ -93,6 +93,7 @@ export {
   normalizeAccidentalLooseLists
 } from "./markdownFormatter.js";
 export { renderMarkdownExportHtml } from "./markdownExport.js";
+export { isMarkdownFilePath, markdownFileExtensions } from "./markdownFiles.js";
 
 export interface ProjectInfo {
   name: string;

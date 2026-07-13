@@ -1,16 +1,37 @@
 import { create } from "zustand";
 
-import { updateDocumentSessionText } from "@pluma/core";
-
-import { resolveThemePreference } from "../theme.js";
 import type { AppSettings } from "../settings.js";
+import { updateDocumentTextState } from "./plumaDocumentState.js";
 import { hydratePlumaShellSnapshot } from "./plumaStoreHydration.js";
 import { initialPlumaStoreState } from "./plumaStoreInitialState.js";
 import type { PlumaShellSnapshot, PlumaStore } from "./plumaStoreTypes.js";
+import {
+  addNotification,
+  removeNotification
+} from "./plumaNotificationState.js";
+import {
+  hydrateSettingsState,
+  setSpellcheckState,
+  setSystemThemeState,
+  setThemePreferenceState,
+  toggleThemeState
+} from "./plumaSettingsState.js";
+import {
+  activateDocumentTabState,
+  closeSettingsTabState,
+  openSettingsTabState,
+  reorderTabsState
+} from "./plumaTabState.js";
+import {
+  openWorkspaceSearchState,
+  revealWorkspaceFileState,
+  revealWorkspaceSearchMatchState,
+  setWorkspaceSearchOptionsState,
+  setWorkspaceSearchResultsState,
+  toggleWorkspaceSearchResultFileState
+} from "./plumaWorkspaceState.js";
 
 export { initialPlumaStoreState } from "./plumaStoreInitialState.js";
-
-let nextNotificationId = 0;
 
 export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   ...initialPlumaStoreState,
@@ -29,34 +50,14 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     let nextActiveTabId = "";
 
     set((state) => {
-      nextActiveTabId =
-        state.tabs.activeTabId === "settings"
-          ? (state.document.activeDocument?.id ?? "")
-          : state.tabs.activeTabId;
+      const update = closeSettingsTabState(state);
 
-      if (!state.tabs.tabs.some((tab) => tab.id === "settings")) {
-        return state.tabs.activeTabId === "settings"
-          ? {
-              tabs: {
-                activeTabId: nextActiveTabId,
-                tabs: state.tabs.tabs
-              }
-            }
-          : state;
+      if (!update) {
+        return state;
       }
 
-      const nextTabs = state.tabs.tabs.filter((tab) => tab.id !== "settings");
-      nextActiveTabId =
-        state.tabs.activeTabId === "settings"
-          ? (state.document.activeDocument?.id ?? nextTabs[0]?.id ?? "")
-          : state.tabs.activeTabId;
-
-      return {
-        tabs: {
-          activeTabId: nextActiveTabId,
-          tabs: nextTabs
-        }
-      };
+      nextActiveTabId = update.nextActiveTabId;
+      return { tabs: update.tabs };
     });
 
     if (nextActiveTabId) {
@@ -66,12 +67,7 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
 
   dismissNotification: (notificationId) => {
     set((state) => ({
-      status: {
-        ...state.status,
-        notifications: state.status.notifications.filter(
-          (notification) => notification.id !== notificationId
-        )
-      }
+      status: removeNotification(state.status, notificationId)
     }));
   },
 
@@ -95,30 +91,12 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   },
 
   hydrateSettings: (settings: AppSettings) => {
-    set((state) => ({
-      settings,
-      theme: {
-        preference: settings.themePreference,
-        resolvedTheme: resolveThemePreference(
-          settings.themePreference,
-          state.theme.systemPrefersDark
-        ),
-        systemPrefersDark: state.theme.systemPrefersDark
-      },
-      writing: {
-        spellcheckEnabled: settings.spellcheckEnabled
-      }
-    }));
+    set((state) => hydrateSettingsState(state, settings));
   },
 
   reorderTabs: (tabs) => {
     set((state) => ({
-      tabs: {
-        activeTabId: tabs.some((tab) => tab.id === state.tabs.activeTabId)
-          ? state.tabs.activeTabId
-          : (tabs[0]?.id ?? ""),
-        tabs
-      }
+      tabs: reorderTabsState(state, tabs)
     }));
   },
 
@@ -127,23 +105,7 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   },
 
   openSettingsTab: () => {
-    set((state) => {
-      const hasSettingsTab = state.tabs.tabs.some(
-        (tab) => tab.id === "settings"
-      );
-
-      return {
-        tabs: {
-          activeTabId: "settings",
-          tabs: hasSettingsTab
-            ? state.tabs.tabs
-            : [
-                ...state.tabs.tabs,
-                { id: "settings", kind: "settings", title: "Settings" }
-              ]
-        }
-      };
-    });
+    set((state) => ({ tabs: openSettingsTabState(state) }));
     get().commands.commandHandlers.setActiveTabId("settings");
   },
 
@@ -161,42 +123,14 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
 
   openWorkspaceSearch: (folderPath) => {
     set((state) => ({
-      workspace: {
-        ...state.workspace,
-        searchFolderPath: folderPath,
-        searchRequestId: state.workspace.searchRequestId + 1,
-        sidebarView: "search"
-      }
+      workspace: openWorkspaceSearchState(state.workspace, folderPath)
     }));
   },
 
   pushNotification: (message, tone = "info") => {
-    set((state) => {
-      if (
-        state.status.notifications.some(
-          (notification) =>
-            notification.message === message && notification.tone === tone
-        )
-      ) {
-        return state;
-      }
-
-      nextNotificationId += 1;
-
-      return {
-        status: {
-          ...state.status,
-          notifications: [
-            ...state.status.notifications.slice(-3),
-            {
-              id: `notification-${nextNotificationId}`,
-              message,
-              tone
-            }
-          ]
-        }
-      };
-    });
+    set((state) => ({
+      status: addNotification(state.status, message, tone)
+    }));
   },
 
   reloadFromDisk: () => {
@@ -210,23 +144,13 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
 
   revealWorkspaceFile: (path) => {
     set((state) => ({
-      workspace: {
-        ...state.workspace,
-        revealRequestId: state.workspace.revealRequestId + 1,
-        revealWorkspacePath: path
-      }
+      workspace: revealWorkspaceFileState(state.workspace, path)
     }));
   },
 
   revealWorkspaceSearchMatch: (match) => {
     set((state) => ({
-      workspace: {
-        ...state.workspace,
-        searchRevealRequest: {
-          match,
-          requestId: (state.workspace.searchRevealRequest?.requestId ?? 0) + 1
-        }
-      }
+      workspace: revealWorkspaceSearchMatchState(state.workspace, match)
     }));
   },
 
@@ -241,10 +165,7 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
 
   setWorkspaceSearchOptions: (options) => {
     set((state) => ({
-      workspace: {
-        ...state.workspace,
-        searchOptions: options
-      }
+      workspace: setWorkspaceSearchOptionsState(state.workspace, options)
     }));
   },
 
@@ -259,33 +180,14 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
 
   setWorkspaceSearchResults: (results) => {
     set((state) => ({
-      workspace: {
-        ...state.workspace,
-        collapsedSearchResultFiles:
-          state.workspace.collapsedSearchResultFiles.filter((filePath) =>
-            results.some((result) => result.filePath === filePath)
-          ),
-        searchResults: results
-      }
+      workspace: setWorkspaceSearchResultsState(state.workspace, results)
     }));
   },
 
   toggleWorkspaceSearchResultFile: (filePath) => {
-    set((state) => {
-      const isCollapsed =
-        state.workspace.collapsedSearchResultFiles.includes(filePath);
-
-      return {
-        workspace: {
-          ...state.workspace,
-          collapsedSearchResultFiles: isCollapsed
-            ? state.workspace.collapsedSearchResultFiles.filter(
-                (candidate) => candidate !== filePath
-              )
-            : [...state.workspace.collapsedSearchResultFiles, filePath]
-        }
-      };
-    });
+    set((state) => ({
+      workspace: toggleWorkspaceSearchResultFileState(state.workspace, filePath)
+    }));
   },
 
   triggerNewFile: () => {
@@ -304,38 +206,7 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
       return;
     }
 
-    set((state) => ({
-      document: {
-        activeDocument:
-          state.document.documents.find((document) => document.id === tabId) ??
-          null,
-        documents: state.document.documents
-      },
-      layout: {
-        ...state.layout,
-        editorViewMode:
-          state.layout.documentViewModes[tabId] ?? state.layout.editorViewMode
-      },
-      tabs: {
-        ...state.tabs,
-        activeTabId: tabId
-      },
-      workspace: {
-        ...state.workspace,
-        explorerNodes: state.workspace.explorerNodes.map((node) => ({
-          ...node,
-          isActive:
-            node.kind === "file" &&
-            state.document.documents.some(
-              (document) =>
-                document.id === tabId &&
-                document.location.kind === "desktop-path" &&
-                node.location?.kind === "desktop-path" &&
-                document.location.path === node.location.path
-            )
-        }))
-      }
-    }));
+    set((state) => activateDocumentTabState(state, tabId));
     get().commands.commandHandlers.setActiveTabId(tabId);
   },
 
@@ -387,64 +258,19 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   },
 
   setSystemPrefersDark: (matches) => {
-    set((state) => ({
-      theme: {
-        preference: state.theme.preference,
-        resolvedTheme: resolveThemePreference(state.theme.preference, matches),
-        systemPrefersDark: matches
-      }
-    }));
+    set((state) => setSystemThemeState(state, matches));
   },
 
   setSpellcheckEnabled: (enabled) => {
-    set((state) => ({
-      settings: {
-        ...state.settings,
-        spellcheckEnabled: enabled
-      },
-      writing: {
-        spellcheckEnabled: enabled
-      }
-    }));
+    set((state) => setSpellcheckState(state, enabled));
   },
 
   setThemePreference: (preference) => {
-    set((state) => ({
-      settings: {
-        ...state.settings,
-        themePreference: preference
-      },
-      theme: {
-        preference,
-        resolvedTheme: resolveThemePreference(
-          preference,
-          state.theme.systemPrefersDark
-        ),
-        systemPrefersDark: state.theme.systemPrefersDark
-      }
-    }));
+    set((state) => setThemePreferenceState(state, preference));
   },
 
   toggleTheme: () => {
-    set((state) => {
-      const nextPreference =
-        state.theme.resolvedTheme === "dark" ? "light" : "dark";
-
-      return {
-        settings: {
-          ...state.settings,
-          themePreference: nextPreference
-        },
-        theme: {
-          preference: nextPreference,
-          resolvedTheme: resolveThemePreference(
-            nextPreference,
-            state.theme.systemPrefersDark
-          ),
-          systemPrefersDark: state.theme.systemPrefersDark
-        }
-      };
-    });
+    set((state) => toggleThemeState(state));
   },
 
   toggleSidebar: () => {
@@ -476,50 +302,14 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     let didUpdateDocument = false;
 
     set((state) => {
-      const currentDocument = state.document.documents.find(
-        (document) => document.id === documentId
-      );
+      const update = updateDocumentTextState(state, documentId, rawText);
 
-      if (!currentDocument || currentDocument.rawText === rawText) {
+      if (!update) {
         return state;
       }
 
-      const nextDocument = updateDocumentSessionText(currentDocument, rawText);
-      const nextDocuments = state.document.documents.map((document) =>
-        document.id === documentId ? nextDocument : document
-      );
       didUpdateDocument = true;
-      const nextActiveDocument =
-        state.document.activeDocument?.id === documentId
-          ? nextDocument
-          : state.document.activeDocument;
-      const nextIsDirty = nextDocument.saveState !== "idle";
-      const nextTabs = state.tabs.tabs.some(
-        (tab) =>
-          tab.kind !== "settings" &&
-          tab.id === documentId &&
-          tab.isDirty !== nextIsDirty
-      )
-        ? state.tabs.tabs.map((tab) =>
-            tab.kind !== "settings" && tab.id === documentId
-              ? {
-                  ...tab,
-                  isDirty: nextIsDirty
-                }
-              : tab
-          )
-        : state.tabs.tabs;
-
-      return {
-        document: {
-          activeDocument: nextActiveDocument,
-          documents: nextDocuments
-        },
-        tabs: {
-          ...state.tabs,
-          tabs: nextTabs
-        }
-      };
+      return update;
     });
 
     if (didUpdateDocument) {

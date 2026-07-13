@@ -12,8 +12,6 @@ export type RichLinkTargetAction =
       kind: "ignored";
     };
 
-const markdownExtensions = new Set([".md", ".markdown", ".mdown"]);
-
 export function getRichLinkTargetAction({
   activeDocumentPath,
   linkUrl,
@@ -50,7 +48,7 @@ export function getRichLinkTargetAction({
     workspacePath
   });
 
-  if (!filePath || !isMarkdownPath(filePath)) {
+  if (!filePath || !isMarkdownFilePath(filePath)) {
     return { kind: "ignored" };
   }
 
@@ -145,14 +143,6 @@ function resolveWorkspaceMarkdownPath({
     : null;
 }
 
-function isMarkdownPath(filePath: string): boolean {
-  const extensionMatch = /\.[^./\\]+$/.exec(filePath);
-
-  return extensionMatch
-    ? markdownExtensions.has(extensionMatch[0].toLowerCase())
-    : false;
-}
-
 function isWindowsAbsolutePath(filePath: string): boolean {
   return /^[A-Za-z]:[\\/]/.test(filePath) || filePath.startsWith("\\\\");
 }
@@ -199,3 +189,4 @@ function isPathInsideDirectory(directoryPath: string, candidatePath: string) {
     normalizedCandidate.startsWith(`${normalizedDirectory}/`)
   );
 }
+import { isMarkdownFilePath } from "@pluma/core";

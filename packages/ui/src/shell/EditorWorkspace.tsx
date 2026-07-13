@@ -14,9 +14,11 @@ import { usePlumaStore } from "../state/usePlumaStore.js";
 import { addEditorCommandEventListener } from "./editorCommandEvents.js";
 import { getDesktopDocumentAssetBaseUrl } from "./desktopAssetUrls.js";
 import { EditorSearchPanel } from "./EditorSearchPanel.js";
+import { EditorEmptyState } from "./EditorEmptyState.js";
 import { findMarkdownHeadingAnchorPosition } from "./markdownHeadingAnchors.js";
 import { getRichLinkTargetAction } from "./richLinkTargets.js";
 import { SettingsView } from "./SettingsView.js";
+import { SaveConflictBanner } from "./SaveConflictBanner.js";
 import { TabStrip } from "./TabStrip.js";
 import { useEditorWorkspaceController } from "./useEditorWorkspaceController.js";
 
@@ -229,18 +231,7 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
     return (
       <section className="editor-workspace">
         <TabStrip />
-        <div className="editor-empty-state">
-          <div className="editor-empty-copy">
-            <h1>
-              {hasWorkspace ? "Select a Markdown file" : "Welcome to Pluma"}
-            </h1>
-            <p>
-              {hasWorkspace
-                ? "Choose a file from the workspace tree to open a real document session."
-                : "Pluma is ready for local-first Markdown files and folders."}
-            </p>
-          </div>
-        </div>
+        <EditorEmptyState hasWorkspace={hasWorkspace} />
       </section>
     );
   }
@@ -347,25 +338,11 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
 
       {activeDocument.saveState === "conflict" ||
       activeDocument.saveState === "external-change" ? (
-        <div
-          className="save-conflict-banner"
-          role="status"
-          data-save-state={activeDocument.saveState}
-        >
-          <span>
-            {activeDocument.saveState === "external-change"
-              ? "This file changed on disk."
-              : "This file has a save conflict."}
-          </span>
-          <div className="save-conflict-actions">
-            <button onClick={reloadFromDisk} type="button">
-              Reload
-            </button>
-            <button onClick={keepEditing} type="button">
-              Keep Editing
-            </button>
-          </div>
-        </div>
+        <SaveConflictBanner
+          onKeepEditing={keepEditing}
+          onReload={reloadFromDisk}
+          saveState={activeDocument.saveState}
+        />
       ) : null}
 
       {isSearchOpen ? (
