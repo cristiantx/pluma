@@ -49,12 +49,6 @@ export const plumaRichEditorTheme: Extension = EditorView.theme({
   ".cm-line": {
     padding: "0"
   },
-  ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
-    background: "var(--selection-bg) !important"
-  },
-  "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground": {
-    background: "var(--selection-bg) !important"
-  },
   ".cm-cursor": {
     borderLeftColor: "var(--text-primary)"
   },

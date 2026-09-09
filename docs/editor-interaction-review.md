@@ -79,7 +79,7 @@ Find focus, dark theme, local math fonts, and tables/diagrams in a long document
 960×640 and 1280×820 native window sizes. No user documents or profile are used.
 
 `pnpm validate` passes, and the production package and main-bundle boundary check succeed.
-There are 255 unit tests, 27 renderer interaction tests, one Electron renderer smoke test,
+There are 255 unit tests, 32 renderer interaction tests, one Electron renderer smoke test,
 and two packaged-app tests. Signing, notarization, other operating systems, and native OS
 file-dialog automation were not part of this local verification.
 See [the interaction harness notes](../tests/interaction/README.md),
@@ -89,6 +89,19 @@ Use `pnpm perf` for diagnostic benchmark output. Source-coordinate snapshot medi
 below the report's 0.01 ms precision at every fixture size, versus 0.24/1.06/2.02 ms for
 the previous conversion at 100 KB/500 KB/1 MB. These measure snapshot overhead, not complete
 click latency; see the performance notes for the comparison method.
+
+## Selection visibility follow-up
+
+Table backgrounds covered CodeMirror's selection layer, and its line-based geometry
+could highlight an entire row for a word selected inside one cell. Rich mode now draws
+selection above those surfaces, blending with the existing palette to preserve readable
+glyphs. Table fragments use native DOM text rectangles; other content retains CodeMirror's
+selection geometry. Cursor behavior, source mode, and document state remain unchanged.
+Measurement is limited to rendered rows and skipped entirely for collapsed selections.
+
+Regression coverage includes painted selection pixels in light/dark themes, unselected
+text remaining unpainted, wrapped/scrolled cells, keyboard extension, selections across
+cells, multiple ranges across mode/theme changes, and native Electron replacement.
 
 ## Work allocation
 

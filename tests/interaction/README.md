@@ -26,6 +26,12 @@ they do not compensate for bugs with fixed sleeps. History across remounts,
 search Escape focus, and keyboard tab navigation are deliberate regression
 contracts, so failures in these cases require implementation fixes.
 
+Selection regressions compare painted pixels in both themes, including table headers,
+body rows, striped rows, ordinary text, and code. They assert that selected text is
+visible and readable while unselected text is unchanged. DOM-range bounds independently
+check wrapped cells, cross-cell gestures, and multiple selections; Electron also verifies
+table highlight bounds and exact replacement through native pointer/keyboard input.
+
 Run `pnpm desktop:package` followed by `pnpm test:packaged` to verify the real macOS
 application. Override `PLUMA_PACKAGED_EXECUTABLE` for another packaged executable path.
 The packaged suite connects through Chromium debugging, uses isolated temporary profiles

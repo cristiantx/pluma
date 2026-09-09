@@ -2,6 +2,8 @@ import { EditorView } from "@codemirror/view";
 import { forwardRef, useCallback, useEffect, useRef } from "react";
 import { createDraftlyPlugins, loadDraftlyPlugins } from "./draftlyPlugins.js";
 import { connectRichEditorDOM } from "./richEditorDOM.js";
+import { richEditorSelection } from "./richEditorSelection.js";
+import { richEditorSelectionTheme } from "./richEditorSelectionTheme.js";
 import { plumaRichEditorTheme } from "./richEditorTheme.js";
 import { resolveRichEditorImageUrls } from "./richEditorImageUrls.js";
 import type { RichEditorHandle, RichEditorProps } from "./richEditorTypes.js";
@@ -38,6 +40,8 @@ export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
             )
         }),
         plumaRichEditorTheme,
+        richEditorSelection,
+        richEditorSelectionTheme(resolvedTheme),
         EditorView.contentAttributes.of({
           "aria-label": ariaLabel,
           spellcheck: String(spellCheck)

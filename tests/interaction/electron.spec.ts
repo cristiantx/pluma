@@ -4,7 +4,13 @@ import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { markdownFixture } from "./markdownFixture";
-import { documentSnapshot, hydrate, insertAt } from "./rendererHarness";
+import {
+  documentSnapshot,
+  hydrate,
+  insertAt,
+  textPoint
+} from "./rendererHarness";
+import { selectionSnapshot } from "./editorStateHarness";
 
 const require = createRequire(path.resolve("package.json"));
 
@@ -40,6 +46,27 @@ test("Electron context isolation, clean open, and real pointer insertion", async
       2,
       "ELECTRON"
     );
+    const cell = page
+      .locator(".cm-draftly-table-cell")
+      .filter({ hasText: /^CeELECTRONll1$/ });
+    const start = await textPoint(cell, 2);
+    const end = await textPoint(cell, 10);
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(end.x, end.y, { steps: 8 });
+    await page.mouse.up();
+    await expect
+      .poll(async () => (await selectionSnapshot(page)).text)
+      .toBe("ELECTRON");
+    const highlight = page.locator(
+      ".pluma-rich-selection-layer .cm-selectionBackground"
+    );
+    await expect(highlight).toBeVisible();
+    const bounds = (await highlight.boundingBox())!;
+    expect(Math.abs(bounds.x - start.x)).toBeLessThan(2);
+    expect(Math.abs(bounds.x + bounds.width - end.x)).toBeLessThan(2);
+    await page.keyboard.insertText("NATIVE");
+    expect((await documentSnapshot(page)).rawText).toContain("CeNATIVEll1");
     expect(errors).toEqual([]);
   } finally {
     await application.close();

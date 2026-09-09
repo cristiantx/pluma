@@ -25,6 +25,7 @@ export default defineConfig({
       testMatch: [
         "**/renderer.spec.ts",
         "**/geometry.spec.ts",
+        "**/selection*.spec.ts",
         "**/diagramLifecycle.spec.ts",
         "**/editorState.spec.ts"
       ]
