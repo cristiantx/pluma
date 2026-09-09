@@ -12,6 +12,11 @@ import {
 } from "./rendererHarness";
 import { selectionSnapshot } from "./editorStateHarness";
 import {
+  expectCellCaret,
+  expectScrollUnchanged,
+  scrollSnapshot
+} from "./tableCaretHarness";
+import {
   cancelledCell,
   cellLineEnd,
   expectWrappedBlankSpace,
@@ -92,19 +97,29 @@ test("Electron context isolation, clean open, and real pointer insertion", async
     await application.evaluate(({ BrowserWindow }) => {
       BrowserWindow.getAllWindows()[0]!.setContentSize(960, 820);
     });
-    await hydrate(page, tableWhitespaceMarkdown);
+    const scrolledTableMarkdown =
+      "Paragraph before the table.\n\n".repeat(12) +
+      tableWhitespaceMarkdown +
+      "Paragraph after the table.\n\n".repeat(30);
+    await hydrate(page, scrolledTableMarkdown);
     const wrapped = page
       .locator(".cm-draftly-table-body-row .cm-draftly-table-cell")
       .first();
+    await wrapped.evaluate((element) =>
+      element.scrollIntoView({ block: "center" })
+    );
     const blank = await cellLineEnd(wrapped);
     expectWrappedBlankSpace(blank);
+    const scrollBefore = await scrollSnapshot(page);
+    expect(scrollBefore.top).toBeGreaterThan(0);
     await page.mouse.click(blank.x, blank.y);
+    await expectCellCaret(wrapped, cancelledCell.length);
+    await expectScrollUnchanged(page, scrollBefore);
     await page.keyboard.insertText("FINAL_LINE");
+    await expectCellCaret(wrapped, cancelledCell.length + "FINAL_LINE".length);
+    await expectScrollUnchanged(page, scrollBefore);
     expect((await documentSnapshot(page)).rawText).toBe(
-      tableWhitespaceMarkdown.replace(
-        cancelledCell,
-        cancelledCell + "FINAL_LINE"
-      )
+      scrolledTableMarkdown.replace(cancelledCell, cancelledCell + "FINAL_LINE")
     );
     expect(errors).toEqual([]);
   } finally {

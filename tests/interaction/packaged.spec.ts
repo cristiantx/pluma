@@ -12,6 +12,17 @@ import {
 } from "./packagedHarness";
 import { markdownFixture } from "./markdownFixture";
 import { textPoint } from "./rendererHarness";
+import {
+  expectCellCaret,
+  expectScrollUnchanged,
+  scrollSnapshot
+} from "./tableCaretHarness";
+import {
+  cancelledCell,
+  cellLineEnd,
+  expectWrappedBlankSpace,
+  tableWhitespaceMarkdown
+} from "./tableWhitespaceHarness";
 
 const executable =
   process.env.PLUMA_PACKAGED_EXECUTABLE ??
@@ -35,6 +46,9 @@ for (const dimensions of [
     const filePath = path.join(directory, "Native interaction.md");
     const source =
       "# Native interaction\n\n| Key | Description |\n| --- | --- |\n| TargetCell | Native pointer insertion target. |\n\nAfter table is editable.\n\nInline $x^2 + y^2$ formula.\n\n" +
+      "Paragraph before the wrapped table.\n\n".repeat(12) +
+      tableWhitespaceMarkdown +
+      "\n" +
       markdownFixture();
     await writeFile(filePath, source);
     let application: PackagedApplication | undefined;
@@ -80,6 +94,42 @@ for (const dimensions of [
       await expect(cell).toHaveText("TargetCell");
       await nativeCommand(page, "save");
       await expect.poll(() => readFile(filePath, "utf8")).toBe(source);
+      await nativeWindowSize(page, 960, dimensions.height);
+      const wrapped = page
+        .locator(".cm-draftly-table-body-row .cm-draftly-table-cell")
+        .filter({ hasText: /^Cancelled by card\?/ });
+      await page.locator(".cm-scroller").hover();
+      for (let step = 0; step < 10 && (await wrapped.count()) === 0; step++) {
+        await page.mouse.wheel(0, 500);
+        await scrollSnapshot(page);
+      }
+      await wrapped.evaluate((element) =>
+        element.scrollIntoView({ block: "center" })
+      );
+      const blank = await cellLineEnd(wrapped);
+      expectWrappedBlankSpace(blank);
+      const scrollBefore = await scrollSnapshot(page);
+      expect(scrollBefore.top).toBeGreaterThan(0);
+      await page.mouse.click(blank.x, blank.y);
+      await expectCellCaret(wrapped, cancelledCell.length);
+      await expectScrollUnchanged(page, scrollBefore);
+      await page.keyboard.insertText("FINAL_LINE");
+      await expectCellCaret(
+        wrapped,
+        cancelledCell.length + "FINAL_LINE".length
+      );
+      await expectScrollUnchanged(page, scrollBefore);
+      await nativeCommand(page, "save");
+      await expect
+        .poll(() => readFile(filePath, "utf8"))
+        .toBe(source.replace(cancelledCell, cancelledCell + "FINAL_LINE"));
+      await page.keyboard.press(
+        process.platform === "darwin" ? "Meta+z" : "Control+z"
+      );
+      await expect(wrapped).toHaveText(cancelledCell);
+      await nativeCommand(page, "save");
+      await expect.poll(() => readFile(filePath, "utf8")).toBe(source);
+      await nativeWindowSize(page, dimensions.width, dimensions.height);
       const afterDiagram = page
         .locator(".rich-editor .cm-line")
         .filter({ hasText: /^After diagram 1 / });

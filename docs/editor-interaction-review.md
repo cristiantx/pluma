@@ -1,7 +1,7 @@
 # Editor interaction review
 
 Implemented and verified on September 9, 2026. Pluma uses published fork commit
-[`77e34a2b0ded`](https://github.com/cristiantx/draftly/commit/77e34a2b0ded1c11ebaf6f0e76c688aa84afeb13).
+[`531a36287730`](https://github.com/cristiantx/draftly/commit/531a36287730c1c41b0cd42a5c714b0d0e4fa32a).
 The fork preserves its existing history and includes upstream `86ee956ebdfd` plus the
 interaction fixes and rebuilt distribution files.
 
@@ -89,7 +89,7 @@ Find focus, dark theme, local math fonts, and tables/diagrams in a long document
 960×640 and 1280×820 native window sizes. No user documents or profile are used.
 
 `pnpm validate` passes, and the production package and main-bundle boundary check succeed.
-There are 255 unit tests, 40 renderer interaction tests, one Electron renderer smoke test,
+There are 255 unit tests, 46 renderer interaction tests, one Electron renderer smoke test,
 and two packaged-app tests. Signing, notarization, other operating systems, and native OS
 file-dialog automation were not part of this local verification.
 See [the interaction harness notes](../tests/interaction/README.md),
@@ -117,6 +117,32 @@ Measurement is limited to rendered rows and skipped entirely for collapsed selec
 Regression coverage includes painted selection pixels in light/dark themes, unselected
 text remaining unpainted, wrapped/scrolled cells, keyboard extension, selections across
 cells, multiple ranges across mode/theme changes, and native Electron replacement.
+
+## Table caret and scrolling follow-up
+
+The earlier wrapped-cell fix checked insertion offsets but missed a zero-height caret at
+the table edge. At a correct cell-end offset, an unassociated CodeMirror selection could
+measure hidden padding instead of the preceding glyph. In the reproduction, typing two
+characters moved the editor from scrollTop 467 to 287. The corrected caret has the text's
+22 px height and keeps scrollTop at 467 before and after typing.
+
+Draftly now preserves the clicked visual side, including soft wraps, and repairs every
+collapsed selection at cell boundaries after typing, keyboard commands, and parsing.
+Repairs preserve the main range and undo grouping. Editor state reloads reactivate the
+plugin's deferred work instead of leaving the reused view marked as destroyed.
+
+Long-document testing also found that the decoration iterator pruned the shared Document
+ancestor after its first visible range, leaving tables after diagrams as raw Markdown.
+It now visits later ranges while keeping callbacks unique and balanced and skipping gaps.
+
+Tests independently compare glyph rectangles with the actual cursor layer, including
+focus and visibility, before and after typing. They check editor/window scroll offsets,
+wrapped and empty cells, alignment, padding, explicit breaks, gestures, keyboard editing,
+multi-caret typing, grouped undo, and 100 KB/500 KB/1 MB documents beside Mermaid diagrams.
+The long-document fixture is reached through real wheel scrolling. An artificial direct
+jump during test setup could produce an initial measurement-loop warning; real scrolling
+and the subsequent caret interactions complete without warnings. Both native packaged
+window sizes additionally verify exact file saves and undo with a scrolled wrapped cell.
 
 ## Work allocation
 

@@ -33,7 +33,11 @@ check wrapped cells, cross-cell gestures, and multiple selections; Electron also
 table highlight bounds and exact replacement through native pointer/keyboard input.
 
 Wrapped-cell whitespace tests click beyond the final character and in bottom padding,
-including scrolled cells, explicit line breaks, and drag/Shift-click selection. Numbered
+including scrolled cells, explicit line breaks, and drag/Shift-click selection. Caret
+regressions compare the real cursor layer against independent glyph rectangles before and
+after typing, assert unchanged editor/window scroll offsets, and check multi-caret undo.
+They scroll through long documents to tables after diagrams and repeat the wrapped-cell
+case after editor state reloads in Electron and in the packaged app. Numbered
 list tests measure marker/text bounds through nine digits, wrapping, nesting, and edits.
 
 Run `pnpm desktop:package` followed by `pnpm test:packaged` to verify the real macOS

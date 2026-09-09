@@ -7,6 +7,11 @@ import {
 } from "./rendererHarness";
 import { selectionSnapshot } from "./editorStateHarness";
 import {
+  expectCellCaret,
+  expectScrollUnchanged,
+  scrollSnapshot
+} from "./tableCaretHarness";
+import {
   cancelledCell,
   cellLineEnd,
   expectWrappedBlankSpace,
@@ -21,12 +26,15 @@ for (const theme of ["light", "dark"] as const) {
     await page.goto("/");
     await hydrate(page, tableWhitespaceMarkdown);
     await setSurface(page, theme);
-    const cell = page.locator(".cm-draftly-table-cell").filter({
-      hasText: new RegExp(`^${cancelledCell.replace("?", "\\?")}$`)
-    });
+    const cell = page
+      .locator(".cm-draftly-table-body-row .cm-draftly-table-cell")
+      .first();
     const point = await cellLineEnd(cell);
     expectWrappedBlankSpace(point);
+    const scroll = await scrollSnapshot(page);
     await page.mouse.click(point.x, point.y);
+    await expectCellCaret(cell, cancelledCell.length);
+    await expectScrollUnchanged(page, scroll);
     const expected =
       tableWhitespaceMarkdown.indexOf(cancelledCell) + cancelledCell.length;
     await page.screenshot({
@@ -39,6 +47,8 @@ for (const theme of ["light", "dark"] as const) {
     expect((await documentSnapshot(page)).rawText).toBe(
       tableWhitespaceMarkdown.replace(cancelledCell, cancelledCell + "MARKER")
     );
+    await expectCellCaret(cell, cancelledCell.length + "MARKER".length);
+    await expectScrollUnchanged(page, scroll);
   });
 }
 
@@ -55,6 +65,7 @@ test("wrapped cell line ends and bottom padding keep the clicked visual line", a
     .first();
   const first = await cellLineEnd(cell, 0);
   await page.mouse.click(first.x, first.y);
+  await expectCellCaret(cell, first.end);
   const from = markdown.indexOf(cancelledCell);
   await expect
     .poll(async () => (await selectionSnapshot(page)).head)
@@ -64,7 +75,10 @@ test("wrapped cell line ends and bottom padding keep the clicked visual line", a
   expect(
     await page.locator(".cm-scroller").evaluate((element) => element.scrollTop)
   ).toBeGreaterThan(0);
+  const scroll = await scrollSnapshot(page);
   await page.mouse.click(last.x, last.bottomY);
+  await expectCellCaret(cell, cancelledCell.length);
+  await expectScrollUnchanged(page, scroll);
   await expect
     .poll(async () => (await selectionSnapshot(page)).head)
     .toBe(from + cancelledCell.length);
@@ -72,6 +86,8 @@ test("wrapped cell line ends and bottom padding keep the clicked visual line", a
   expect((await documentSnapshot(page)).rawText).toBe(
     markdown.replace(cancelledCell, cancelledCell + "BOTTOM")
   );
+  await expectCellCaret(cell, cancelledCell.length + "BOTTOM".length);
+  await expectScrollUnchanged(page, scroll);
 });
 
 for (const gesture of ["drag", "shift-click"] as const) {
@@ -124,9 +140,14 @@ test("blank space after an explicit cell line break places the caret after its f
     .first();
   const end = await cellLineEnd(cell);
   expectWrappedBlankSpace(end);
+  const scroll = await scrollSnapshot(page);
   await page.mouse.click(end.x, end.y);
+  const visibleLength = (await cell.textContent())!.length;
+  await expectCellCaret(cell, visibleLength);
   await page.keyboard.insertText("BREAK");
   expect((await documentSnapshot(page)).rawText).toBe(
     markdown.replace(content, content + "BREAK")
   );
+  await expectCellCaret(cell, visibleLength + "BREAK".length);
+  await expectScrollUnchanged(page, scroll);
 });
