@@ -16,7 +16,10 @@
     "desktop:package": "pnpm --filter @pluma/desktop package",
     "desktop:make": "pnpm --filter @pluma/desktop make",
     "test": "vitest run",
-    "validate": "pnpm lint && pnpm lint:markdown && pnpm format:check && pnpm typecheck && pnpm test && pnpm build"
+    "validate": "pnpm lint && pnpm lint:markdown && pnpm format:check && pnpm typecheck && pnpm test && pnpm build",
+    "test:interaction": "playwright test --project=renderer",
+    "test:electron": "playwright test --project=electron",
+    "test:packaged": "playwright test --project=packaged"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",
@@ -28,6 +31,7 @@
     "prettier": "^3.5.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.33.1",
-    "vitest": "^3.2.3"
+    "vitest": "^3.2.3",
+    "@playwright/test": "^1.63.0"
   }
 }

@@ -1,14 +1,12 @@
-import { useCallback, useEffect, useRef } from "react";
-import type { RefObject } from "react";
-
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 import type {
   EditorCursorAnchor,
   EditorScrollAnchor,
   RichEditorHandle,
   SourceEditorHandle
 } from "@pluma/editor";
-
 import type { EditorViewMode } from "../state/plumaStoreTypes.js";
+import { usePlumaStore } from "../state/usePlumaStore.js";
 
 type EditorAnchorSyncOptions = {
   activeDocumentId: string | null;
@@ -23,66 +21,47 @@ export function useEditorAnchorSync({
   richEditorRef,
   sourceEditorRef
 }: EditorAnchorSyncOptions) {
-  const latestCursorAnchorRef = useRef<EditorCursorAnchor | null>(null);
-  const latestScrollAnchorRef = useRef<EditorScrollAnchor | null>(null);
-
-  const handleScrollAnchorChange = useCallback((anchor: EditorScrollAnchor) => {
-    latestScrollAnchorRef.current = anchor;
+  const frame = useRef<number | null>(null);
+  const cancelReplay = useCallback(() => {
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    frame.current = null;
   }, []);
-
   const handleCursorAnchorChange = useCallback((anchor: EditorCursorAnchor) => {
-    latestCursorAnchorRef.current = anchor;
+    usePlumaStore.getState().setEditorCursorAnchor(anchor);
   }, []);
-
-  const replayAnchors = useCallback(() => {
-    if (editorViewMode === "preview") {
-      return;
-    }
-
-    const scrollAnchor = latestScrollAnchorRef.current;
-    const cursorAnchor = latestCursorAnchorRef.current;
-    const hasScrollAnchor =
-      scrollAnchor && scrollAnchor.documentId === activeDocumentId;
-    const hasCursorAnchor =
-      cursorAnchor && cursorAnchor.documentId === activeDocumentId;
-
-    if (!hasScrollAnchor && !hasCursorAnchor) {
-      return;
-    }
-
-    if (hasCursorAnchor && editorViewMode === "rich") {
-      richEditorRef.current?.applyCursorAnchor(cursorAnchor);
-      return;
-    }
-
-    if (hasCursorAnchor && editorViewMode === "source") {
-      sourceEditorRef.current?.applyCursorAnchor(cursorAnchor);
-      return;
-    }
-
-    if (!hasScrollAnchor) {
-      return;
-    }
-
-    if (editorViewMode === "rich") {
-      richEditorRef.current?.applyScrollAnchor(scrollAnchor);
-    } else {
-      sourceEditorRef.current?.applyScrollAnchor(scrollAnchor);
-    }
-  }, [activeDocumentId, editorViewMode, richEditorRef, sourceEditorRef]);
-
+  const handleScrollAnchorChange = useCallback((anchor: EditorScrollAnchor) => {
+    usePlumaStore.getState().setEditorScrollAnchor(anchor);
+  }, []);
   const scheduleReplayAnchors = useCallback(() => {
-    window.requestAnimationFrame(replayAnchors);
-  }, [replayAnchors]);
-
+    cancelReplay();
+    if (!activeDocumentId || editorViewMode === "preview") return;
+    const snapshot = usePlumaStore.getState().editorSnapshots[activeDocumentId];
+    if (!snapshot) return;
+    frame.current = requestAnimationFrame(() => {
+      frame.current = null;
+      const editor =
+        editorViewMode === "rich"
+          ? richEditorRef.current
+          : sourceEditorRef.current;
+      if (snapshot.cursor) editor?.applyCursorAnchor(snapshot.cursor);
+      if (snapshot.scroll) editor?.applyScrollAnchor(snapshot.scroll);
+    });
+  }, [
+    activeDocumentId,
+    cancelReplay,
+    editorViewMode,
+    richEditorRef,
+    sourceEditorRef
+  ]);
   useEffect(() => {
-    const frame = window.requestAnimationFrame(replayAnchors);
-
+    for (const event of ["pointerdown", "keydown", "wheel"])
+      window.addEventListener(event, cancelReplay, true);
     return () => {
-      window.cancelAnimationFrame(frame);
+      cancelReplay();
+      for (const event of ["pointerdown", "keydown", "wheel"])
+        window.removeEventListener(event, cancelReplay, true);
     };
-  }, [replayAnchors]);
-
+  }, [activeDocumentId, editorViewMode, cancelReplay]);
   return {
     handleCursorAnchorChange,
     handleScrollAnchorChange,

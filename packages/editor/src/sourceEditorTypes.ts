@@ -1,3 +1,4 @@
+import type { EditorSessionController } from "./editorSessionController.js";
 import type {
   EditorCursorAnchor,
   EditorScrollAnchor,
@@ -10,6 +11,8 @@ import type {
 export type SourceEditorProps = {
   "aria-label"?: string;
   autoFocus?: boolean;
+  sessionController?: EditorSessionController;
+  baselineRevision?: number;
   documentId: string;
   onCursorAnchorChange?: (anchor: EditorCursorAnchor) => void;
   onFocus?: () => void;

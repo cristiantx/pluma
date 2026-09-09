@@ -2147,6 +2147,10 @@ export class DesktopWindowSession {
     });
     this.syncEditorModeForActiveDocument();
     this.emitShellSnapshot();
+    this.emitToRenderer({
+      type: "document-baseline-reset",
+      documentId: activeDocument.id
+    });
   }
 
   private prepareTextForSave(

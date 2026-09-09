@@ -3,10 +3,12 @@ import { useEffect, useRef, useState } from "react";
 
 import { reorderTabsFromDragEvent } from "../adapters/tabModel.js";
 import { usePlumaStore } from "../state/usePlumaStore.js";
+import { getKeyboardTabIndex, getTabButtonId } from "./tabAccessibility.js";
 import { TabButton } from "./TabButton.js";
 
 export function TabStrip() {
   const tabbarScrollRef = useRef<HTMLDivElement | null>(null);
+  const closingFocusedTabRef = useRef<string | null>(null);
   const scrollHideTimeoutRef = useRef<number | null>(null);
   const activeTabId = usePlumaStore((state) => state.tabs.activeTabId);
   const tabs = usePlumaStore((state) => state.tabs.tabs);
@@ -19,6 +21,37 @@ export function TabStrip() {
     left: 0,
     width: 0
   });
+
+  useEffect(() => {
+    const closingTabId = closingFocusedTabRef.current;
+    if (!closingTabId || tabs.some((tab) => tab.id === closingTabId)) return;
+    closingFocusedTabRef.current = null;
+    document.getElementById(getTabButtonId(activeTabId))?.focus();
+  }, [activeTabId, tabs]);
+
+  const handleTabClose = (tabId: string) => {
+    const tabButton = document.getElementById(getTabButtonId(tabId));
+    if (tabButton?.parentElement?.contains(document.activeElement)) {
+      closingFocusedTabRef.current = tabId;
+    }
+    closeTab(tabId);
+  };
+
+  const navigateTab = (key: string, tabId: string) => {
+    const index = getKeyboardTabIndex(
+      key,
+      tabs.findIndex((tab) => tab.id === tabId),
+      tabs.length
+    );
+    const nextTab = index === null ? undefined : tabs[index];
+    if (!nextTab) return false;
+    setActiveTabId(nextTab.id);
+    document.getElementById(getTabButtonId(nextTab.id))?.focus();
+    document
+      .getElementById(getTabButtonId(nextTab.id))
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    return true;
+  };
 
   useEffect(() => {
     const container = tabbarScrollRef.current;
@@ -129,7 +162,8 @@ export function TabStrip() {
               key={tab.id}
               onActiveTabChange={setActiveTabId}
               onContextMenu={showTabContextMenu}
-              onTabClose={closeTab}
+              onTabClose={handleTabClose}
+              onNavigate={navigateTab}
               tab={tab}
               tabIndex={tabIndex}
             />

@@ -5,6 +5,14 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   optimizeDeps: {
+    include: [
+      "draftly/editor",
+      "draftly/plugins",
+      "draftly/plugins/mermaid",
+      "draftly/plugins/math",
+      "draftly/plugins/emoji",
+      "draftly/preview"
+    ],
     exclude: ["@pluma/core", "@pluma/editor", "@pluma/ui"]
   },
   plugins: [react({})],

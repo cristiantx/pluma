@@ -100,10 +100,12 @@ export function useEditorSearchController({
 
   const closeSearchPanel = useCallback(() => {
     setIsSearchOpen(false);
+    deferredSearchCommandRef.current = null;
+    getActiveEditor()?.focus();
     richEditorRef.current?.setSearchQuery(createEmptyEditorSearchQuery());
     sourceEditorRef.current?.setSearchQuery(createEmptyEditorSearchQuery());
     window.requestAnimationFrame(refreshSearchStatus);
-  }, [refreshSearchStatus, richEditorRef, sourceEditorRef]);
+  }, [getActiveEditor, refreshSearchStatus, richEditorRef, sourceEditorRef]);
 
   const runSearchCommand = useCallback(
     (command: SearchCommand, options: EditorSearchActionOptions = {}) => {
@@ -115,6 +117,7 @@ export function useEditorSearchController({
       const editor = getActiveEditor();
 
       if (!editor) {
+        deferredSearchCommandRef.current = { command, options };
         return;
       }
 
@@ -135,22 +138,40 @@ export function useEditorSearchController({
     [ensureSourceSearchMode, getActiveEditor, refreshSearchStatus, searchQuery]
   );
 
-  useEffect(() => {
-    if (editorViewMode === "preview") {
-      return;
-    }
-
-    const deferredCommand = deferredSearchCommandRef.current;
-
-    if (!deferredCommand) {
-      return;
-    }
-
-    deferredSearchCommandRef.current = null;
-    window.requestAnimationFrame(() => {
-      runSearchCommand(deferredCommand.command, deferredCommand.options);
-    });
-  }, [editorViewMode, runSearchCommand]);
+  const onEditorReady = useCallback(
+    (kind?: EditorKind) => {
+      const editor =
+        kind === "rich"
+          ? richEditorRef.current
+          : kind === "source"
+            ? sourceEditorRef.current
+            : getActiveEditor();
+      editor?.setSearchQuery(
+        isSearchOpen ? searchQuery : createEmptyEditorSearchQuery()
+      );
+      const deferredCommand = deferredSearchCommandRef.current;
+      if (
+        editor &&
+        editor === getActiveEditor() &&
+        deferredCommand &&
+        editorViewMode !== "preview"
+      ) {
+        deferredSearchCommandRef.current = null;
+        runSearchCommand(deferredCommand.command, deferredCommand.options);
+      }
+      refreshSearchStatus();
+    },
+    [
+      editorViewMode,
+      getActiveEditor,
+      isSearchOpen,
+      refreshSearchStatus,
+      richEditorRef,
+      runSearchCommand,
+      searchQuery,
+      sourceEditorRef
+    ]
+  );
 
   const handleEditorCommand = useCallback(
     (command: unknown) => {
@@ -218,6 +239,7 @@ export function useEditorSearchController({
     handleEditorCommand,
     isReplaceVisible,
     isSearchOpen,
+    onEditorReady,
     refreshSearchStatus,
     runSearchCommand,
     searchPanelFocusRequestId,

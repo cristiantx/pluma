@@ -24,6 +24,23 @@ Median of 20 local runs against a 1 MB synthetic Markdown document, mapping a so
 | Full visible-text projection |     12.8 ms |
 | Streaming offset conversion  |      2.3 ms |
 
+## Source-coordinate snapshots (2026-09-09)
+
+The editor now copies source selection ranges directly, including anchor/head direction.
+It no longer scans Markdown to project a cursor through visible text. The benchmark creates
+CodeMirror state before timing snapshot reads.
+
+| Fixture | Previous streaming projection | Source selection snapshot |
+| ------- | ----------------------------: | ------------------------: |
+| 100 KB  |                       0.24 ms |                  <0.01 ms |
+| 500 KB  |                       1.06 ms |                  <0.01 ms |
+| 1 MB    |                       2.02 ms |                  <0.01 ms |
+
+These are medians of 20 runs on the same machine. Snapshot times fall below the report's
+0.01 ms precision; they are not zero. This measures snapshot overhead, not complete click
+latency. Real browser tests additionally verify exact insertion after deep scrolling and
+limit the previously observed approximately 5,000 px Mermaid click jump to under 32 px.
+
 ## Large-document benchmark
 
 Final measurements from the repeatable benchmark on 2026-07-13. Markdown capability analysis runs in the dedicated worker; its duration does not block Electron's main thread.

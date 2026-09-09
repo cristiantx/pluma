@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { RefObject } from "react";
 
 import type {
   EditorKind,
+  EditorCursorAnchor,
   RichEditorHandle,
   SourceEditorHandle
 } from "@pluma/editor";
@@ -46,9 +47,25 @@ export function useEditorWorkspaceController({
     sourceEditorRef
   });
 
+  const onEditorReady = useCallback(
+    (kind: EditorKind) => {
+      anchorSync.scheduleReplayAnchors();
+      searchController.onEditorReady(kind);
+    },
+    [anchorSync.scheduleReplayAnchors, searchController.onEditorReady]
+  );
+  const handleCursorAnchorChange = useCallback(
+    (anchor: EditorCursorAnchor) => {
+      anchorSync.handleCursorAnchorChange(anchor);
+      searchController.refreshSearchStatus();
+    },
+    [anchorSync.handleCursorAnchorChange, searchController.refreshSearchStatus]
+  );
   return {
     ...searchController,
     ...anchorSync,
+    handleCursorAnchorChange,
+    onEditorReady,
     setActiveEditorKind
   };
 }

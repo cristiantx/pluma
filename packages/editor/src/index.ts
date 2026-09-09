@@ -56,3 +56,5 @@ export function createEditorFoundation(project: ProjectInfo): EditorFoundation {
     supportsRichMode: true
   };
 }
+
+export { EditorSessionController } from "./editorSessionController.js";

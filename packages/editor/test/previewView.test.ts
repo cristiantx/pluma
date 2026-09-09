@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type * as DraftlyPlugins from "draftly/plugins";
+import type { DraftlyPluginsModule } from "../src/draftlyPlugins.js";
 
 import {
   renderPreviewContent,
@@ -30,6 +30,63 @@ describe("PreviewView rendering", () => {
     expect(html).toContain(
       '<a class="cm-draftly-link" href="https://example.com/docs" target="_blank" rel="noopener noreferrer">Draftly</a>'
     );
+  });
+
+  it("escapes raw HTML when no preview plugin handles its nodes", async () => {
+    const draftlyPlugins = await createTestDraftlyPluginsModule();
+    const { html } = await renderPreviewContent(
+      { rawText: '<img src=x onerror="alert(1)">', resolvedTheme: "light" },
+      draftlyPlugins
+    );
+
+    expect(html).not.toContain("<img");
+    expect(html).toContain("&lt;img");
+    expect(html).toContain("&quot;alert(1)&quot;");
+  });
+
+  it("rejects executable link/image URLs and escapes image attributes", async () => {
+    const plugins = await createTestDraftlyPluginsModule();
+    const { html } = await renderPreviewContent(
+      {
+        rawText:
+          '[Unsafe](javascript:alert%281%29)\n\n![Unsafe](javascript:alert%281%29)\n\n![quote" onerror="bad](https://example.com/image.png "title&value")',
+        resolvedTheme: "light"
+      },
+      plugins
+    );
+    expect(html).not.toMatch(/(?:href|src)="javascript:/i);
+    expect(html).not.toContain(' onerror="bad"');
+    expect(html).toContain('alt="quote&quot; onerror=&quot;bad"');
+    expect(html).toContain('title="title&amp;value"');
+  });
+
+  it("creates isolated plugins for simultaneous preview renders", async () => {
+    const draftlyPlugins = await createTestDraftlyPluginsModule();
+    const instances: object[] = [];
+    const ParagraphPlugin = draftlyPlugins.ParagraphPlugin;
+    draftlyPlugins.ParagraphPlugin = class extends ParagraphPlugin {
+      constructor() {
+        super();
+        instances.push(this);
+      }
+    };
+
+    const results = await Promise.all([
+      renderPreviewContent(
+        { rawText: "First document", resolvedTheme: "light" },
+        draftlyPlugins
+      ),
+      renderPreviewContent(
+        { rawText: "Second document", resolvedTheme: "light" },
+        draftlyPlugins
+      )
+    ]);
+
+    expect(instances).toHaveLength(2);
+    expect(instances[0]).not.toBe(instances[1]);
+    expect(results[0].html).toContain("First document");
+    expect(results[1].html).toContain("Second document");
+    expect(results[0].css).toBe(results[1].css);
   });
 
   it("resolves local preview image URLs with the rich editor image behavior", async () => {
@@ -104,25 +161,22 @@ describe("PreviewView rendering", () => {
       ".pluma-preview-content .cm-draftly-preview li > .cm-draftly-paragraph"
     );
     expect(css).not.toContain("max-width: 860px");
+    expect(css).toContain("--draftly-color-surface: var(--editor-bg);");
+    expect(css).toContain("--draftly-color-link: var(--accent);");
+    expect(css).toContain("--draftly-font-mono: var(--font-editor);");
+    expect(css).not.toContain("min-width: 520px");
+    expect(css).not.toContain("min-height: 180px");
   });
 });
 
-async function createTestDraftlyPluginsModule(): Promise<
-  typeof DraftlyPlugins
-> {
-  const [
-    { HeadingPlugin },
-    { ImagePlugin },
-    { LinkPlugin },
-    { ListPlugin },
-    { ParagraphPlugin }
-  ] = await Promise.all([
-    import("draftly/src/plugins/heading-plugin.ts"),
-    import("draftly/src/plugins/image-plugin.ts"),
-    import("draftly/src/plugins/link-plugin.ts"),
-    import("draftly/src/plugins/list-plugin.ts"),
-    import("draftly/src/plugins/paragraph-plugin.ts")
-  ]);
+async function createTestDraftlyPluginsModule(): Promise<DraftlyPluginsModule> {
+  const {
+    HeadingPlugin,
+    ImagePlugin,
+    LinkPlugin,
+    ListPlugin,
+    ParagraphPlugin
+  } = await import("draftly/plugins");
 
   return {
     CodePlugin: EmptyPreviewPlugin,
@@ -139,7 +193,7 @@ async function createTestDraftlyPluginsModule(): Promise<
     ParagraphPlugin,
     QuotePlugin: EmptyPreviewPlugin,
     TablePlugin: EmptyPreviewPlugin
-  } as unknown as typeof DraftlyPlugins;
+  } as unknown as DraftlyPluginsModule;
 }
 
 class EmptyPreviewPlugin {

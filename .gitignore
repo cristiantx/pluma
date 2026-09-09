@@ -6,3 +6,7 @@ coverage
 .vite
 out
 *.tsbuildinfo
+
+.playwright-mcp/
+playwright-report/
+test-results/

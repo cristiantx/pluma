@@ -1,252 +1,41 @@
-import {
-  defaultKeymap,
-  history,
-  historyKeymap,
-  indentWithTab
-} from "@codemirror/commands";
-import { markdown } from "@codemirror/lang-markdown";
-import {
-  bracketMatching,
-  foldGutter,
-  indentUnit,
-  indentOnInput
-} from "@codemirror/language";
-import {
-  findNext,
-  findPrevious,
-  replaceAll,
-  replaceNext,
-  search
-} from "@codemirror/search";
-import { EditorState, type Extension } from "@codemirror/state";
-import {
-  drawSelection,
-  dropCursor,
-  EditorView,
-  highlightActiveLine,
-  highlightActiveLineGutter,
-  keymap,
-  lineNumbers
-} from "@codemirror/view";
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import type { CSSProperties, RefObject } from "react";
-
-import type {
-  EditorCursorAnchor,
-  EditorScrollSyncSource
-} from "./editorTypes.js";
-import { markdownCommandKeymap } from "./markdownCommands.js";
-import { plumaSourceEditorTheme } from "./sourceEditorTheme.js";
-import { sourceSearchDecorations } from "./sourceSearchDecorations.js";
-import {
-  applySourceCursorAnchor,
-  applySourceScrollAnchor,
-  getSourceCursorAnchor,
-  getSourceScrollAnchor,
-  getSourceSearchStatus,
-  revealSourceSearchMatch,
-  runSourceEditorCommand,
-  setSourceSearchQuery
-} from "./sourceEditorInterop.js";
+import { EditorView } from "@codemirror/view";
+import { forwardRef, useCallback, type CSSProperties } from "react";
+import { createSourceEditorExtensions } from "./sourceEditorExtensions.js";
 import type {
   SourceEditorHandle,
   SourceEditorProps
 } from "./sourceEditorTypes.js";
+import { useCodeMirrorEditor } from "./useCodeMirrorEditor.js";
 
 export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
-  function SourceEditor(
-    {
+  function SourceEditor(props, ref) {
+    const {
       "aria-label": ariaLabel = "Markdown source editor",
-      autoFocus = false,
-      documentId,
-      onCursorAnchorChange,
-      onFocus,
-      onReady,
-      onScrollAnchorChange,
-      onChange,
-      rawText,
-      searchRevealRequest = null,
       sourceFontFamily = "mono",
       sourceFontSize = 14,
       sourceLineNumbers = true,
       sourceTabSize = 2,
       sourceWordWrap = true,
       spellCheck = true
-    },
-    ref
-  ) {
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const editorTextRef = useRef(rawText);
-    const onCursorAnchorChangeRef = useRef(onCursorAnchorChange);
-    const onChangeRef = useRef(onChange);
-    const onFocusRef = useRef(onFocus);
-    const onReadyRef = useRef(onReady);
-    const onScrollAnchorChangeRef = useRef(onScrollAnchorChange);
-    const scrollSourceRef = useRef<EditorScrollSyncSource>("user");
-    const viewRef = useRef<EditorView | null>(null);
-
-    useImperativeHandle(ref, () => ({
-      findNext: (options) =>
-        runSourceEditorCommand(viewRef.current, findNext, options),
-      findPrevious: (options) =>
-        runSourceEditorCommand(viewRef.current, findPrevious, options),
-      focus: () => viewRef.current?.focus(),
-      getCursorAnchor: () =>
-        getSourceCursorAnchor(
-          viewRef.current,
-          documentId,
-          "source",
-          editorTextRef.current
-        ),
-      getScrollAnchor: () => getSourceScrollAnchor(viewRef.current, documentId),
-      getSearchStatus: () => getSourceSearchStatus(viewRef.current),
-      applyCursorAnchor: (anchor) =>
-        applySourceCursorAnchor(viewRef.current, anchor),
-      applyScrollAnchor: (anchor) => {
-        scrollSourceRef.current = "programmatic";
-        applySourceScrollAnchor(viewRef.current, anchor);
-        window.requestAnimationFrame(() => {
-          scrollSourceRef.current = "user";
-        });
-      },
-      replaceAll: (options) =>
-        runSourceEditorCommand(viewRef.current, replaceAll, options),
-      replaceNext: (options) =>
-        runSourceEditorCommand(viewRef.current, replaceNext, options),
-      revealSearchMatch: (match) =>
-        revealSourceSearchMatch(viewRef.current, match),
-      setSearchQuery: (query) => setSourceSearchQuery(viewRef.current, query)
-    }));
-
-    useEffect(() => {
-      onChangeRef.current = onChange;
-    }, [onChange]);
-
-    useEffect(() => {
-      onCursorAnchorChangeRef.current = onCursorAnchorChange;
-      onFocusRef.current = onFocus;
-      onReadyRef.current = onReady;
-      onScrollAnchorChangeRef.current = onScrollAnchorChange;
-    }, [onCursorAnchorChange, onFocus, onReady, onScrollAnchorChange]);
-
-    useEffect(() => {
-      const parent = containerRef.current;
-
-      if (!parent) {
-        return;
-      }
-
-      let cursorAnchorFrame: number | null = null;
-      editorTextRef.current = rawText;
-
-      const scheduleCursorAnchor = (updatedView: EditorView) => {
-        if (cursorAnchorFrame !== null) {
-          return;
-        }
-
-        cursorAnchorFrame = window.requestAnimationFrame(() => {
-          cursorAnchorFrame = null;
-          emitSourceCursorAnchor(
-            updatedView,
-            documentId,
-            editorTextRef,
-            onCursorAnchorChangeRef
-          );
-        });
-      };
-      const view = new EditorView({
-        doc: rawText,
-        extensions: createSourceEditorExtensions(
-          {
-            lineNumbers: sourceLineNumbers,
-            tabSize: sourceTabSize,
-            wordWrap: sourceWordWrap
-          },
-          (nextText) => {
-            if (editorTextRef.current === nextText) {
-              return;
-            }
-
-            editorTextRef.current = nextText;
-            onChangeRef.current(nextText);
-          },
-          scheduleCursorAnchor
-        ),
-        parent
-      });
-
-      view.dom.setAttribute("aria-label", ariaLabel);
-      viewRef.current = view;
-      onReadyRef.current?.();
-
-      const handleFocusIn = () => {
-        onFocusRef.current?.();
-        scheduleCursorAnchor(view);
-      };
-      const handleScroll = () => {
-        const anchor = getSourceScrollAnchor(view, documentId);
-
-        if (anchor) {
-          onScrollAnchorChangeRef.current?.(anchor, scrollSourceRef.current);
-        }
-      };
-
-      view.dom.addEventListener("focusin", handleFocusIn);
-      view.scrollDOM.addEventListener("scroll", handleScroll, {
-        passive: true
-      });
-
-      if (autoFocus) {
-        view.focus();
-      }
-
-      return () => {
-        view.dom.removeEventListener("focusin", handleFocusIn);
-        view.scrollDOM.removeEventListener("scroll", handleScroll);
-        if (cursorAnchorFrame !== null) {
-          window.cancelAnimationFrame(cursorAnchorFrame);
-        }
-        viewRef.current = null;
-        view.destroy();
-      };
-    }, [
-      ariaLabel,
-      autoFocus,
-      documentId,
-      sourceLineNumbers,
-      sourceTabSize,
-      sourceWordWrap
-    ]);
-
-    useEffect(() => {
-      setSourceEditorSpellcheck(viewRef.current, spellCheck);
-    }, [spellCheck]);
-
-    useEffect(() => {
-      const view = viewRef.current;
-
-      if (!view || editorTextRef.current === rawText) {
-        return;
-      }
-
-      editorTextRef.current = rawText;
-      view.dispatch({
-        changes: {
-          from: 0,
-          to: view.state.doc.length,
-          insert: rawText
-        }
-      });
-    }, [rawText]);
-
-    useEffect(() => {
-      if (!searchRevealRequest) {
-        return;
-      }
-
-      revealSourceSearchMatch(viewRef.current, searchRevealRequest);
-    }, [searchRevealRequest?.requestId]);
-
+    } = props;
+    const createConfiguration = useCallback(
+      () => [
+        createSourceEditorExtensions({
+          lineNumbers: sourceLineNumbers,
+          tabSize: sourceTabSize,
+          wordWrap: sourceWordWrap
+        }),
+        EditorView.contentAttributes.of({
+          "aria-label": ariaLabel,
+          spellcheck: String(spellCheck)
+        })
+      ],
+      [ariaLabel, sourceLineNumbers, sourceTabSize, sourceWordWrap, spellCheck]
+    );
+    const { containerRef } = useCodeMirrorEditor(
+      { ...props, kind: "source", createConfiguration },
+      ref
+    );
     return (
       <div
         className="pluma-source-editor"
@@ -261,102 +50,3 @@ export const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
     );
   }
 );
-
-function emitSourceCursorAnchor(
-  view: EditorView,
-  documentId: string,
-  rawTextRef: RefObject<string>,
-  callbackRef: RefObject<((anchor: EditorCursorAnchor) => void) | undefined>
-): void {
-  const anchor = getSourceCursorAnchor(
-    view,
-    documentId,
-    "source",
-    rawTextRef.current
-  );
-
-  if (anchor) {
-    callbackRef.current?.(anchor);
-  }
-}
-
-function createSourceEditorExtensions(
-  settings: {
-    lineNumbers: boolean;
-    tabSize: 2 | 4;
-    wordWrap: boolean;
-  },
-  onChange: (rawText: string) => void,
-  onSelectionChange: (view: EditorView) => void
-): Extension[] {
-  return [
-    settings.lineNumbers ? lineNumbers() : [],
-    foldGutter({
-      markerDOM: createFoldMarker
-    }),
-    EditorState.tabSize.of(settings.tabSize),
-    indentUnit.of(" ".repeat(settings.tabSize)),
-    history(),
-    drawSelection(),
-    dropCursor(),
-    indentOnInput(),
-    bracketMatching(),
-    highlightActiveLine(),
-    highlightActiveLineGutter(),
-    markdown(),
-    search(),
-    sourceSearchDecorations,
-    markdownCommandKeymap,
-    keymap.of([indentWithTab]),
-    keymap.of([...defaultKeymap, ...historyKeymap]),
-    settings.wordWrap ? EditorView.lineWrapping : [],
-    EditorView.updateListener.of((update) => {
-      if (update.docChanged) {
-        onChange(update.state.doc.toString());
-      }
-
-      if (update.selectionSet) {
-        onSelectionChange(update.view);
-      }
-    }),
-    plumaSourceEditorTheme
-  ];
-}
-
-function setSourceEditorSpellcheck(
-  view: EditorView | null,
-  enabled: boolean
-): void {
-  if (!view) {
-    return;
-  }
-
-  const value = String(enabled);
-  view.dom.setAttribute("spellcheck", value);
-  view.contentDOM.setAttribute("spellcheck", value);
-}
-
-function createFoldMarker(isOpen: boolean): HTMLElement {
-  const marker = document.createElement("span");
-  marker.className = "pluma-fold-marker";
-  marker.setAttribute("aria-hidden", "true");
-  marker.appendChild(
-    createFoldMarkerIcon(isOpen ? "m6 9 6 6 6-6" : "m9 18 6-6-6-6")
-  );
-
-  return marker;
-}
-
-function createFoldMarkerIcon(pathData: string): SVGSVGElement {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  const pathElement = document.createElementNS(
-    "http://www.w3.org/2000/svg",
-    "path"
-  );
-
-  svg.setAttribute("viewBox", "0 0 24 24");
-  pathElement.setAttribute("d", pathData);
-  svg.appendChild(pathElement);
-
-  return svg;
-}

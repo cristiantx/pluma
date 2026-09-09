@@ -1,7 +1,10 @@
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 
+import { draftlyThemeTokens } from "./draftlyThemeTokens.js";
+
 export const plumaRichEditorTheme: Extension = EditorView.theme({
+  "&.cm-draftly": draftlyThemeTokens,
   "&": {
     height: "100%",
     backgroundColor: "var(--editor-bg)",
@@ -102,14 +105,10 @@ export const plumaRichEditorTheme: Extension = EditorView.theme({
     WebkitMaskSize: "100% 100%"
   },
   ".cm-draftly-mermaid-rendered": {
-    width: "100%",
-    minHeight: "180px",
     padding: "16px 0",
     overflow: "auto"
   },
   ".cm-draftly-mermaid-rendered svg": {
-    width: "100%",
-    minWidth: "520px",
     maxWidth: "100%",
     height: "auto"
   }

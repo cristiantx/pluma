@@ -1,12 +1,15 @@
 import { useSortable } from "@dnd-kit/react/sortable";
 import { FileText, Settings, X } from "lucide-react";
 
+import { EDITOR_TAB_PANEL_ID, getTabButtonId } from "./tabAccessibility.js";
+
 import type { PlumaTab } from "../adapters/tabModel.js";
 
 type TabButtonProps = {
   activeTabId: string;
   onActiveTabChange: (tabId: string) => void;
   onContextMenu: (tabId: string) => void;
+  onNavigate: (key: string, tabId: string) => boolean;
   onTabClose: (tabId: string) => void;
   tab: PlumaTab;
   tabIndex: number;
@@ -17,6 +20,7 @@ export function TabButton({
   onActiveTabChange,
   onContextMenu,
   onTabClose,
+  onNavigate,
   tab,
   tabIndex
 }: TabButtonProps) {
@@ -35,6 +39,15 @@ export function TabButton({
     >
       <button
         aria-selected={isActive}
+        aria-controls={EDITOR_TAB_PANEL_ID}
+        id={getTabButtonId(tab.id)}
+        tabIndex={isActive ? 0 : -1}
+        onKeyDown={(event) => {
+          if (onNavigate(event.key, tab.id)) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }}
         className="tab-activate"
         onAuxClick={(event) => {
           if (event.button !== 1) {
@@ -79,6 +92,7 @@ export function TabButton({
       <button
         aria-label={`Close ${tab.title}`}
         className="tab-close"
+        tabIndex={isActive ? 0 : -1}
         onClick={() => onTabClose(tab.id)}
         type="button"
       >

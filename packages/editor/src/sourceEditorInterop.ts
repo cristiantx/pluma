@@ -5,7 +5,7 @@ import {
 } from "@codemirror/search";
 import { EditorView } from "@codemirror/view";
 
-import { findCurrentSearchIndex, findTextMatches } from "./editorSearch.js";
+import { findCurrentSearchIndex } from "./editorSearch.js";
 import type {
   EditorCursorAnchor,
   EditorKind,
@@ -14,10 +14,8 @@ import type {
   EditorSearchQuery,
   EditorSearchStatus
 } from "./editorTypes.js";
-import {
-  sourceOffsetFromMarkdownVisible,
-  visibleOffsetFromMarkdownSource
-} from "./markdownVisibleTextProjection.js";
+import { EditorSelection } from "@codemirror/state";
+import { getSourceSearchResults } from "./sourceSearchResults.js";
 import type { SourceSearchMatch } from "./sourceEditorTypes.js";
 import { editorSearchQueryFromCodeMirror } from "./sourceSearchQuery.js";
 
@@ -45,7 +43,7 @@ export function getSourceSearchStatus(
   }
 
   const query = editorSearchQueryFromCodeMirror(getSearchQuery(view.state));
-  const result = findTextMatches(view.state.doc.toString(), query);
+  const result = getSourceSearchResults(view.state.doc, query);
   const current = result.matches.length
     ? findCurrentSearchIndex(result.matches, view.state.selection.main.head) + 1
     : 0;
@@ -94,21 +92,27 @@ export function getSourceScrollAnchor(
   );
   const ratio = maxScrollTop > 0 ? scrollDOM.scrollTop / maxScrollTop : 0;
   const rect = getElementRect(scrollDOM);
-  const position = rect ? getPositionAtRect(view, rect) : null;
+  const block =
+    rect && typeof view.lineBlockAtHeight === "function"
+      ? view.lineBlockAtHeight(Math.max(0, rect.top - view.documentTop))
+      : null;
+  const position = block?.from ?? (rect ? getPositionAtRect(view, rect) : null);
 
   return {
     documentId,
     kind,
     position,
-    ratio: clampRatio(ratio)
+    ratio: clampRatio(ratio),
+    ...(block && rect
+      ? { offset: block.top + view.documentTop - rect.top }
+      : {})
   };
 }
 
 export function getSourceCursorAnchor(
   view: EditorView | null,
   documentId: string,
-  kind: EditorKind = "source",
-  rawText = view?.state.doc.toString() ?? ""
+  kind: EditorKind = "source"
 ): EditorCursorAnchor | null {
   if (!view) {
     return null;
@@ -119,7 +123,12 @@ export function getSourceCursorAnchor(
     documentId,
     kind,
     position,
-    visibleOffset: visibleOffsetFromMarkdownSource(rawText, position)
+    visibleOffset: null,
+    ranges: view.state.selection.ranges.map(({ anchor, head }) => ({
+      anchor,
+      head
+    })),
+    mainIndex: view.state.selection.mainIndex
   };
 }
 
@@ -131,31 +140,28 @@ export function applySourceCursorAnchor(
     return;
   }
 
-  const docLength = view.state.doc.length;
-  const projectedPosition =
-    anchor.visibleOffset !== null
-      ? sourceOffsetFromMarkdownVisible(
-          view.state.doc.toString(),
-          anchor.visibleOffset
-        )
-      : null;
-  const position = Math.max(
-    0,
-    Math.min(
-      anchor.kind === "source" && anchor.position !== null
-        ? anchor.position
-        : (projectedPosition ?? 0),
-      docLength
-    )
+  const clamp = (position: number) =>
+    Math.max(0, Math.min(position, view.state.doc.length));
+  const ranges = anchor.ranges?.length
+    ? anchor.ranges
+    : [{ anchor: anchor.position ?? 0, head: anchor.position ?? 0 }];
+  const selection = EditorSelection.create(
+    ranges.map((range) =>
+      EditorSelection.range(clamp(range.anchor), clamp(range.head))
+    ),
+    Math.max(0, Math.min(anchor.mainIndex ?? 0, ranges.length - 1))
   );
-
   view.dispatch({
-    effects: EditorView.scrollIntoView(position, { y: "center" }),
-    selection: {
-      anchor: position
-    }
+    selection,
+    ...(anchor.ranges
+      ? {}
+      : {
+          effects: EditorView.scrollIntoView(selection.main.head, {
+            y: "center"
+          })
+        })
   });
-  view.focus();
+  if (!anchor.ranges) view.focus();
 }
 
 export function applySourceScrollAnchor(
@@ -166,16 +172,47 @@ export function applySourceScrollAnchor(
     return;
   }
 
-  if (anchor.kind === "source" && anchor.position !== null) {
+  if (anchor.position !== null) {
+    const position = Math.max(
+      0,
+      Math.min(anchor.position, view.state.doc.length)
+    );
     view.dispatch({
-      effects: EditorView.scrollIntoView(
-        Math.max(0, Math.min(anchor.position, view.state.doc.length)),
-        { y: "center" }
-      )
+      effects: EditorView.scrollIntoView(position, { y: "start", yMargin: 0 })
     });
+    if (
+      typeof view.requestMeasure === "function" &&
+      anchor.offset !== undefined
+    ) {
+      const doc = view.state.doc;
+      let cancelled = false;
+      const cancel = () => {
+        cancelled = true;
+        cleanup();
+      };
+      const cleanup = () => {
+        for (const event of ["pointerdown", "keydown", "wheel"])
+          view.dom.removeEventListener(event, cancel, true);
+      };
+      for (const event of ["pointerdown", "keydown", "wheel"])
+        view.dom.addEventListener(event, cancel, { capture: true, once: true });
+      view.requestMeasure({
+        read: () =>
+          !cancelled && view.state.doc === doc
+            ? view.coordsAtPos(position)?.top
+            : undefined,
+        write: (top) => {
+          cleanup();
+          if (!cancelled && top !== undefined && view.state.doc === doc)
+            view.scrollDOM.scrollTop +=
+              top -
+              view.scrollDOM.getBoundingClientRect().top -
+              (anchor.offset ?? 0);
+        }
+      });
+    }
     return;
   }
-
   const { scrollDOM } = view;
   scrollDOM.scrollTop =
     clampRatio(anchor.ratio) *

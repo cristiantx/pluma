@@ -1,8 +1,12 @@
 import type * as DraftlyEditor from "draftly/editor";
-import type * as DraftlyPlugins from "draftly/plugins";
 import type * as DraftlyPreview from "draftly/preview";
 
-import { createDraftlyPlugins } from "./draftlyPlugins.js";
+import {
+  createDraftlyPlugins,
+  loadDraftlyPlugins,
+  type DraftlyPluginsModule
+} from "./draftlyPlugins.js";
+import { draftlyThemeTokens } from "./draftlyThemeTokens.js";
 import { resolveRichEditorImageUrls } from "./richEditorImageUrls.js";
 
 export const plumaPreviewClassName = "pluma-preview";
@@ -24,13 +28,8 @@ type PreviewRuntime = {
   preview: typeof DraftlyPreview.preview;
 };
 
-const pluginCache = new WeakMap<
-  DraftlyPluginsModule,
-  DraftlyPluginInstance[]
->();
 const cssCache = new WeakMap<DraftlyPluginsModule, Map<string, string>>();
 let previewRuntimePromise: Promise<PreviewRuntime> | null = null;
-let defaultPluginsPromise: Promise<DraftlyPluginsModule> | null = null;
 
 export async function renderPreviewContent(
   { rawText, resolvedTheme }: PreviewRenderOptions,
@@ -40,9 +39,9 @@ export async function renderPreviewContent(
     loadPreviewRuntime(),
     draftlyPluginsModule
       ? Promise.resolve(draftlyPluginsModule)
-      : loadDefaultPlugins()
+      : loadDraftlyPlugins()
   ]);
-  const plugins = getPreviewPlugins(draftlyPlugins);
+  const plugins = createDraftlyPlugins(draftlyPlugins);
   const theme =
     resolvedTheme === "dark" ? runtime.ThemeEnum.DARK : runtime.ThemeEnum.LIGHT;
 
@@ -75,28 +74,6 @@ function loadPreviewRuntime(): Promise<PreviewRuntime> {
   }));
 
   return previewRuntimePromise;
-}
-
-function loadDefaultPlugins(): Promise<DraftlyPluginsModule> {
-  defaultPluginsPromise ??=
-    import("draftly/plugins") as Promise<DraftlyPluginsModule>;
-  return defaultPluginsPromise;
-}
-
-function getPreviewPlugins(
-  draftlyPlugins: DraftlyPluginsModule
-): DraftlyPluginInstance[] {
-  const cached = pluginCache.get(draftlyPlugins);
-
-  if (cached) {
-    return cached;
-  }
-
-  const plugins = createDraftlyPlugins(draftlyPlugins).map(
-    ensurePreviewPluginMethods
-  );
-  pluginCache.set(draftlyPlugins, plugins);
-  return plugins;
 }
 
 function getPreviewCss(
@@ -134,30 +111,12 @@ function getPreviewCss(
 
 type DraftlyPluginInstance = ReturnType<typeof createDraftlyPlugins>[number];
 
-type DraftlyPreviewPlugin = DraftlyPluginInstance & {
-  getMarkdownConfig?: () => unknown;
-  getPreviewStyles?: (theme: unknown, wrapperClass: string) => string;
-};
-
-function ensurePreviewPluginMethods(
-  plugin: DraftlyPluginInstance
-): DraftlyPluginInstance {
-  const previewPlugin = plugin as DraftlyPreviewPlugin;
-
-  previewPlugin.getMarkdownConfig ??= () => null;
-  previewPlugin.getPreviewStyles ??= () => "";
-
-  return plugin;
-}
-
 export function resolvePreviewImageUrls(
   root: ParentNode,
   imageBaseUrl: string | undefined
 ): void {
   resolveRichEditorImageUrls(root, imageBaseUrl);
 }
-
-type DraftlyPluginsModule = typeof DraftlyPlugins;
 
 const previewViewCss = createPreviewViewCss();
 
@@ -204,6 +163,9 @@ function createPreviewViewCss(): string {
 }
 
 .${plumaPreviewContentClassName} {
+  ${Object.entries(draftlyThemeTokens)
+    .map(([name, value]) => `${name}: ${value};`)
+    .join("\n  ")}
   min-height: 100%;
   width: var(--rich-editor-content-width);
   max-width: var(--rich-editor-content-max-width);
@@ -291,15 +253,11 @@ function createPreviewViewCss(): string {
 }
 
 .${plumaPreviewContentClassName} .cm-draftly-mermaid-rendered {
-  width: 100%;
-  min-height: 180px;
   padding: 16px 0;
   overflow: auto;
 }
 
 .${plumaPreviewContentClassName} .cm-draftly-mermaid-rendered svg {
-  width: 100%;
-  min-width: 520px;
   max-width: 100%;
   height: auto;
 }

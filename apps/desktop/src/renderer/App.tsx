@@ -87,6 +87,9 @@ export function App() {
               event.editorViewMode
             );
           return;
+        case "document-baseline-reset":
+          usePlumaStore.getState().resetEditorBaseline(event.documentId);
+          break;
         case "document-closed":
           usePlumaStore.getState().hydrateDocumentClosed(event.documentId);
           return;

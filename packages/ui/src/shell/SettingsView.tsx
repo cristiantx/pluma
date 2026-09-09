@@ -1,5 +1,6 @@
 import type { AppSettings } from "../settings.js";
 import { usePlumaStore } from "../state/usePlumaStore.js";
+import { EDITOR_TAB_PANEL_ID, getTabButtonId } from "./tabAccessibility.js";
 import { SettingsField } from "./SettingsField.js";
 import type { SettingKey } from "./settingsDefinitions.js";
 import { settingsActions, settingsSections } from "./settingsDefinitions.js";
@@ -26,7 +27,12 @@ export function SettingsView() {
   };
 
   return (
-    <section className="settings-view" aria-label="Settings">
+    <section
+      className="settings-view"
+      role="tabpanel"
+      id={EDITOR_TAB_PANEL_ID}
+      aria-labelledby={getTabButtonId("settings")}
+    >
       <header className="settings-header">
         <h1>Settings</h1>
       </header>

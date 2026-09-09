@@ -1,439 +1,79 @@
-import {
-  defaultKeymap,
-  history,
-  historyKeymap,
-  indentWithTab
-} from "@codemirror/commands";
-import {
-  findNext,
-  findPrevious,
-  replaceAll,
-  replaceNext,
-  search
-} from "@codemirror/search";
-import type { Extension } from "@codemirror/state";
-import {
-  drawSelection,
-  dropCursor,
-  EditorView,
-  keymap
-} from "@codemirror/view";
-import {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState
-} from "react";
-import type { RefObject } from "react";
-import type * as DraftlyEditor from "draftly/editor";
-import type * as DraftlyPlugins from "draftly/plugins";
-
-import { createDraftlyPlugins } from "./draftlyPlugins.js";
-import type {
-  EditorCursorAnchor,
-  EditorScrollSyncSource
-} from "./editorTypes.js";
-import {
-  applySourceCursorAnchor,
-  applySourceScrollAnchor,
-  getSourceCursorAnchor,
-  getSourceScrollAnchor,
-  getSourceSearchStatus,
-  revealSourceSearchMatch,
-  runSourceEditorCommand,
-  setSourceSearchQuery
-} from "./sourceEditorInterop.js";
-import { markdownCommandKeymap } from "./markdownCommands.js";
-import { scheduleRichEditorRenderRefresh } from "./refreshRichEditorRendering.js";
-import { getRichEditorModifiedClickLinkUrl } from "./richEditorLinkClicks.js";
+import { EditorView } from "@codemirror/view";
+import { forwardRef, useCallback, useEffect, useRef } from "react";
+import { createDraftlyPlugins, loadDraftlyPlugins } from "./draftlyPlugins.js";
+import { connectRichEditorDOM } from "./richEditorDOM.js";
 import { plumaRichEditorTheme } from "./richEditorTheme.js";
 import { resolveRichEditorImageUrls } from "./richEditorImageUrls.js";
 import type { RichEditorHandle, RichEditorProps } from "./richEditorTypes.js";
-import { sourceSearchDecorations } from "./sourceSearchDecorations.js";
-
-type DraftlyModule = typeof DraftlyEditor;
-type DraftlyPluginsModule = typeof DraftlyPlugins;
+import { useCodeMirrorEditor } from "./useCodeMirrorEditor.js";
 
 export const RichEditor = forwardRef<RichEditorHandle, RichEditorProps>(
-  function RichEditor(
-    {
+  function RichEditor(props, ref) {
+    const {
       "aria-label": ariaLabel = "Rich Markdown editor",
-      autoFocus = false,
-      documentId,
-      imageBaseUrl,
-      onCursorAnchorChange,
-      onError,
-      onFocus,
-      onOpenLinkRequest,
-      onReady,
-      onScrollAnchorChange,
-      onChange,
-      rawText,
       resolvedTheme = "light",
-      searchRevealRequest = null,
       spellCheck = true
-    },
-    ref
-  ) {
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const editorTextRef = useRef(rawText);
-    const onCursorAnchorChangeRef = useRef(onCursorAnchorChange);
-    const onChangeRef = useRef(onChange);
-    const onFocusRef = useRef(onFocus);
-    const onOpenLinkRequestRef = useRef(onOpenLinkRequest);
-    const onReadyRef = useRef(onReady);
-    const onScrollAnchorChangeRef = useRef(onScrollAnchorChange);
-    const imageBaseUrlRef = useRef(imageBaseUrl);
-    const rawTextRef = useRef(rawText);
-    const scrollSourceRef = useRef<EditorScrollSyncSource>("user");
-    const viewRef = useRef<EditorView | null>(null);
-    const [isReady, setIsReady] = useState(false);
-    const [loadError, setLoadError] = useState<string | null>(null);
-
-    useImperativeHandle(ref, () => ({
-      findNext: (options) =>
-        runSourceEditorCommand(viewRef.current, findNext, options),
-      findPrevious: (options) =>
-        runSourceEditorCommand(viewRef.current, findPrevious, options),
-      focus: () => viewRef.current?.focus(),
-      getCursorAnchor: () =>
-        getSourceCursorAnchor(
-          viewRef.current,
-          documentId,
-          "rich",
-          editorTextRef.current
-        ),
-      getScrollAnchor: () =>
-        getSourceScrollAnchor(viewRef.current, documentId, "rich"),
-      getSearchStatus: () => getSourceSearchStatus(viewRef.current),
-      applyCursorAnchor: (anchor) =>
-        applySourceCursorAnchor(viewRef.current, anchor),
-      applyScrollAnchor: (anchor) => {
-        scrollSourceRef.current = "programmatic";
-        applySourceScrollAnchor(viewRef.current, anchor);
-        window.requestAnimationFrame(() => {
-          scrollSourceRef.current = "user";
-        });
-      },
-      replaceAll: (options) =>
-        runSourceEditorCommand(viewRef.current, replaceAll, options),
-      replaceNext: (options) =>
-        runSourceEditorCommand(viewRef.current, replaceNext, options),
-      revealSearchMatch: (match) =>
-        revealSourceSearchMatch(viewRef.current, match),
-      setSearchQuery: (query) => setSourceSearchQuery(viewRef.current, query)
-    }));
-
-    useEffect(() => {
-      onChangeRef.current = onChange;
-      imageBaseUrlRef.current = imageBaseUrl;
-    }, [imageBaseUrl, onChange]);
-
-    useEffect(() => {
-      rawTextRef.current = rawText;
-    }, [rawText]);
-
-    useEffect(() => {
-      onCursorAnchorChangeRef.current = onCursorAnchorChange;
-      onFocusRef.current = onFocus;
-      onOpenLinkRequestRef.current = onOpenLinkRequest;
-      onReadyRef.current = onReady;
-      onScrollAnchorChangeRef.current = onScrollAnchorChange;
-    }, [
-      onCursorAnchorChange,
-      onFocus,
-      onOpenLinkRequest,
-      onReady,
-      onScrollAnchorChange
-    ]);
-
-    useEffect(() => {
-      const parent = containerRef.current;
-
-      if (!parent) {
-        return;
-      }
-
-      let isDisposed = false;
-      let initializedView: EditorView | null = null;
-      let cancelRenderRefresh: (() => void) | null = null;
-      let teardownListeners: (() => void) | null = null;
-      let imageObserver: MutationObserver | null = null;
-      let cursorAnchorFrame: number | null = null;
-      setLoadError(null);
-
-      void Promise.all([
-        import("draftly/editor") as Promise<DraftlyModule>,
-        import("draftly/plugins") as Promise<DraftlyPluginsModule>
-      ])
-        .then(([{ ThemeEnum, draftly }, draftlyPlugins]) => {
-          if (isDisposed) {
-            return;
-          }
-
-          const plugins = createDraftlyPlugins(draftlyPlugins);
-          const draftlyTheme =
-            resolvedTheme === "dark" ? ThemeEnum.DARK : ThemeEnum.LIGHT;
-          editorTextRef.current = rawTextRef.current;
-          const scheduleCursorAnchor = (updatedView: EditorView) => {
-            if (cursorAnchorFrame !== null) {
-              return;
-            }
-
-            cursorAnchorFrame = window.requestAnimationFrame(() => {
-              cursorAnchorFrame = null;
-              emitRichCursorAnchor(
-                updatedView,
-                documentId,
-                editorTextRef,
-                onCursorAnchorChangeRef
-              );
-            });
-          };
-          const view = new EditorView({
-            doc: rawTextRef.current,
-            extensions: createRichEditorExtensions(
-              [
-                ...draftly({
-                  baseStyles: true,
-                  defaultKeybindings: false,
-                  history: false,
-                  highlightActiveLine: false,
-                  indentWithTab: false,
-                  plugins,
-                  theme: draftlyTheme
-                })
-              ],
-              (nextText) => {
-                if (editorTextRef.current === nextText) {
-                  return;
-                }
-
-                editorTextRef.current = nextText;
-                onChangeRef.current(nextText);
-              },
-              scheduleCursorAnchor
-            ),
-            parent
-          });
-
-          view.dom.setAttribute("aria-label", ariaLabel);
-          setRichEditorSpellcheck(view, spellCheck);
-          resolveRichEditorImageUrls(view.dom, imageBaseUrlRef.current);
-          viewRef.current = view;
-          initializedView = view;
-          cancelRenderRefresh = scheduleRichEditorRenderRefresh(view);
-          setIsReady(true);
-          onReadyRef.current?.();
-
-          const handleFocusIn = () => {
-            onFocusRef.current?.();
-            scheduleCursorAnchor(view);
-          };
-          const handleScroll = () => {
-            const anchor = getSourceScrollAnchor(view, documentId, "rich");
-
-            if (anchor) {
-              onScrollAnchorChangeRef.current?.(
-                anchor,
-                scrollSourceRef.current
-              );
-            }
-          };
-          const handleClick = (event: MouseEvent) => {
-            const linkUrl = getRichEditorModifiedClickLinkUrl(event);
-
-            if (!linkUrl) {
-              return;
-            }
-
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
-            onOpenLinkRequestRef.current?.(linkUrl);
-          };
-
-          view.dom.addEventListener("focusin", handleFocusIn);
-          view.dom.addEventListener("click", handleClick, { capture: true });
-          view.scrollDOM.addEventListener("scroll", handleScroll, {
-            passive: true
-          });
-          imageObserver = new MutationObserver(() => {
-            resolveRichEditorImageUrls(view.dom, imageBaseUrlRef.current);
-          });
-          imageObserver.observe(view.dom, {
-            childList: true,
-            subtree: true
-          });
-
-          if (autoFocus) {
-            view.focus();
-          }
-
-          viewRef.current = view;
-          initializedView = view;
-
-          teardownListeners = () => {
-            view.dom.removeEventListener("focusin", handleFocusIn);
-            view.dom.removeEventListener("click", handleClick, {
-              capture: true
-            });
-            view.scrollDOM.removeEventListener("scroll", handleScroll);
-          };
+    } = props;
+    const latest = useRef(props);
+    latest.current = props;
+    const createConfiguration = useCallback(async () => {
+      const [{ draftly, ThemeEnum }, modules] = await Promise.all([
+        import("draftly/editor"),
+        loadDraftlyPlugins()
+      ]);
+      return [
+        draftly({
+          baseStyles: true,
+          defaultKeybindings: false,
+          history: false,
+          highlightActiveLine: false,
+          indentWithTab: false,
+          plugins: createDraftlyPlugins(modules),
+          theme: resolvedTheme === "dark" ? ThemeEnum.DARK : ThemeEnum.LIGHT,
+          onPluginError: (plugin, error) =>
+            latest.current.onError?.(
+              new Error(
+                `${plugin}: ${error instanceof Error ? error.message : String(error)}`
+              )
+            )
+        }),
+        plumaRichEditorTheme,
+        EditorView.contentAttributes.of({
+          "aria-label": ariaLabel,
+          spellcheck: String(spellCheck)
         })
-        .catch((error: unknown) => {
-          if (isDisposed) {
-            return;
-          }
-
-          const loadError = toError(error, "Rich editor failed to load.");
-          setLoadError(loadError.message);
-          onError?.(loadError);
-        });
-
-      return () => {
-        isDisposed = true;
-        setIsReady(false);
-
-        const view = initializedView ?? viewRef.current;
-
-        if (view) {
-          if (cursorAnchorFrame !== null) {
-            window.cancelAnimationFrame(cursorAnchorFrame);
-          }
-          imageObserver?.disconnect();
-          cancelRenderRefresh?.();
-          teardownListeners?.();
-          view.destroy();
-        }
-
-        if (viewRef.current === view) {
-          viewRef.current = null;
-        }
-      };
-    }, [ariaLabel, autoFocus, documentId, onError, resolvedTheme]);
-
+      ];
+    }, [ariaLabel, resolvedTheme, spellCheck]);
+    const connectDOM = useCallback(
+      (view: EditorView) =>
+        connectRichEditorDOM(
+          view,
+          () => latest.current.imageBaseUrl,
+          (url) => latest.current.onOpenLinkRequest?.(url)
+        ),
+      []
+    );
+    const { containerRef, viewRef, isReady, loadError } = useCodeMirrorEditor(
+      { ...props, kind: "rich", createConfiguration, connectDOM },
+      ref
+    );
     useEffect(() => {
-      const view = viewRef.current;
-
-      if (view) {
-        resolveRichEditorImageUrls(view.dom, imageBaseUrl);
-      }
-    }, [imageBaseUrl]);
-
-    useEffect(() => {
-      setRichEditorSpellcheck(viewRef.current, spellCheck);
-    }, [spellCheck]);
-
-    useEffect(() => {
-      const view = viewRef.current;
-
-      if (!view || editorTextRef.current === rawText) {
-        return;
-      }
-
-      editorTextRef.current = rawText;
-      view.dispatch({
-        changes: {
-          from: 0,
-          to: view.state.doc.length,
-          insert: rawText
-        }
-      });
-
-      return scheduleRichEditorRenderRefresh(view);
-    }, [rawText]);
-
-    useEffect(() => {
-      if (!searchRevealRequest) {
-        return;
-      }
-
-      revealSourceSearchMatch(viewRef.current, searchRevealRequest);
-    }, [searchRevealRequest?.requestId]);
-
+      if (viewRef.current)
+        resolveRichEditorImageUrls(viewRef.current.dom, props.imageBaseUrl);
+    }, [props.imageBaseUrl, viewRef]);
     return (
       <div
         className="rich-editor"
         data-ready={isReady}
-        data-rich-editor-document-id={documentId}
+        data-rich-editor-document-id={props.documentId}
       >
         {loadError ? (
           <p className="editor-load-error" role="alert">
             {loadError}
           </p>
         ) : null}
-        <div
-          aria-label={ariaLabel}
-          className="rich-editor-surface"
-          ref={containerRef}
-          spellCheck={spellCheck}
-        />
+        <div className="rich-editor-surface" ref={containerRef} />
       </div>
     );
   }
 );
-
-function toError(error: unknown, fallbackMessage: string): Error {
-  return error instanceof Error ? error : new Error(fallbackMessage);
-}
-
-function createRichEditorExtensions(
-  draftlyExtensions: Extension[],
-  onChange: (rawText: string) => void,
-  onSelectionChange: (view: EditorView) => void
-): Extension[] {
-  return [
-    history(),
-    drawSelection(),
-    dropCursor(),
-    search(),
-    sourceSearchDecorations,
-    markdownCommandKeymap,
-    keymap.of([indentWithTab]),
-    keymap.of([...defaultKeymap, ...historyKeymap]),
-    draftlyExtensions,
-    EditorView.updateListener.of((update) => {
-      if (update.docChanged) {
-        onChange(update.state.doc.toString());
-      }
-
-      if (update.selectionSet) {
-        onSelectionChange(update.view);
-      }
-    }),
-    plumaRichEditorTheme
-  ];
-}
-
-function emitRichCursorAnchor(
-  view: EditorView,
-  documentId: string,
-  rawTextRef: RefObject<string>,
-  callbackRef: RefObject<((anchor: EditorCursorAnchor) => void) | undefined>
-): void {
-  const anchor = getSourceCursorAnchor(
-    view,
-    documentId,
-    "rich",
-    rawTextRef.current
-  );
-
-  if (anchor) {
-    callbackRef.current?.(anchor);
-  }
-}
-
-function setRichEditorSpellcheck(
-  view: EditorView | null,
-  enabled: boolean
-): void {
-  if (!view) {
-    return;
-  }
-
-  const value = String(enabled);
-  view.dom.setAttribute("spellcheck", value);
-  view.contentDOM.setAttribute("spellcheck", value);
-}

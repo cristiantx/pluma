@@ -6,7 +6,8 @@ import { gzipSync } from "node:zlib";
 
 import { analyzeMarkdownText } from "../../packages/core/dist/markdownPipeline.js";
 import { findTextMatches } from "../../packages/editor/dist/editorSearch.js";
-import { visibleOffsetFromMarkdownSource } from "../../packages/editor/dist/markdownVisibleTextProjection.js";
+import { EditorState } from "@codemirror/state";
+import { getSourceCursorAnchor } from "../../packages/editor/dist/sourceEditorInterop.js";
 import { updateSourceSearchMatchCache } from "../../packages/editor/dist/sourceSearchDecorations.js";
 import { mapWithConcurrency } from "../../apps/desktop/dist/src/main/runtime/asyncConcurrency.js";
 import { PendingDocumentTextSync } from "../../apps/desktop/dist/src/preload/documentTextSync.js";
@@ -18,11 +19,15 @@ const documents = new Map(
 const results = {
   bundle: await measureBundles(),
   cursorMapping: sizes.map((size) => {
-    const rawText = documents.get(size);
+    const state = EditorState.create({
+      doc: documents.get(size),
+      selection: { anchor: Math.floor(size / 2) }
+    });
+    // Snapshot copying uses source coordinates directly; state setup is not timed.
     return {
       bytes: size,
       medianMs: medianDuration(20, () =>
-        visibleOffsetFromMarkdownSource(rawText, Math.floor(size / 2))
+        getSourceCursorAnchor({ state }, "benchmark", "rich")
       )
     };
   }),

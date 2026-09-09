@@ -30,6 +30,7 @@ export type DesktopShellSnapshot = {
 export type DesktopDocumentPatch = Partial<Omit<DocumentSession, "id">>;
 
 export type RendererEvent =
+  | { type: "document-baseline-reset"; documentId: string }
   | {
       activeDocumentId: string | null;
       activeTabId: string | null;

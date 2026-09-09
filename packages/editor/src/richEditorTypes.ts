@@ -1,3 +1,4 @@
+import type { EditorSessionController } from "./editorSessionController.js";
 import type {
   EditorCursorAnchor,
   EditorScrollAnchor,
@@ -20,6 +21,8 @@ export type RichSearchRevealRequest = RichSearchMatch & {
 export type RichEditorProps = {
   "aria-label"?: string;
   autoFocus?: boolean;
+  sessionController?: EditorSessionController;
+  baselineRevision?: number;
   documentId: string;
   imageBaseUrl?: string | undefined;
   resolvedTheme?: "dark" | "light";

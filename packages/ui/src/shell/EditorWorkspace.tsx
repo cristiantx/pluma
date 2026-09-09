@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useRef } from "react";
 
 import {
+  EditorSessionController,
   PreviewView,
   RichEditor,
   SourceEditor,
@@ -19,6 +20,7 @@ import { findMarkdownHeadingAnchorPosition } from "./markdownHeadingAnchors.js";
 import { getRichLinkTargetAction } from "./richLinkTargets.js";
 import { SettingsView } from "./SettingsView.js";
 import { SaveConflictBanner } from "./SaveConflictBanner.js";
+import { EDITOR_TAB_PANEL_ID, getTabButtonId } from "./tabAccessibility.js";
 import { TabStrip } from "./TabStrip.js";
 import { useEditorWorkspaceController } from "./useEditorWorkspaceController.js";
 
@@ -28,6 +30,12 @@ type PendingLinkReveal = {
 };
 
 export const EditorWorkspace = memo(function EditorWorkspace() {
+  const sessions = useRef(new EditorSessionController()).current;
+  const openDocuments = usePlumaStore((state) => state.document.documents);
+  useEffect(
+    () => sessions.retain(openDocuments.map((document) => document.id)),
+    [openDocuments, sessions]
+  );
   const richEditorRef = useRef<RichEditorHandle | null>(null);
   const sourceEditorRef = useRef<SourceEditorHandle | null>(null);
   const pendingLinkRevealRef = useRef<PendingLinkReveal | null>(null);
@@ -81,6 +89,11 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
   );
   const updateDocumentText = usePlumaStore((state) => state.updateDocumentText);
   const activeDocumentId = activeDocument?.id ?? null;
+  const baselineRevision = usePlumaStore((state) =>
+    activeDocumentId
+      ? (state.editorSnapshots[activeDocumentId]?.baselineRevision ?? 0)
+      : 0
+  );
   const activeDocumentPath =
     activeDocument?.location.kind === "desktop-path"
       ? activeDocument.location.path
@@ -101,7 +114,7 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
     searchQuery,
     searchPanelFocusRequestId,
     searchStatus,
-    scheduleReplayAnchors,
+    onEditorReady,
     setActiveEditorKind,
     setIsReplaceVisible
   } = useEditorWorkspaceController({
@@ -268,13 +281,15 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
     <article className="rich-pane" aria-label="Rich Markdown editor">
       <div className="rich-document">
         <RichEditor
+          sessionController={sessions}
+          baselineRevision={baselineRevision}
           documentId={activeDocument.id}
           imageBaseUrl={imageBaseUrl}
           onCursorAnchorChange={handleCursorAnchorChange}
           onError={handleEditorLoadError}
           onFocus={handleRichEditorFocus}
           onOpenLinkRequest={handleOpenLinkRequest}
-          onReady={scheduleReplayAnchors}
+          onReady={() => onEditorReady("rich")}
           onScrollAnchorChange={handleScrollAnchorChange}
           onChange={handleDocumentTextChange}
           ref={richEditorRef}
@@ -313,10 +328,12 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
         </div>
       ) : null}
       <SourceEditor
+        sessionController={sessions}
+        baselineRevision={baselineRevision}
         documentId={activeDocument.id}
         onCursorAnchorChange={handleCursorAnchorChange}
         onFocus={handleSourceEditorFocus}
-        onReady={scheduleReplayAnchors}
+        onReady={() => onEditorReady("source")}
         onScrollAnchorChange={handleScrollAnchorChange}
         onChange={handleDocumentTextChange}
         ref={sourceEditorRef}
@@ -371,6 +388,9 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
 
       <div
         className="editor-panes"
+        role="tabpanel"
+        id={EDITOR_TAB_PANEL_ID}
+        aria-labelledby={activeTabId ? getTabButtonId(activeTabId) : undefined}
         data-rich-density={richEditorDensity}
         data-rich-width={richEditorWidth}
         data-source-width={sourceEditorWidth}

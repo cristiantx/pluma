@@ -2,17 +2,16 @@ import { create } from "zustand";
 
 import type { AppSettings } from "../settings.js";
 import { updateDocumentTextState } from "./plumaDocumentState.js";
-import { hydratePlumaShellSnapshot } from "./plumaStoreHydration.js";
+import { createEditorStateActions } from "./plumaEditorState.js";
 import { initialPlumaStoreState } from "./plumaStoreInitialState.js";
 import {
   activateDesktopDocumentState,
-  closeDesktopDocumentState,
   hydrateDesktopDocumentViewModeState,
   hydrateDesktopWorkspaceState,
   openDesktopDocumentState,
   patchDesktopDocumentState
 } from "./plumaDesktopState.js";
-import type { PlumaShellSnapshot, PlumaStore } from "./plumaStoreTypes.js";
+import type { PlumaStore } from "./plumaStoreTypes.js";
 import {
   addNotification,
   removeNotification
@@ -43,6 +42,7 @@ export { initialPlumaStoreState } from "./plumaStoreInitialState.js";
 
 export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   ...initialPlumaStoreState,
+  ...createEditorStateActions(set),
 
   closeTab: (tabId) => {
     if (tabId === "settings") {
@@ -98,10 +98,6 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     set((state) => hydrateDesktopWorkspaceState(state, workspace));
   },
 
-  hydrateDocumentClosed: (documentId) => {
-    set((state) => closeDesktopDocumentState(state, documentId));
-  },
-
   hydrateDocumentOpened: (document, index, viewMode) => {
     set((state) => openDesktopDocumentState(state, document, index, viewMode));
   },
@@ -116,10 +112,6 @@ export const usePlumaStore = create<PlumaStore>()((set, get) => ({
     set((state) =>
       hydrateDesktopDocumentViewModeState(state, documentId, mode)
     );
-  },
-
-  hydrateShellSnapshot: (snapshot: PlumaShellSnapshot) => {
-    set((state) => hydratePlumaShellSnapshot(state, snapshot));
   },
 
   hydrateSettings: (settings: AppSettings) => {

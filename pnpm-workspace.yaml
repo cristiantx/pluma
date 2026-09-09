@@ -2,13 +2,10 @@ packages:
   - apps/*
   - packages/*
 nodeLinker: hoisted
+enableGlobalVirtualStore: false
 allowBuilds:
+  electron: true
+  electron-winstaller: true
   esbuild: true
   fs-xattr: true
   macos-alias: true
-onlyBuiltDependencies:
-  - electron
-  - electron-winstaller
-  - esbuild
-  - fs-xattr
-  - macos-alias

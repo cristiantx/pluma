@@ -32,3 +32,8 @@
   - Use narrow selectors in components instead of broad store reads.
   - Keep domain logic in `packages/core`; the store coordinates UI state, not product rules.
 - Remove unused renderer dependencies and stale component files when replacing an approach.
+
+- Delegate independent, bounded work when it can run alongside useful lead work; keep at most three subagents active.
+- Use the parent model with `reasoning_effort: "low"` for routine inventories, focused accessibility fixes, fixtures, documentation, and validation. Use `fork_turns: "none"` or limited context when overriding reasoning, and supply scope, owned files, repository rules, and acceptance criteria explicitly.
+- Keep cursor geometry, shared editor-state architecture, merge decisions, and final integration with the lead. Escalate complex findings to the lead rather than guessing.
+- Avoid concurrent edits to shared files or generated artifacts. Isolate browser sessions, require verification reports, and review every contribution before final validation.

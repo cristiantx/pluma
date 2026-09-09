@@ -38,6 +38,7 @@ export const initialPlumaStoreState: PlumaStoreInitializer = {
     activeDocument: null,
     documents: []
   },
+  editorSnapshots: {},
   layout: {
     documentViewModes: {},
     editorViewMode: "source",

@@ -1,3 +1,5 @@
+import type { EditorCursorAnchor, EditorScrollAnchor } from "@pluma/editor";
+
 import type { DocumentSession } from "@pluma/core";
 
 import type { PlumaTab } from "../adapters/tabModel.js";
@@ -76,6 +78,21 @@ export type DocumentSlice = {
   documents: DocumentSession[];
 };
 
+export type EditorSnapshot = {
+  baselineRevision?: number;
+  cursor: EditorCursorAnchor | null;
+  scroll: EditorScrollAnchor | null;
+};
+
+export type EditorSnapshotsSlice = Record<string, EditorSnapshot>;
+
+export type EditorStateActions = {
+  resetEditorBaseline: (documentId: string) => void;
+  setEditorCursorAnchor: (anchor: EditorCursorAnchor) => void;
+  setEditorScrollAnchor: (anchor: EditorScrollAnchor) => void;
+  clearEditorSnapshot: (documentId: string) => void;
+};
+
 export type DocumentSessionPatch = Partial<Omit<DocumentSession, "id">>;
 
 export type DesktopWorkspaceHydration = {
@@ -130,6 +147,7 @@ export type PlumaShellSnapshot = {
 export type PlumaStoreState = {
   commands: CommandsSlice;
   document: DocumentSlice;
+  editorSnapshots: EditorSnapshotsSlice;
   layout: LayoutSlice;
   settings: SettingsSlice;
   status: StatusSlice;
@@ -139,7 +157,7 @@ export type PlumaStoreState = {
   workspace: WorkspaceSlice;
 };
 
-export type PlumaStoreActions = {
+export type PlumaStoreActions = EditorStateActions & {
   closeTab: (tabId: string) => void;
   closeSettingsTab: () => void;
   dismissNotification: (notificationId: string) => void;
@@ -227,6 +245,7 @@ export type PlumaStore = PlumaStoreState & PlumaStoreActions;
 export type PlumaStoreInitializer = {
   commands: CommandsSlice;
   document: DocumentSlice;
+  editorSnapshots: EditorSnapshotsSlice;
   layout: LayoutSlice;
   settings: SettingsSlice;
   status: StatusSlice;

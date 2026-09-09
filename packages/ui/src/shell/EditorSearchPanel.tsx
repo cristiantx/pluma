@@ -49,7 +49,18 @@ export function EditorSearchPanel({
   }, [focusRequestId]);
 
   return (
-    <div className="pluma-search-panel editor-search-panel" role="search">
+    <div
+      className="pluma-search-panel editor-search-panel"
+      role="search"
+      aria-label="Find and replace"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          onClose();
+        }
+      }}
+    >
       <div className="pluma-search-row">
         <button
           className="pluma-search-icon-button"
@@ -122,7 +133,9 @@ export function EditorSearchPanel({
             W
           </SearchToggle>
         </div>
-        <span className="pluma-search-count">{resultText}</span>
+        <span className="pluma-search-count" role="status" aria-live="polite">
+          {resultText}
+        </span>
         <button
           className="pluma-search-icon-button"
           onClick={onFindPrevious}

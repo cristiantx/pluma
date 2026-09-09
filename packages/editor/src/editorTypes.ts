@@ -5,6 +5,7 @@ export type EditorScrollAnchor = {
   kind: EditorKind;
   position: number | null;
   ratio: number;
+  offset?: number;
 };
 
 export type EditorCursorAnchor = {
@@ -12,6 +13,8 @@ export type EditorCursorAnchor = {
   kind: EditorKind;
   position: number | null;
   visibleOffset: number | null;
+  ranges?: { anchor: number; head: number }[];
+  mainIndex?: number;
 };
 
 export type EditorSearchQuery = {
