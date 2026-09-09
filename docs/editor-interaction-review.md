@@ -1,7 +1,7 @@
 # Editor interaction review
 
 Implemented and verified on September 9, 2026. Pluma uses published fork commit
-[`ef273c779d2e`](https://github.com/cristiantx/draftly/commit/ef273c779d2e6dda31b3a2e8bfa95a5a7ad347ee).
+[`77e34a2b0ded`](https://github.com/cristiantx/draftly/commit/77e34a2b0ded1c11ebaf6f0e76c688aa84afeb13).
 The fork preserves its existing history and includes upstream `86ee956ebdfd` plus the
 interaction fixes and rebuilt distribution files.
 
@@ -27,6 +27,16 @@ Table hit-testing maps rendered coordinates to Markdown source positions and pre
 CodeMirror's native caret and drag behavior. Pluma disables `normalizeOnOpen` and
 `normalizeOnChange` to avoid rewriting Markdown as a side effect of opening or ordinary
 editing; Draftly's defaults remain enabled.
+
+Blank-space hits inside a wrapped cell choose the nearest visual line vertically before
+choosing text horizontally. This keeps a click beside a short final line at that line's
+end. The supplied `Cancelled by card?` case previously selected source offset 83 rather
+than 91; exact final-line insertion now passes in both themes and native Electron.
+Regression cases also cover scrolling, bottom padding, explicit line breaks, and gestures.
+
+Ordered-list marker boxes grow to fit the number, punctuation, and source whitespace.
+Their original minimum width remains. One through nine digits, nested/wrapped lists, and
+editing across digit counts are covered in browser tests; Electron checks marker width too.
 
 Mermaid block decorations come directly from a StateField, making multiline replacement
 ranges available before CodeMirror computes viewport geometry. View-plugin replacements
@@ -79,11 +89,16 @@ Find focus, dark theme, local math fonts, and tables/diagrams in a long document
 960×640 and 1280×820 native window sizes. No user documents or profile are used.
 
 `pnpm validate` passes, and the production package and main-bundle boundary check succeed.
-There are 255 unit tests, 32 renderer interaction tests, one Electron renderer smoke test,
+There are 255 unit tests, 40 renderer interaction tests, one Electron renderer smoke test,
 and two packaged-app tests. Signing, notarization, other operating systems, and native OS
 file-dialog automation were not part of this local verification.
 See [the interaction harness notes](../tests/interaction/README.md),
 [performance notes](./performance.md), and [release checklist](./release-checklist.md).
+
+Follow-up verification exposed an intermittent rapid source-to-rich viewport restoration
+failure (two of three isolated repeats passed). That test can return to rich mode before
+source readiness and scroll replay complete. This timing issue remains separate from the
+list-marker and cell-pointer fixes; its existing regression assertion remains in the suite.
 
 Use `pnpm perf` for diagnostic benchmark output. Source-coordinate snapshot medians were
 below the report's 0.01 ms precision at every fixture size, versus 0.24/1.06/2.02 ms for

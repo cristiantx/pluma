@@ -11,6 +11,12 @@ import {
   textPoint
 } from "./rendererHarness";
 import { selectionSnapshot } from "./editorStateHarness";
+import {
+  cancelledCell,
+  cellLineEnd,
+  expectWrappedBlankSpace,
+  tableWhitespaceMarkdown
+} from "./tableWhitespaceHarness";
 
 const require = createRequire(path.resolve("package.json"));
 
@@ -67,6 +73,39 @@ test("Electron context isolation, clean open, and real pointer insertion", async
     expect(Math.abs(bounds.x + bounds.width - end.x)).toBeLessThan(2);
     await page.keyboard.insertText("NATIVE");
     expect((await documentSnapshot(page)).rawText).toContain("CeNATIVEll1");
+    await hydrate(
+      page,
+      "10. Native numbered list\n100. Three-digit list item\n"
+    );
+    await expect(page.locator(".cm-draftly-list-mark-ol")).toHaveCount(2);
+    for (const marker of await page.locator(".cm-draftly-list-mark-ol").all()) {
+      const sizes = await marker.evaluate((element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        return {
+          box: element.getBoundingClientRect().width,
+          text: range.getBoundingClientRect().width
+        };
+      });
+      expect(sizes.box).toBeGreaterThanOrEqual(sizes.text - 0.5);
+    }
+    await application.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]!.setContentSize(960, 820);
+    });
+    await hydrate(page, tableWhitespaceMarkdown);
+    const wrapped = page
+      .locator(".cm-draftly-table-body-row .cm-draftly-table-cell")
+      .first();
+    const blank = await cellLineEnd(wrapped);
+    expectWrappedBlankSpace(blank);
+    await page.mouse.click(blank.x, blank.y);
+    await page.keyboard.insertText("FINAL_LINE");
+    expect((await documentSnapshot(page)).rawText).toBe(
+      tableWhitespaceMarkdown.replace(
+        cancelledCell,
+        cancelledCell + "FINAL_LINE"
+      )
+    );
     expect(errors).toEqual([]);
   } finally {
     await application.close();

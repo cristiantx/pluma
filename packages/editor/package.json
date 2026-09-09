@@ -22,7 +22,7 @@
     "@codemirror/view": "^6.43.0",
     "@lezer/highlight": "^1.2.3",
     "@pluma/core": "workspace:*",
-    "draftly": "github:cristiantx/draftly#ef273c779d2e6dda31b3a2e8bfa95a5a7ad347ee&path:/packages/draftly",
+    "draftly": "github:cristiantx/draftly#77e34a2b0ded1c11ebaf6f0e76c688aa84afeb13&path:/packages/draftly",
     "react": "^19.1.0",
     "katex": "^0.16.28"
   }

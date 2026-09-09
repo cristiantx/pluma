@@ -26,6 +26,8 @@ export default defineConfig({
         "**/renderer.spec.ts",
         "**/geometry.spec.ts",
         "**/selection*.spec.ts",
+        "**/listMarkers.spec.ts",
+        "**/tableWhitespace.spec.ts",
         "**/diagramLifecycle.spec.ts",
         "**/editorState.spec.ts"
       ]

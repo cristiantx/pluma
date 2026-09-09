@@ -32,6 +32,10 @@ visible and readable while unselected text is unchanged. DOM-range bounds indepe
 check wrapped cells, cross-cell gestures, and multiple selections; Electron also verifies
 table highlight bounds and exact replacement through native pointer/keyboard input.
 
+Wrapped-cell whitespace tests click beyond the final character and in bottom padding,
+including scrolled cells, explicit line breaks, and drag/Shift-click selection. Numbered
+list tests measure marker/text bounds through nine digits, wrapping, nesting, and edits.
+
 Run `pnpm desktop:package` followed by `pnpm test:packaged` to verify the real macOS
 application. Override `PLUMA_PACKAGED_EXECUTABLE` for another packaged executable path.
 The packaged suite connects through Chromium debugging, uses isolated temporary profiles

@@ -49,6 +49,11 @@ export const plumaRichEditorTheme: Extension = EditorView.theme({
   ".cm-line": {
     padding: "0"
   },
+  "&.cm-draftly .cm-draftly-list-line-ol .cm-draftly-list-mark-ol": {
+    // Include every digit, punctuation, and source space in the marker's box.
+    width: "auto",
+    minWidth: "1rem"
+  },
   ".cm-cursor": {
     borderLeftColor: "var(--text-primary)"
   },
