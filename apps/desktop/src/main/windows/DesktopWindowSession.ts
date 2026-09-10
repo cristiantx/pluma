@@ -1,5 +1,5 @@
 import type { CommandRequest } from "@pluma/commands";
-import { dialog, type BrowserWindow } from "electron";
+import { type BrowserWindow } from "electron";
 import path from "node:path";
 import { createDocumentClosing } from "../documents/documentClosing";
 import { createDocumentFileOperations } from "../documents/documentFileOperations";
@@ -13,13 +13,14 @@ import { createDocumentTabs } from "../documents/documentTabs";
 import { createDraftDocumentPersistence } from "../documents/draftDocumentPersistence";
 import { createWindowDocumentExport } from "../export/windowDocumentExport";
 import { SelfWriteTracking } from "../persistence/selfWriteTracking";
+import { createWindowWorkspaceActions } from "../workspace/windowWorkspaceActions";
+import { WindowWorkspaceCoordinator } from "../workspace/windowWorkspaceCoordinator";
 import { WindowSessionState } from "./windowSessionState";
 import { WindowShellPublisher } from "./windowShellPublisher";
 
 import {
   applyLineEnding,
   createDocumentSession,
-  isMarkdownFilePath,
   shouldProtectDocumentSessionClose,
   updateDocumentSessionText,
   type AppDraftFileLocation,
@@ -34,8 +35,7 @@ import type {
   DesktopShellSnapshot,
   EditorViewMode,
   RendererEvent,
-  WorkspaceSearchMatch,
-  WorkspaceSearchOptions
+  WorkspaceSearchMatch
 } from "../../shared/shellState";
 import { AutosaveScheduler } from "../autosave/autosaveScheduler";
 import { type ExportDocumentResult } from "../export/desktopExport";
@@ -56,18 +56,12 @@ import {
 import { DocumentSaveQueue } from "../persistence/documentSaveQueue";
 import { mapWithConcurrency } from "../runtime/asyncConcurrency";
 import { ActiveFileWatcher } from "../watching/activeFileWatcher";
-import { WorkspaceWatcher } from "../watching/workspaceWatcher";
 import {
   isPathInsideDirectory,
-  tryCollectWorkspaceEntries,
   tryCreateSessionForFilePath,
   type MarkdownModeAnalyzer
 } from "../workspace/desktopWorkspace";
-import {
-  createWorkspaceFileActions,
-  type WorkspaceFileActions
-} from "../workspace/workspaceFileActions";
-import { WorkspaceSearchController } from "../workspace/workspaceSearch";
+import { type WorkspaceFileActions } from "../workspace/workspaceFileActions";
 
 const restoredDocumentConcurrency = 2;
 
@@ -91,6 +85,10 @@ export type DesktopWindowSessionDependencies = {
 };
 
 export class DesktopWindowSession {
+  private readonly workspace: WindowWorkspaceCoordinator;
+  private readonly workspaceActions: ReturnType<
+    typeof createWindowWorkspaceActions
+  >;
   private readonly saving: ReturnType<typeof createDocumentSaving>;
   private readonly saveText: ReturnType<typeof createDocumentSaveText>;
   private readonly documentExport: ReturnType<
@@ -135,8 +133,7 @@ export class DesktopWindowSession {
   private get selfWritePaths() {
     return this.selfWriteTracking.paths;
   }
-  private readonly workspaceWatcher: WorkspaceWatcher;
-  private readonly workspaceSearchController = new WorkspaceSearchController();
+
   private get currentMode() {
     return this.modes.currentMode;
   }
@@ -151,9 +148,6 @@ export class DesktopWindowSession {
     () => this.getShellSnapshot(),
     (event) => this.emitToRenderer(event)
   );
-  private workspaceFileActions: WorkspaceFileActions | null = null;
-  private workspaceRefreshPromise: Promise<void> | null = null;
-  private workspaceRefreshVersion = 0;
 
   constructor(private readonly dependencies: DesktopWindowSessionDependencies) {
     this.state = new WindowSessionState(
@@ -344,12 +338,46 @@ export class DesktopWindowSession {
       },
       (message) => this.emitToRenderer({ type: "status", message })
     );
-    this.workspaceWatcher = new WorkspaceWatcher(
-      () => {
-        void this.refreshWorkspaceEntries();
-      },
-      (message) => this.emitToRenderer({ type: "status", message })
-    );
+    this.workspaceActions = createWindowWorkspaceActions({
+      getShellData: () => this.shellData,
+      getWindow: () => this.window,
+      fileSystem: this.dependencies.fileSystem,
+      getDefaultLineEnding: () => this.dependencies.getDefaultLineEnding(),
+      selfWritePaths: this.selfWritePaths,
+      clearAutosave: () => this.autosaveScheduler.clearAll(),
+      emitToRenderer: (...args) => this.emitToRenderer(...args),
+      emitStatus: (...args) => this.emitStatus(...args),
+      emitShellSnapshot: (...args) => this.emitShellSnapshot(...args),
+      getProtectedDocuments: (...args) => this.getProtectedDocuments(...args),
+      resolveProtectedDocumentClose: (...args) =>
+        this.resolveProtectedDocumentClose(...args),
+      closeDocumentSessions: (...args) => this.closeDocumentSessions(...args),
+      updateShellData: (...args) => this.updateShellData(...args),
+      syncEditorModeForActiveDocument: (...args) =>
+        this.syncEditorModeForActiveDocument(...args),
+      updateActiveFileWatcher: (...args) =>
+        this.updateActiveFileWatcher(...args),
+      updateWorkspaceWatcher: (...args) => this.updateWorkspaceWatcher(...args),
+      persistSessionStateSoon: (...args) =>
+        this.persistSessionStateSoon(...args),
+      refreshWorkspaceEntries: (...args) =>
+        this.refreshWorkspaceEntries(...args),
+      confirmDiscardDocumentsSequentially: (...args) =>
+        this.confirmDiscardDocumentsSequentially(...args),
+      openFilePath: (...args) => this.openFilePath(...args),
+      handleContextCommand: (...args) => this.handleContextCommand(...args)
+    });
+    this.workspace = new WindowWorkspaceCoordinator({
+      emitStatus: (message) => this.emitStatus(message),
+      fileSystem: dependencies.fileSystem,
+      getRespectGitIgnore: dependencies.getWorkspaceRespectGitIgnore,
+      getShowHiddenFiles: dependencies.getWorkspaceShowHiddenFiles,
+      getWorkspacePath: () => this.shellData.workspacePath,
+      publishEntries: (workspaceEntries) => {
+        this.updateShellData({ workspaceEntries });
+        this.emitShellSnapshot();
+      }
+    });
   }
 
   get window(): BrowserWindow {
@@ -363,8 +391,7 @@ export class DesktopWindowSession {
   dispose(): void {
     this.autosaveScheduler.clearAll();
     this.activeFileWatcher.close();
-    this.workspaceWatcher.close();
-    this.workspaceSearchController.dispose();
+    this.workspace.dispose();
   }
 
   emitInitialState(): void {
@@ -597,23 +624,7 @@ export class DesktopWindowSession {
     folderPath: unknown,
     options: unknown
   ): Promise<WorkspaceSearchMatch[]> {
-    if (
-      typeof query !== "string" ||
-      !this.shellData.workspacePath ||
-      !isWorkspaceSearchOptions(options)
-    ) {
-      return [];
-    }
-
-    return this.workspaceSearchController.search({
-      folderPath: typeof folderPath === "string" ? folderPath : null,
-      options: {
-        ...options,
-        respectGitIgnore: this.dependencies.getWorkspaceRespectGitIgnore()
-      },
-      query,
-      workspacePath: this.shellData.workspacePath
-    });
+    return this.workspace.search(query, folderPath, options);
   }
 
   async refreshSettingsSensitiveState(): Promise<void> {
@@ -659,22 +670,7 @@ export class DesktopWindowSession {
   }
 
   async openWorkspaceFile(filePath: unknown): Promise<void> {
-    if (
-      typeof filePath !== "string" ||
-      !this.shellData.workspacePath ||
-      !isMarkdownFilePath(filePath) ||
-      !isPathInsideDirectory(this.shellData.workspacePath, filePath)
-    ) {
-      this.emitToRenderer({
-        type: "status",
-        message: "Workspace file open was ignored."
-      });
-      return;
-    }
-
-    await this.openFilePath(filePath, {
-      workspacePath: this.shellData.workspacePath
-    });
+    return this.workspaceActions.openWorkspaceFile(filePath);
   }
 
   async closeTab(tabId: string): Promise<void> {
@@ -1242,57 +1238,11 @@ export class DesktopWindowSession {
   }
 
   private updateWorkspaceWatcher(): void {
-    this.workspaceWatcher.update(this.shellData.workspacePath);
+    this.workspace.updateWatcher();
   }
 
   private refreshWorkspaceEntries(): Promise<void> {
-    this.workspaceRefreshVersion += 1;
-
-    if (this.workspaceRefreshPromise) {
-      return this.workspaceRefreshPromise;
-    }
-
-    const refresh = async () => {
-      let completedVersion = 0;
-
-      while (completedVersion !== this.workspaceRefreshVersion) {
-        const refreshVersion = this.workspaceRefreshVersion;
-        const workspacePath = this.shellData.workspacePath;
-        completedVersion = refreshVersion;
-
-        if (!workspacePath) {
-          continue;
-        }
-
-        const workspaceEntries = await tryCollectWorkspaceEntries(
-          this.dependencies.fileSystem,
-          workspacePath,
-          {
-            respectGitIgnore: this.dependencies.getWorkspaceRespectGitIgnore(),
-            showHiddenFiles: this.dependencies.getWorkspaceShowHiddenFiles()
-          }
-        );
-
-        if (
-          refreshVersion !== this.workspaceRefreshVersion ||
-          workspacePath !== this.shellData.workspacePath
-        ) {
-          continue;
-        }
-
-        this.updateShellData({
-          workspaceEntries
-        });
-        this.emitShellSnapshot();
-      }
-    };
-    const refreshPromise = refresh().finally(() => {
-      if (this.workspaceRefreshPromise === refreshPromise) {
-        this.workspaceRefreshPromise = null;
-      }
-    });
-    this.workspaceRefreshPromise = refreshPromise;
-    return refreshPromise;
+    return this.workspace.refresh();
   }
 
   private async handleActiveFileExternalChange(
@@ -1318,51 +1268,7 @@ export class DesktopWindowSession {
   }
 
   private async openFolderPath(directoryPath: string): Promise<void> {
-    if (directoryPath === this.shellData.workspacePath) {
-      this.emitToRenderer({
-        type: "status",
-        message: `Workspace ${path.basename(directoryPath)} is already open.`
-      });
-      return;
-    }
-
-    const protectedDocuments = this.getProtectedDocuments();
-
-    if (
-      protectedDocuments.length > 0 &&
-      !(await this.resolveProtectedDocumentClose(
-        protectedDocuments,
-        "switch-workspace"
-      ))
-    ) {
-      this.emitToRenderer({
-        type: "status",
-        message: "Workspace switch cancelled."
-      });
-      this.emitShellSnapshot();
-      return;
-    }
-
-    this.closeDocumentSessions(
-      this.shellData.documents.map((document) => document.id),
-      "Closed documents for workspace switch."
-    );
-
-    this.updateShellData({
-      activeDocumentId: null,
-      activeTabId: null,
-      documents: [],
-      status: `Opened workspace ${path.basename(directoryPath)}.`,
-      workspaceEntries: [],
-      workspacePath: directoryPath
-    });
-    this.syncEditorModeForActiveDocument();
-    this.autosaveScheduler.clearAll();
-    this.updateActiveFileWatcher();
-    this.updateWorkspaceWatcher();
-    this.persistSessionStateSoon();
-    this.emitShellSnapshot();
-    await this.refreshWorkspaceEntries();
+    return this.workspaceActions.openFolderPath(directoryPath);
   }
 
   private async saveActiveDocument(): Promise<void> {
@@ -1433,28 +1339,7 @@ export class DesktopWindowSession {
   }
 
   private async openFolderFromDialog(): Promise<void> {
-    const result = await dialog.showOpenDialog(this.window, {
-      properties: ["openDirectory"]
-    });
-
-    if (result.canceled || result.filePaths.length === 0) {
-      this.emitToRenderer({
-        type: "status",
-        message: "Open folder cancelled."
-      });
-      return;
-    }
-
-    const selectedPath = result.filePaths[0];
-    if (!selectedPath) {
-      this.emitToRenderer({
-        type: "status",
-        message: "Open folder did not return a path."
-      });
-      return;
-    }
-
-    await this.openFolderPath(selectedPath);
+    return this.workspaceActions.openFolderFromDialog();
   }
 
   private deleteDraftSoon(document: DocumentSession): void {
@@ -1462,68 +1347,15 @@ export class DesktopWindowSession {
   }
 
   private getWorkspaceFileActions(): WorkspaceFileActions {
-    this.workspaceFileActions ??= createWorkspaceFileActions({
-      onCommand: (request) => {
-        void this.handleContextCommand(request, true).catch((error: unknown) =>
-          this.emitStatus(String(error))
-        );
-      },
-      closeDocumentSessions: (documentIds, status) =>
-        this.closeDocumentSessions(documentIds, status),
-      confirmDiscardDocumentsSequentially: (documents) =>
-        this.confirmDiscardDocumentsSequentially(documents),
-      emitShellSnapshot: () => this.emitShellSnapshot(),
-      emitStatus: (message) => this.emitToRenderer({ type: "status", message }),
-      fileSystem: this.dependencies.fileSystem,
-      getDocuments: () => this.shellData.documents,
-      getDefaultLineEnding: () => this.dependencies.getDefaultLineEnding(),
-      getMainWindow: () => this.window,
-      getWorkspacePath: () => this.shellData.workspacePath,
-      openFilePath: (filePath, options) => this.openFilePath(filePath, options),
-      openFolderSearch: (folderPath) =>
-        this.emitToRenderer({ type: "find-in-folder", path: folderPath }),
-      persistSessionStateSoon: () => this.persistSessionStateSoon(),
-      refreshWorkspaceEntries: () => this.refreshWorkspaceEntries(),
-      selfWritePaths: this.selfWritePaths
-    });
-
-    return this.workspaceFileActions;
+    return this.workspaceActions.getWorkspaceFileActions();
   }
 
   private isValidWorkspaceTarget(
     targetPath: string,
     kind: "file" | "folder"
   ): boolean {
-    const workspacePath = this.shellData.workspacePath;
-
-    if (!workspacePath) {
-      return false;
-    }
-
-    if (targetPath === workspacePath) {
-      return kind === "folder";
-    }
-
-    return (
-      isPathInsideDirectory(workspacePath, targetPath) &&
-      this.shellData.workspaceEntries.some(
-        (entry) => entry.path === targetPath && entry.kind === kind
-      )
-    );
+    return this.workspaceActions.isValidWorkspaceTarget(targetPath, kind);
   }
-}
-
-function isWorkspaceSearchOptions(
-  options: unknown
-): options is WorkspaceSearchOptions {
-  return (
-    typeof options === "object" &&
-    options !== null &&
-    typeof (options as { caseSensitive?: unknown }).caseSensitive ===
-      "boolean" &&
-    typeof (options as { regexp?: unknown }).regexp === "boolean" &&
-    typeof (options as { wholeWord?: unknown }).wholeWord === "boolean"
-  );
 }
 
 function createDocumentModeKeyFromPersistedReference(
