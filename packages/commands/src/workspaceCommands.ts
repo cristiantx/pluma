@@ -6,7 +6,7 @@ export const workspaceCommands = {
     route: "workspace",
     availability: "always",
     payload: "workspace",
-    flush: false,
+    flush: true,
     palette: false
   },
   "workspace-new-directory": {
@@ -14,7 +14,7 @@ export const workspaceCommands = {
     route: "workspace",
     availability: "always",
     payload: "workspace",
-    flush: false,
+    flush: true,
     palette: false
   },
   "workspace-copy": {
@@ -22,7 +22,7 @@ export const workspaceCommands = {
     route: "workspace",
     availability: "always",
     payload: "workspace",
-    flush: false,
+    flush: true,
     palette: false
   },
   "workspace-cut": {
@@ -30,7 +30,7 @@ export const workspaceCommands = {
     route: "workspace",
     availability: "always",
     payload: "workspace",
-    flush: false,
+    flush: true,
     palette: false
   },
   "workspace-paste": {
@@ -38,7 +38,7 @@ export const workspaceCommands = {
     route: "workspace",
     availability: "canPaste",
     payload: "workspace",
-    flush: false,
+    flush: true,
     palette: false
   },
   "workspace-rename": {
@@ -46,7 +46,7 @@ export const workspaceCommands = {
     route: "workspace",
     availability: "always",
     payload: "workspace",
-    flush: false,
+    flush: true,
     palette: false
   },
   "workspace-trash": {
@@ -54,7 +54,7 @@ export const workspaceCommands = {
     route: "workspace",
     availability: "always",
     payload: "workspace",
-    flush: false,
+    flush: true,
     palette: false
   },
   "workspace-find-in-folder": {
@@ -62,7 +62,7 @@ export const workspaceCommands = {
     route: "workspace",
     availability: "canFindInFolder",
     payload: "workspace",
-    flush: false,
+    flush: true,
     palette: false
   },
   "workspace-show-in-folder": {
@@ -70,7 +70,7 @@ export const workspaceCommands = {
     route: "workspace",
     availability: "always",
     payload: "workspace",
-    flush: false,
+    flush: true,
     palette: false
   }
 } as const satisfies Record<string, CommandDefinition>;

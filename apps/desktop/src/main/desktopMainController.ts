@@ -385,6 +385,10 @@ function createWindowDependencies(
   return {
     appDocumentsPath: app.getPath("documents"),
     draftStorage: createAppDraftStorage(getDraftsDirectory()),
+    flushDocumentText: async () => {
+      const session = sessions.get(window.id);
+      return session ? flushSessionDocumentText(session) : false;
+    },
     autosaveDelayMs,
     fileSystem,
     getAutosaveEnabled: () => autosaveEnabled,

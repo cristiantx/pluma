@@ -33,6 +33,7 @@ function createSession(documentId: string | null = "document-1"): FakeSession {
     hasActiveDocument: () => session.documentId !== null,
     getCommandDocumentId: () => session.documentId,
     handleCommand: vi.fn(async () => undefined),
+    handleContextCommand: vi.fn(async () => undefined),
     convertActiveDocumentLineEndings: vi.fn()
   };
 
@@ -173,12 +174,16 @@ describe("createDesktopCommandDispatcher", () => {
     const { dispatch, focusedSession } = createHarness();
 
     await dispatch("reload-window", { kind: "menu" });
+    await dispatch("reload-window", {
+      kind: "renderer",
+      session: focusedSession
+    });
     await dispatch("force-reload-window", {
       kind: "renderer",
       session: focusedSession
     });
 
-    expect(focusedSession.window.webContents.reload).toHaveBeenCalledTimes(1);
+    expect(focusedSession.window.webContents.reload).toHaveBeenCalledTimes(2);
     expect(
       focusedSession.window.webContents.reloadIgnoringCache
     ).toHaveBeenCalledTimes(1);

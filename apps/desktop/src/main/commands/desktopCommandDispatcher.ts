@@ -11,6 +11,12 @@ export type DesktopCommandSession = {
     isDestroyed(): boolean;
     webContents: { reload(): void; reloadIgnoringCache(): void };
   };
+  handleContextCommand(
+    request: Extract<
+      CommandRequest,
+      { id: `tab-${string}` | `workspace-${string}` }
+    >
+  ): Promise<void>;
   hasActiveDocument(): boolean;
   getCommandDocumentId(): string | null;
   handleCommand(command: ShellCommandId): Promise<void>;
@@ -38,13 +44,7 @@ export function createDesktopCommandDispatcher(
     const request = parseCommandRequest(value);
     if (!request) return;
     const definition = commandRegistry[request.id];
-    if (
-      definition.route === "native" ||
-      definition.route === "editor" ||
-      definition.route === "tab" ||
-      definition.route === "workspace"
-    )
-      return;
+    if (definition.route === "native" || definition.route === "editor") return;
     // Renderer authority comes from its IPC sender, even for application actions.
     if (
       origin.kind === "renderer" &&
@@ -68,6 +68,18 @@ export function createDesktopCommandDispatcher(
         ? origin.session
         : (dependencies.getFocusedSession() ?? dependencies.createWindow());
     if (!session || session.window.isDestroyed()) return;
+    if (definition.route === "tab" || definition.route === "workspace") {
+      if (origin.kind === "menu" && !(await dependencies.flushSession(session)))
+        return;
+      if (!session.window.isDestroyed())
+        await session.handleContextCommand(
+          request as Extract<
+            CommandRequest,
+            { id: `tab-${string}` | `workspace-${string}` }
+          >
+        );
+      return;
+    }
     const documentId = session.getCommandDocumentId();
     const enabled = () =>
       getCommandState(request.id, {

@@ -1,3 +1,4 @@
+import type { CommandRequest } from "@pluma/commands";
 import { dialog, shell, type BrowserWindow } from "electron";
 import { rename, stat } from "node:fs/promises";
 import path from "node:path";
@@ -43,7 +44,13 @@ import {
   confirmDiscardProtectedDocuments as confirmDiscardProtectedDocumentsDialog,
   confirmReloadConflictedDocument as confirmReloadConflictedDocumentDialog
 } from "../dialogs/documentProtection";
-import { buildTabContextMenu } from "../menus/tabContextMenu";
+import {
+  buildTabContextMenu,
+  executeTabMenuCommand,
+  type TabContextMenuOptions,
+  type TabMenuCommandRequest
+} from "../menus/tabContextMenu";
+import type { WorkspaceMenuCommandRequest } from "../menus/workspaceContextMenu";
 import { ActiveFileWatcher } from "../watching/activeFileWatcher";
 import { WorkspaceWatcher } from "../watching/workspaceWatcher";
 import {
@@ -76,6 +83,7 @@ export type DesktopWindowSessionDependencies = {
   appDocumentsPath: string;
   autosaveDelayMs: number;
   draftStorage: AppDraftStorage;
+  flushDocumentText?: () => Promise<boolean>;
   fileSystem: FileSystemAdapter<DesktopFileLocation>;
   getAutosaveEnabled: () => boolean;
   getDefaultLineEnding: () => "crlf" | "lf" | "system";
@@ -506,21 +514,62 @@ export class DesktopWindowSession {
   }
 
   showTabContextMenu(tabId: string, tabIds: unknown): void {
+    const options = this.getTabContextMenuOptions(tabId, tabIds);
+    if (options) buildTabContextMenu(options).popup({ window: this.window });
+  }
+
+  async handleContextCommand(
+    request: Extract<
+      CommandRequest,
+      { id: `tab-${string}` | `workspace-${string}` }
+    >,
+    fromNativeMenu = false
+  ): Promise<void> {
+    if (
+      fromNativeMenu &&
+      this.dependencies.flushDocumentText &&
+      !(await this.dependencies.flushDocumentText())
+    )
+      return;
+    if (this.window.isDestroyed()) return;
+    if (request.id.startsWith("tab-")) {
+      const tabRequest = request as TabMenuCommandRequest;
+      const options = this.getTabContextMenuOptions(
+        tabRequest.args.tabId,
+        tabRequest.args.tabIds
+      );
+      if (options) await executeTabMenuCommand(tabRequest, options);
+      return;
+    }
+    const workspaceRequest = request as WorkspaceMenuCommandRequest;
+    if (
+      !this.isValidWorkspaceTarget(
+        workspaceRequest.args.path,
+        workspaceRequest.args.kind
+      )
+    )
+      return;
+    await this.getWorkspaceFileActions().executeCommand(workspaceRequest);
+  }
+
+  private getTabContextMenuOptions(
+    tabId: string,
+    tabIds: unknown
+  ): TabContextMenuOptions | null {
     const openTabIds = Array.isArray(tabIds)
       ? tabIds.filter((candidate) => typeof candidate === "string")
       : [];
     const hasSettingsTab = openTabIds.includes("settings");
 
     if (tabId === "settings") {
-      this.showSettingsTabContextMenu(openTabIds);
-      return;
+      return this.getSettingsTabContextMenuOptions(openTabIds);
     }
 
     const documentId = tabId;
     const document = this.getDocumentById(documentId);
 
     if (!document) {
-      return;
+      return null;
     }
 
     const otherDocuments = this.shellData.documents.filter(
@@ -537,7 +586,13 @@ export class DesktopWindowSession {
         this.shellData.workspacePath,
         document.location.path
       );
-    const menu = buildTabContextMenu({
+    return {
+      target: { tabId, tabIds: openTabIds },
+      onCommand: (request) => {
+        void this.handleContextCommand(request, true).catch((error: unknown) =>
+          this.emitStatus(String(error))
+        );
+      },
       canCloseAll: this.shellData.documents.length > 0 || hasSettingsTab,
       canCloseOthers: otherDocuments.length > 0 || hasSettingsTab,
       canCloseSavedTabs: savedDocuments.length > 0,
@@ -546,43 +601,46 @@ export class DesktopWindowSession {
       canRevealInWorkspace,
       canShowInFolder: hasDesktopPath,
       onClose: () =>
-        void this.closeDocumentsWithProtection(
-          [document],
-          "Closed document tab."
-        ),
+        this.closeDocumentsWithProtection([document], "Closed document tab."),
       onCloseOthers: () =>
-        void this.closeDocumentsAndMaybeSettings(
+        this.closeDocumentsAndMaybeSettings(
           otherDocuments,
           hasSettingsTab,
           "Closed other tabs."
         ),
       onCloseSavedTabs: () =>
-        void this.closeDocumentsWithProtection(
+        this.closeDocumentsWithProtection(
           savedDocuments,
           "Closed saved document tabs."
         ),
       onCloseAll: () =>
-        void this.closeDocumentsAndMaybeSettings(
+        this.closeDocumentsAndMaybeSettings(
           this.shellData.documents,
           hasSettingsTab,
           "Closed all tabs."
         ),
-      onRename: () => void this.renameDocument(document.id),
+      onRename: () => this.renameDocument(document.id),
       onCopyPath: () =>
         this.getWorkspaceFileActions().copyDocumentPath(document.id),
       onShowInFolder: () =>
         this.getWorkspaceFileActions().showDocumentInFolder(document.id),
       onRevealInWorkspace: () => this.revealDocumentInWorkspace(document)
-    });
-
-    menu.popup({ window: this.window });
+    };
   }
 
-  private showSettingsTabContextMenu(openTabIds: string[]): void {
+  private getSettingsTabContextMenuOptions(
+    openTabIds: string[]
+  ): TabContextMenuOptions {
     const savedDocuments = this.shellData.documents.filter(
       (candidate) => candidate.saveState === "idle"
     );
-    const menu = buildTabContextMenu({
+    return {
+      target: { tabId: "settings", tabIds: openTabIds },
+      onCommand: (request) => {
+        void this.handleContextCommand(request, true).catch((error: unknown) =>
+          this.emitStatus(String(error))
+        );
+      },
       canCloseAll: openTabIds.length > 0,
       canCloseOthers: this.shellData.documents.length > 0,
       canCloseSavedTabs: savedDocuments.length > 0,
@@ -593,17 +651,17 @@ export class DesktopWindowSession {
       includeFileActions: false,
       onClose: () => this.emitCloseSettingsTab(),
       onCloseOthers: () =>
-        void this.closeDocumentsWithProtection(
+        this.closeDocumentsWithProtection(
           this.shellData.documents,
           "Closed other document tabs."
         ),
       onCloseSavedTabs: () =>
-        void this.closeDocumentsWithProtection(
+        this.closeDocumentsWithProtection(
           savedDocuments,
           "Closed saved document tabs."
         ),
       onCloseAll: () =>
-        void this.closeDocumentsAndMaybeSettings(
+        this.closeDocumentsAndMaybeSettings(
           this.shellData.documents,
           true,
           "Closed all tabs."
@@ -612,9 +670,7 @@ export class DesktopWindowSession {
       onRename: () => undefined,
       onRevealInWorkspace: () => undefined,
       onShowInFolder: () => undefined
-    });
-
-    menu.popup({ window: this.window });
+    };
   }
 
   showWorkspaceContextMenu(targetPath: unknown, kind: unknown): void {
@@ -2308,6 +2364,11 @@ export class DesktopWindowSession {
 
   private getWorkspaceFileActions(): WorkspaceFileActions {
     this.workspaceFileActions ??= createWorkspaceFileActions({
+      onCommand: (request) => {
+        void this.handleContextCommand(request, true).catch((error: unknown) =>
+          this.emitStatus(String(error))
+        );
+      },
       closeDocumentSessions: (documentIds, status) =>
         this.closeDocumentSessions(documentIds, status),
       confirmDiscardDocumentsSequentially: (documents) =>

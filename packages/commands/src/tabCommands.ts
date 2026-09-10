@@ -6,7 +6,7 @@ export const tabCommands = {
     route: "tab",
     availability: "always",
     payload: "tab",
-    flush: false,
+    flush: true,
     palette: false
   },
   "tab-close-others": {
@@ -14,7 +14,7 @@ export const tabCommands = {
     route: "tab",
     availability: "canCloseOthers",
     payload: "tab",
-    flush: false,
+    flush: true,
     palette: false
   },
   "tab-close-saved": {
@@ -22,7 +22,7 @@ export const tabCommands = {
     route: "tab",
     availability: "canCloseSavedTabs",
     payload: "tab",
-    flush: false,
+    flush: true,
     palette: false
   },
   "tab-close-all": {
@@ -30,7 +30,7 @@ export const tabCommands = {
     route: "tab",
     availability: "canCloseAll",
     payload: "tab",
-    flush: false,
+    flush: true,
     palette: false
   },
   "tab-rename": {
@@ -38,7 +38,7 @@ export const tabCommands = {
     route: "tab",
     availability: "canRename",
     payload: "tab",
-    flush: false,
+    flush: true,
     palette: false
   },
   "tab-copy-path": {
@@ -46,7 +46,7 @@ export const tabCommands = {
     route: "tab",
     availability: "canCopyPath",
     payload: "tab",
-    flush: false,
+    flush: true,
     palette: false
   },
   "tab-show-in-folder": {
@@ -54,7 +54,7 @@ export const tabCommands = {
     route: "tab",
     availability: "canShowInFolder",
     payload: "tab",
-    flush: false,
+    flush: true,
     palette: false
   },
   "tab-reveal-in-workspace": {
@@ -62,7 +62,7 @@ export const tabCommands = {
     route: "tab",
     availability: "canRevealInWorkspace",
     payload: "tab",
-    flush: false,
+    flush: true,
     palette: false
   }
 } as const satisfies Record<string, CommandDefinition>;

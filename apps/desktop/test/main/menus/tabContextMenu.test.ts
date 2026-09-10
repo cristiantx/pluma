@@ -7,10 +7,17 @@ vi.mock("electron", () => ({
   }
 }));
 
-import { buildTabContextMenu } from "../../../src/main/menus/tabContextMenu";
+import {
+  buildTabContextMenu,
+  executeTabMenuCommand,
+  type TabContextMenuOptions
+} from "../../../src/main/menus/tabContextMenu";
 
-function buildMenuTemplate(includeFileActions = true) {
-  return buildTabContextMenu({
+function createOptions(
+  overrides: Partial<TabContextMenuOptions> = {}
+): TabContextMenuOptions {
+  return {
+    target: { tabId: "tab-1", tabIds: ["tab-1", "tab-2"] },
     canCloseAll: true,
     canCloseOthers: true,
     canCloseSavedTabs: true,
@@ -18,7 +25,6 @@ function buildMenuTemplate(includeFileActions = true) {
     canRename: true,
     canRevealInWorkspace: true,
     canShowInFolder: true,
-    includeFileActions,
     onClose: vi.fn(),
     onCloseAll: vi.fn(),
     onCloseOthers: vi.fn(),
@@ -26,21 +32,33 @@ function buildMenuTemplate(includeFileActions = true) {
     onCopyPath: vi.fn(),
     onRename: vi.fn(),
     onRevealInWorkspace: vi.fn(),
-    onShowInFolder: vi.fn()
-  }) as unknown as MenuItemConstructorOptions[];
+    onShowInFolder: vi.fn(),
+    ...overrides
+  };
+}
+
+function buildMenuTemplate(options = createOptions()) {
+  return buildTabContextMenu(
+    options
+  ) as unknown as MenuItemConstructorOptions[];
+}
+
+function findItem(template: MenuItemConstructorOptions[], label: string) {
+  const item = template.find((candidate) => candidate.label === label);
+  if (!item) throw new Error(`Missing menu item: ${label}`);
+  return item;
 }
 
 describe("buildTabContextMenu", () => {
-  it("can build a close-only tab menu", () => {
-    expect(buildMenuTemplate(false).map((item) => item.label)).toEqual([
-      "Close",
-      "Close others",
-      "Close saved tabs",
-      "Close all tabs"
-    ]);
+  it("preserves registry labels and the close-only Settings layout", () => {
+    expect(
+      buildMenuTemplate(createOptions({ includeFileActions: false })).map(
+        (item) => item.label
+      )
+    ).toEqual(["Close", "Close others", "Close saved tabs", "Close all tabs"]);
   });
 
-  it("includes file actions for document tabs", () => {
+  it("includes registry-backed file actions for document tabs", () => {
     expect(buildMenuTemplate().map((item) => item.label)).toEqual([
       "Close",
       "Close others",
@@ -52,5 +70,41 @@ describe("buildTabContextMenu", () => {
       "Show in folder",
       "Reveal in Workspace"
     ]);
+  });
+
+  it("derives disabled state from command availability", () => {
+    const template = buildMenuTemplate(
+      createOptions({ canCloseOthers: false, canCopyPath: false })
+    );
+
+    expect(findItem(template, "Close others").enabled).toBe(false);
+    expect(findItem(template, "Copy path").enabled).toBe(false);
+    expect(findItem(template, "Close").enabled).toBe(true);
+  });
+
+  it("passes the typed target request to the command override", () => {
+    const onCommand = vi.fn();
+    const options = createOptions({ onCommand });
+    const item = findItem(buildMenuTemplate(options), "Reveal in Workspace");
+
+    item.click?.({} as Electron.MenuItem, undefined, undefined);
+
+    expect(onCommand).toHaveBeenCalledWith({
+      id: "tab-reveal-in-workspace",
+      args: options.target
+    });
+    expect(options.onRevealInWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("routes through existing callbacks and quietly rejects stale unavailable commands", async () => {
+    const options = createOptions();
+    const request = { id: "tab-close-others", args: options.target } as const;
+
+    await executeTabMenuCommand(request, options);
+    expect(options.onCloseOthers).toHaveBeenCalledOnce();
+
+    options.canCloseOthers = false;
+    await executeTabMenuCommand(request, options);
+    expect(options.onCloseOthers).toHaveBeenCalledOnce();
   });
 });

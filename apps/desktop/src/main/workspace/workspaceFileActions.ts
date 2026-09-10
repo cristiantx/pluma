@@ -11,7 +11,12 @@ import {
   type FileSystemAdapter
 } from "@pluma/core";
 
-import { buildWorkspaceContextMenu } from "../menus/workspaceContextMenu";
+import {
+  buildWorkspaceContextMenu,
+  executeWorkspaceMenuCommand,
+  type WorkspaceMenuCommandRequest,
+  type WorkspaceContextMenuOptions
+} from "../menus/workspaceContextMenu";
 import {
   clearWorkspaceClipboard,
   getWorkspaceClipboard,
@@ -25,6 +30,7 @@ import {
 } from "./workspacePathHelpers";
 
 export type WorkspaceFileActions = {
+  executeCommand: (request: WorkspaceMenuCommandRequest) => Promise<void>;
   copyDocumentPath: (documentId: string) => void;
   showDocumentInFolder: (documentId: string) => void;
   showWorkspaceContextMenu: (
@@ -34,6 +40,7 @@ export type WorkspaceFileActions = {
 };
 
 export type WorkspaceFileActionDependencies = {
+  onCommand: (request: WorkspaceMenuCommandRequest) => void;
   closeDocumentSessions: (documentIds: string[], status: string) => void;
   confirmDiscardDocumentsSequentially: (
     documents: DocumentSession[]
@@ -403,21 +410,17 @@ export function createWorkspaceFileActions(
     dependencies.emitShellSnapshot();
   }
 
-  function showWorkspaceContextMenu(
+  function getMenuOptions(
     targetPath: string,
     kind: WorkspaceItemKind
-  ): void {
-    const mainWindow = dependencies.getMainWindow();
-
-    if (!mainWindow) {
-      return;
-    }
-
-    const menu = buildWorkspaceContextMenu({
+  ): WorkspaceContextMenuOptions {
+    return {
+      target: { path: targetPath, kind },
+      onCommand: dependencies.onCommand,
       canFindInFolder: kind === "folder",
       canPaste: hasWorkspaceClipboard(),
-      onNewFile: () => void createWorkspaceFile(targetPath, kind),
-      onNewDirectory: () => void createWorkspaceDirectory(targetPath, kind),
+      onNewFile: () => createWorkspaceFile(targetPath, kind),
+      onNewDirectory: () => createWorkspaceDirectory(targetPath, kind),
       onCopy: () => {
         setWorkspaceClipboard({ operation: "copy", path: targetPath, kind });
         dependencies.emitStatus("Copied workspace item.");
@@ -426,9 +429,9 @@ export function createWorkspaceFileActions(
         setWorkspaceClipboard({ operation: "cut", path: targetPath, kind });
         dependencies.emitStatus("Cut workspace item.");
       },
-      onPaste: () => void pasteWorkspaceItem(targetPath, kind),
-      onRename: () => void renameWorkspaceItem(targetPath, kind),
-      onMoveToTrash: () => void moveWorkspaceItemToTrash(targetPath, kind),
+      onPaste: () => pasteWorkspaceItem(targetPath, kind),
+      onRename: () => renameWorkspaceItem(targetPath, kind),
+      onMoveToTrash: () => moveWorkspaceItemToTrash(targetPath, kind),
       onFindInFolder: () => {
         dependencies.openFolderSearch(targetPath);
       },
@@ -436,12 +439,31 @@ export function createWorkspaceFileActions(
         shell.showItemInFolder(targetPath);
         dependencies.emitStatus("Showing item in folder.");
       }
-    });
+    };
+  }
 
-    menu.popup({ window: mainWindow });
+  function showWorkspaceContextMenu(
+    targetPath: string,
+    kind: WorkspaceItemKind
+  ): void {
+    const mainWindow = dependencies.getMainWindow();
+    if (mainWindow)
+      buildWorkspaceContextMenu(getMenuOptions(targetPath, kind)).popup({
+        window: mainWindow
+      });
+  }
+
+  async function executeCommand(
+    request: WorkspaceMenuCommandRequest
+  ): Promise<void> {
+    await executeWorkspaceMenuCommand(
+      request,
+      getMenuOptions(request.args.path, request.args.kind)
+    );
   }
 
   return {
+    executeCommand,
     copyDocumentPath,
     showDocumentInFolder,
     showWorkspaceContextMenu
