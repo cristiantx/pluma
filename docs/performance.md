@@ -15,7 +15,7 @@ Measured from a production Forge package on 2026-07-13.
 
 Run `pnpm --filter @pluma/desktop check:main-bundle` after packaging to verify that renderer-only dependencies are absent and print the current sizes.
 
-## Editor cursor mapping
+## Historical editor cursor mapping (2026-07-13)
 
 Median of 20 local runs against a 1 MB synthetic Markdown document, mapping a source cursor at the document midpoint.
 
@@ -41,7 +41,7 @@ These are medians of 20 runs on the same machine. Snapshot times fall below the 
 latency. Real browser tests additionally verify exact insertion after deep scrolling and
 limit the previously observed approximately 5,000 px Mermaid click jump to under 32 px.
 
-## Large-document benchmark
+## Historical large-document benchmark (2026-07-13)
 
 Final measurements from the repeatable benchmark on 2026-07-13. Markdown capability analysis runs in the dedicated worker; its duration does not block Electron's main thread.
 

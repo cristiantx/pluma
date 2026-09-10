@@ -28,9 +28,12 @@ Expected alpha artifacts:
 
 ## Signing And Notarization Placeholders
 
-`apps/desktop/forge.config.ts` enables signing only when these environment variables are present:
+`apps/desktop/forge.config.ts` enables signing when this environment variable is present:
 
 - `PLUMA_APPLE_IDENTITY`
+
+Notarization additionally requires all three credentials:
+
 - `PLUMA_APPLE_ID`
 - `PLUMA_APPLE_ID_PASSWORD`
 - `PLUMA_APPLE_TEAM_ID`
@@ -55,7 +58,12 @@ unsigned `.dmg` and `.zip` artifacts.
 
 ## File Association
 
-The packaged app registers `.md` as an editor-owned macOS document type. Broader Markdown extensions remain future work.
+The packaged app registers `.md` as an editor-owned macOS document type. Pluma
+can open broader Markdown extensions from inside the app, but they are not OS
+file associations.
+
+Forge is configured to build arm64 and x64 release artifacts. Configuration
+alone is not evidence that a release was successfully signed or notarized.
 
 ## GitHub Releases Path
 

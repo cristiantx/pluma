@@ -3,9 +3,9 @@
 Pluma Markdown is CommonMark-compatible Markdown with GitHub Flavored Markdown and YAML frontmatter.
 
 Source mode accepts CommonMark input, GFM extensions, and YAML frontmatter.
-Rich editing is available for documents that can round-trip through Pluma's
-Markdown parser and formatter without losing source fidelity. Documents with
-unsupported constructs, such as inline or block HTML, stay in source mode.
+Rich editing and Preview are available unless capability analysis finds inline
+or block HTML. HTML documents stay in source mode because rich rendering could
+change their semantics. The source text remains canonical.
 
 ## Supported Syntax
 
@@ -17,13 +17,12 @@ unsupported constructs, such as inline or block HTML, stay in source mode.
 
 ## Support Tiers
 
-| Construct                                                                                                                               | Source mode | Rich mode                      | Notes                                                                                                        |
-| --------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| CommonMark paragraphs, headings, emphasis, strong text, links, images, blockquotes, lists, thematic breaks, code spans, and code blocks | Supported   | Supported when round-trip safe | Tested against the official CommonMark `0.31.2` fixture set.                                                 |
-| GFM tables, task lists, strikethrough, autolinks, and footnotes                                                                         | Supported   | Supported when round-trip safe | Parsed with `remark-gfm`.                                                                                    |
-| YAML frontmatter                                                                                                                        | Supported   | Supported when round-trip safe | Frontmatter is a Pluma extension, so leading `---` is interpreted as frontmatter when it forms a YAML block. |
-| Inline and block HTML                                                                                                                   | Preserved   | Source-only                    | HTML can carry execution or rendering semantics that rich editing may change.                                |
-| Unknown Markdown AST nodes                                                                                                              | Preserved   | Source-only                    | Pluma keeps the original source instead of serializing unsupported syntax.                                   |
+| Construct                                                                                                                               | Source mode | Rich mode   | Notes                                                                                                        |
+| --------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ----------- | ------------------------------------------------------------------------------------------------------------ |
+| CommonMark paragraphs, headings, emphasis, strong text, links, images, blockquotes, lists, thematic breaks, code spans, and code blocks | Supported   | Supported   | Tested against the official CommonMark `0.31.2` fixture set.                                                 |
+| GFM tables, task lists, strikethrough, autolinks, and footnotes                                                                         | Supported   | Supported   | Parsed with `remark-gfm`.                                                                                    |
+| YAML frontmatter                                                                                                                        | Supported   | Supported   | Frontmatter is a Pluma extension, so leading `---` is interpreted as frontmatter when it forms a YAML block. |
+| Inline and block HTML                                                                                                                   | Preserved   | Source-only | HTML can carry execution or rendering semantics that rich editing may change.                                |
 
 ## CommonMark Compatibility
 
@@ -46,15 +45,18 @@ HTML nodes are source-only. User-authored HTML can carry event handlers,
 embedded media, scripts, or rendering semantics that a rich editor may change or
 execute accidentally. Source mode preserves the original text.
 
-Any future user-authored Markdown preview or HTML rendering path should sanitize
-output before display. Markdown rendering defaults should map through Pluma's
-desktop design tokens instead of importing a third-party visual theme wholesale.
+Preview is shipped through Draftly's preview runtime. It escapes unhandled raw
+HTML and protects URL resolution while using Pluma's desktop design tokens.
+HTML export is a separate core pipeline and sanitizes generated output with
+`rehype-sanitize`.
 
 ## Canonical Formatting
 
-Prettier owns automatic formatting for Pluma Markdown.
+Pluma includes a Prettier-based Markdown formatter utility, but production UI
+does not currently call it. Formatting remains an unwired capability rather
+than an automatic rich-mode behavior.
 
-Pluma formats rich-mode output with:
+The utility formats with:
 
 - `parser: "markdown"`
 - `proseWrap: "preserve"`

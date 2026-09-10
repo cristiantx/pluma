@@ -89,16 +89,41 @@ Find focus, dark theme, local math fonts, and tables/diagrams in a long document
 960×640 and 1280×820 native window sizes. No user documents or profile are used.
 
 `pnpm validate` passes, and the production package and main-bundle boundary check succeed.
-There are 255 unit tests, 46 renderer interaction tests, one Electron renderer smoke test,
-and two packaged-app tests. Signing, notarization, other operating systems, and native OS
-file-dialog automation were not part of this local verification.
+At the September 9, 2026 baseline there were 255 unit tests, 46 renderer
+interaction tests, one Electron renderer smoke test, and two packaged-app tests.
+Those historical counts are not a current-suite claim. Signing, notarization,
+other operating systems, and native OS file-dialog automation were not part of
+that local verification.
 See [the interaction harness notes](../tests/interaction/README.md),
 [performance notes](./performance.md), and [release checklist](./release-checklist.md).
 
-Follow-up verification exposed an intermittent rapid source-to-rich viewport restoration
+The September 9 follow-up exposed an intermittent rapid source-to-rich viewport restoration
 failure (two of three isolated repeats passed). That test can return to rich mode before
 source readiness and scroll replay complete. This timing issue remains separate from the
 list-marker and cell-pointer fixes; its existing regression assertion remains in the suite.
+
+The September 10, 2026 command and desktop lifecycle refactor was verified with
+`pnpm validate`: lint, Markdown lint, formatting, TypeScript, all 333 unit tests
+in 66 files, and workspace builds passed. All 46 renderer interaction tests,
+the Electron renderer smoke test, two production-main tests, and two packaged
+macOS arm64 tests passed without skips. The final package and main-bundle
+boundary check passed; the Markdown analysis worker remains separate and the
+main bundle excludes React and CodeMirror.
+
+The production-main tests execute the real application menu and sender-bound
+preload IPC, then gracefully quit and relaunch two saved Markdown files with
+distinct modes. They use temporary profiles and fail if the bundle is absent.
+They do not treat a JavaScript menu callback as an OS accelerator test.
+
+A separate OS-level check used the final packaged app and a temporary profile:
+File → New Window created a second window; Cmd+O opened its native file dialog
+and loaded a second Markdown fixture; Cmd+, opened one Settings tab in that
+window. Cmd+Q exited with code 0. Relaunch showed the active second file in
+Preview, and a second graceful quit retained exactly two persisted windows,
+with the first file in Rich and the second in Preview. Both Markdown fixtures
+remained unchanged. The validation app was closed and its temporary profile
+removed. Signing, notarization, Finder association, and other platforms were
+not part of this local check; no new performance measurements are claimed.
 
 Use `pnpm perf` for diagnostic benchmark output. Source-coordinate snapshot medians were
 below the report's 0.01 ms precision at every fixture size, versus 0.24/1.06/2.02 ms for

@@ -9,16 +9,19 @@ and platform support are still evolving.
 - Polish the macOS desktop writing flow.
 - Keep Markdown files as normal files on disk.
 - Preserve source fidelity across rich and source editing modes.
-- Keep the Electron main process, renderer shell, editor integrations, and core
-  Markdown logic is cleanly separated.
+- Keep the Electron main process, renderer shell, editor integrations, command
+  definitions, and core Markdown logic cleanly separated.
 - Improve release confidence with repeatable validation and packaged-app checks.
 
 ## Near-Term Priorities
 
-- Hardening save, autosave, close-protection, and file-watching behavior.
-  - Prettier formatting consistency and UX
-- Improving editor search, navigation, and writing ergonomics.
-- Tightening Markdown export and rendering safety.
+- Harden the existing save, autosave, draft, close-protection, file-watching,
+  workspace-search, restoration, and export paths.
+- Design an explicit formatting command or setting around the existing
+  formatter utility.
+- Improve editor search, navigation, and writing ergonomics.
+- Add a command-palette interface on top of the shared command catalog.
+- Tighten Markdown export and rendering safety.
 - Refining macOS packaging, signing, notarization, and release notes.
 - Expanding contributor-facing tests around file workflows and editor behavior.
 

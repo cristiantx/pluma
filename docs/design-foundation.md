@@ -93,14 +93,9 @@ Rules:
 - The editor pane parent owns the rounded clipping and pane shadow
 - In dark mode, the editor pane keeps the dark drop shadow and adds a subtle light edge so the rounded boundary stays visible
 
-### Inspector Rail
-
-- Lightweight metadata and activity
-- Should remain secondary to the editor stage
-
 ### Floating Editor Controls
 
-- Source/Rich/Split mode controls live in a floating bottom-right island
+- Source/Rich/Preview mode controls live in a floating bottom-right island
 - Floating controls should be compact, elevated, and visually separate from the editor content
 - Do not reintroduce a persistent bottom status bar for these controls
 
@@ -127,7 +122,7 @@ The shell should continue to support these reference states:
 - empty state: no file or folder selected, shell layout still visible
 - file-opened state: current file label visible in the editor stage
 - folder/workspace state: explorer entries and workspace label visible in the title bar
-- editor-mode state: Source/Rich switch visible as a floating editor control when a document tab is active
+- editor-mode state: Source/Rich/Preview switch visible as a floating editor control when a document tab is active
 - sidebar-search state: sidebar title control flips between Search and Files while preserving the full-height shell structure
 
 ## Implementation Rules
