@@ -1,11 +1,18 @@
 import type { CommandRequest } from "@pluma/commands";
-import { dialog, shell, type BrowserWindow } from "electron";
+import { dialog, type BrowserWindow } from "electron";
 import path from "node:path";
 import { createDocumentClosing } from "../documents/documentClosing";
 import { createDocumentFileOperations } from "../documents/documentFileOperations";
 import { createDocumentModes } from "../documents/documentModes";
 import { createDocumentOpening } from "../documents/documentOpening";
+import { createDocumentReconciliation } from "../documents/documentReconciliation";
+import { createDocumentReload } from "../documents/documentReload";
+import { createDocumentSaveText } from "../documents/documentSaveText";
+import { createDocumentSaving } from "../documents/documentSaving";
 import { createDocumentTabs } from "../documents/documentTabs";
+import { createDraftDocumentPersistence } from "../documents/draftDocumentPersistence";
+import { createWindowDocumentExport } from "../export/windowDocumentExport";
+import { SelfWriteTracking } from "../persistence/selfWriteTracking";
 import { WindowSessionState } from "./windowSessionState";
 import { WindowShellPublisher } from "./windowShellPublisher";
 
@@ -13,11 +20,6 @@ import {
   applyLineEnding,
   createDocumentSession,
   isMarkdownFilePath,
-  markDocumentSessionConflict,
-  markDocumentSessionExternalChange,
-  markDocumentSessionSaveError,
-  markDocumentSessionSaving,
-  resolveDefaultLineEnding,
   shouldProtectDocumentSessionClose,
   updateDocumentSessionText,
   type AppDraftFileLocation,
@@ -36,10 +38,7 @@ import type {
   WorkspaceSearchOptions
 } from "../../shared/shellState";
 import { AutosaveScheduler } from "../autosave/autosaveScheduler";
-import {
-  exportDocument,
-  type ExportDocumentResult
-} from "../export/desktopExport";
+import { type ExportDocumentResult } from "../export/desktopExport";
 import type { ExportDocumentFormat } from "../export/exportDocumentHtml";
 import {
   buildTabContextMenu,
@@ -59,7 +58,6 @@ import { mapWithConcurrency } from "../runtime/asyncConcurrency";
 import { ActiveFileWatcher } from "../watching/activeFileWatcher";
 import { WorkspaceWatcher } from "../watching/workspaceWatcher";
 import {
-  createSessionForFilePath,
   isPathInsideDirectory,
   tryCollectWorkspaceEntries,
   tryCreateSessionForFilePath,
@@ -70,7 +68,6 @@ import {
   type WorkspaceFileActions
 } from "../workspace/workspaceFileActions";
 import { WorkspaceSearchController } from "../workspace/workspaceSearch";
-import { markDocumentAfterSuccessfulWrite } from "./documentSaveState";
 
 const restoredDocumentConcurrency = 2;
 
@@ -94,6 +91,18 @@ export type DesktopWindowSessionDependencies = {
 };
 
 export class DesktopWindowSession {
+  private readonly saving: ReturnType<typeof createDocumentSaving>;
+  private readonly saveText: ReturnType<typeof createDocumentSaveText>;
+  private readonly documentExport: ReturnType<
+    typeof createWindowDocumentExport
+  >;
+  private readonly reload: ReturnType<typeof createDocumentReload>;
+  private readonly reconciliation: ReturnType<
+    typeof createDocumentReconciliation
+  >;
+  private readonly draftPersistence: ReturnType<
+    typeof createDraftDocumentPersistence
+  >;
   private readonly documentTabs = createDocumentTabs({
     getShellData: () => this.shellData,
     updateShellData: (value) => this.updateShellData(value),
@@ -122,7 +131,10 @@ export class DesktopWindowSession {
   }
 
   private readonly saveQueue = new DocumentSaveQueue();
-  private readonly selfWritePaths = new Set<string>();
+  private readonly selfWriteTracking = new SelfWriteTracking();
+  private get selfWritePaths() {
+    return this.selfWriteTracking.paths;
+  }
   private readonly workspaceWatcher: WorkspaceWatcher;
   private readonly workspaceSearchController = new WorkspaceSearchController();
   private get currentMode() {
@@ -233,6 +245,92 @@ export class DesktopWindowSession {
         this.updateActiveFileWatcher(...args),
       updateShellData: (...args) => this.updateShellData(...args),
       window: this.window
+    });
+    this.draftPersistence = createDraftDocumentPersistence({
+      analyzeMarkdownMode: this.dependencies.analyzeMarkdownMode,
+      draftStorage: this.dependencies.draftStorage,
+      fileSystem: this.dependencies.fileSystem,
+      window: this.window,
+      clearAutosaveTimer: (id) => this.autosaveScheduler.clear(id),
+      emitShellSnapshot: (...args) => this.emitShellSnapshot(...args),
+      emitToRenderer: (...args) => this.emitToRenderer(...args),
+      getDefaultSaveAsPath: (...args) => this.getDefaultSaveAsPath(...args),
+      getDocuments: () => this.shellData.documents,
+      persistSessionStateSoon: (...args) =>
+        this.persistSessionStateSoon(...args),
+      prepareTextForSave: (...args) => this.prepareTextForSave(...args),
+      refreshWorkspaceEntries: (...args) =>
+        this.refreshWorkspaceEntries(...args),
+      replaceDocumentSession: (...args) => this.replaceDocumentSession(...args),
+      updateShellData: (...args) => this.updateShellData(...args),
+      waitForSave: async (id) => {
+        await this.saveQueue.waitFor(id);
+      }
+    });
+    this.reconciliation = createDocumentReconciliation({
+      analyzeMarkdownMode: this.dependencies.analyzeMarkdownMode,
+      clearAutosave: (id) => this.autosaveScheduler.clear(id),
+      emitShellSnapshot: (...args) => this.emitShellSnapshot(...args),
+      fileSystem: this.dependencies.fileSystem,
+      getActiveDocument: (...args) => this.getActiveDocument(...args),
+      getDocumentById: (...args) => this.getDocumentById(...args),
+      getDocuments: () => this.shellData.documents,
+      isSelfWritePath: (path) => this.selfWritePaths.has(path),
+      updateShellData: (...args) => this.updateShellData(...args)
+    });
+    this.reload = createDocumentReload({
+      analyzeMarkdownMode: this.dependencies.analyzeMarkdownMode,
+      confirmDiscardProtectedDocuments: (...args) =>
+        this.confirmDiscardProtectedDocuments(...args),
+      confirmReloadConflictedDocument: (...args) =>
+        this.confirmReloadConflictedDocument(...args),
+      emitShellSnapshot: (...args) => this.emitShellSnapshot(...args),
+      emitToRenderer: (...args) => this.emitToRenderer(...args),
+      fileSystem: this.dependencies.fileSystem,
+      getActiveDocumentForActiveTab: (...args) =>
+        this.getActiveDocumentForActiveTab(...args),
+      getDocuments: () => this.shellData.documents,
+      syncEditorModeForActiveDocument: (...args) =>
+        this.syncEditorModeForActiveDocument(...args),
+      updateShellData: (...args) => this.updateShellData(...args)
+    });
+    this.documentExport = createWindowDocumentExport({
+      getActiveDocumentForActiveTab: () => this.getActiveDocumentForActiveTab(),
+      emitToRenderer: (event) => this.emitToRenderer(event),
+      window: this.window,
+      appDocumentsPath: this.dependencies.appDocumentsPath,
+      getOpenExportedFile: this.dependencies.getOpenExportedFile
+    });
+    this.saveText = createDocumentSaveText(
+      this.dependencies.getDefaultLineEnding
+    );
+    this.saving = createDocumentSaving({
+      window: this.window,
+      fileSystem: this.dependencies.fileSystem,
+      enqueueDocumentSave: (id, operation) =>
+        this.saveQueue.enqueue(id, operation),
+      clearAutosave: (id) => this.autosaveScheduler.clear(id),
+      getDocuments: () => this.shellData.documents,
+      getDocumentById: (...args) => this.getDocumentById(...args),
+      getActiveDocumentForActiveTab: (...args) =>
+        this.getActiveDocumentForActiveTab(...args),
+      getDefaultSaveAsPath: (...args) => this.getDefaultSaveAsPath(...args),
+      saveDraftDocument: (...args) => this.saveDraftDocument(...args),
+      promoteDraftDocument: (...args) => this.promoteDraftDocument(...args),
+      prepareTextForSave: (...args) => this.prepareTextForSave(...args),
+      markSelfWritePath: (path) => {
+        this.selfWritePaths.add(path);
+      },
+      unmarkSelfWritePath: (path) => {
+        this.selfWritePaths.delete(path);
+      },
+      updateState: (update) => this.updateShellData(update),
+      emitToRenderer: (...args) => this.emitToRenderer(...args),
+      persistSessionStateSoon: (...args) =>
+        this.persistSessionStateSoon(...args),
+      emitShellSnapshot: (...args) => this.emitShellSnapshot(...args),
+      openFilePath: (...args) => this.openFilePath(...args),
+      refreshWorkspace: () => this.refreshWorkspaceEntries()
     });
     this.autosaveScheduler = new AutosaveScheduler(
       dependencies.autosaveDelayMs,
@@ -971,56 +1069,14 @@ export class DesktopWindowSession {
   private async exportActiveDocument(
     format: ExportDocumentFormat
   ): Promise<void> {
-    const activeDocument = this.getActiveDocumentForActiveTab();
-
-    if (!activeDocument) {
-      this.emitToRenderer({
-        type: "status",
-        message: "No active document to export."
-      });
-      return;
-    }
-
-    try {
-      const result = await exportDocument({
-        appDocumentsPath: this.dependencies.appDocumentsPath,
-        document: activeDocument,
-        format,
-        parentWindow: this.window
-      });
-
-      await this.handleExportResult(result, format);
-    } catch (error) {
-      this.emitToRenderer({
-        type: "status",
-        message:
-          error instanceof Error
-            ? `Export failed: ${error.message}`
-            : "Export failed."
-      });
-    }
+    return this.documentExport.exportActiveDocument(format);
   }
 
   private async handleExportResult(
     result: ExportDocumentResult,
     format: ExportDocumentFormat
   ): Promise<void> {
-    if (result.kind === "cancelled") {
-      this.emitToRenderer({ type: "status", message: "Export cancelled." });
-      return;
-    }
-
-    if (this.dependencies.getOpenExportedFile()) {
-      await shell.openPath(result.filePath);
-    }
-
-    this.emitToRenderer({
-      type: "status",
-      message:
-        format === "html"
-          ? `Exported HTML to ${path.basename(result.filePath)}.`
-          : `Exported PDF to ${path.basename(result.filePath)}.`
-    });
+    return this.documentExport.handleExportResult(result, format);
   }
 
   private getNextDraftName(): string {
@@ -1242,111 +1298,14 @@ export class DesktopWindowSession {
   private async handleActiveFileExternalChange(
     filePath: string
   ): Promise<void> {
-    const activeDocument = this.getActiveDocument();
-
-    if (
-      !activeDocument ||
-      activeDocument.location.kind !== "desktop-path" ||
-      activeDocument.location.path !== filePath
-    ) {
-      return;
-    }
-
-    await this.reconcileDocumentWithDisk(activeDocument.id, {
-      emitSnapshot: true
-    });
+    return this.reconciliation.handleActiveFileExternalChange(filePath);
   }
 
   private async reconcileDocumentWithDisk(
     documentId: string,
     options: { emitSnapshot: boolean }
   ): Promise<void> {
-    const documentToReconcile = this.getDocumentById(documentId);
-
-    if (
-      !documentToReconcile ||
-      documentToReconcile.location.kind !== "desktop-path" ||
-      this.selfWritePaths.has(documentToReconcile.location.path)
-    ) {
-      return;
-    }
-
-    const currentMetadata = await this.dependencies.fileSystem.getMetadata(
-      documentToReconcile.location
-    );
-
-    if (!currentMetadata) {
-      this.updateShellData({
-        documents: this.shellData.documents.map((document) =>
-          document.id === documentToReconcile.id
-            ? markDocumentSessionConflict(document)
-            : document
-        ),
-        status: "Active file was deleted on disk."
-      });
-      if (options.emitSnapshot) {
-        this.emitShellSnapshot();
-      }
-      return;
-    }
-
-    if (
-      documentToReconcile.lastSavedMetadata &&
-      currentMetadata.mtimeMs ===
-        documentToReconcile.lastSavedMetadata.mtimeMs &&
-      currentMetadata.size === documentToReconcile.lastSavedMetadata.size &&
-      currentMetadata.fileId === documentToReconcile.lastSavedMetadata.fileId
-    ) {
-      return;
-    }
-
-    this.autosaveScheduler.clear(documentToReconcile.id);
-
-    if (documentToReconcile.rawText === documentToReconcile.lastSavedText) {
-      const nextSession = await createSessionForFilePath(
-        this.dependencies.fileSystem,
-        documentToReconcile.location.path,
-        this.dependencies.analyzeMarkdownMode
-      );
-
-      if (!nextSession) {
-        this.updateShellData({
-          documents: this.shellData.documents.map((document) =>
-            document.id === documentToReconcile.id
-              ? markDocumentSessionConflict(document)
-              : document
-          ),
-          status: "Active file changed on disk but could not be reloaded."
-        });
-        if (options.emitSnapshot) {
-          this.emitShellSnapshot();
-        }
-        return;
-      }
-
-      this.updateShellData({
-        documents: this.shellData.documents.map((document) =>
-          document.id === documentToReconcile.id ? nextSession : document
-        ),
-        status: "Active file reloaded from disk."
-      });
-      if (options.emitSnapshot) {
-        this.emitShellSnapshot();
-      }
-      return;
-    }
-
-    this.updateShellData({
-      documents: this.shellData.documents.map((document) =>
-        document.id === documentToReconcile.id
-          ? markDocumentSessionExternalChange(document)
-          : document
-      ),
-      status: "Active file changed on disk."
-    });
-    if (options.emitSnapshot) {
-      this.emitShellSnapshot();
-    }
+    return this.reconciliation.reconcileDocumentWithDisk(documentId, options);
   }
 
   private async openFilePath(
@@ -1407,17 +1366,7 @@ export class DesktopWindowSession {
   }
 
   private async saveActiveDocument(): Promise<void> {
-    const activeDocument = this.getActiveDocumentForActiveTab();
-
-    if (!activeDocument) {
-      this.emitToRenderer({
-        type: "status",
-        message: "No active document to save."
-      });
-      return;
-    }
-
-    await this.saveDocument(activeDocument.id, "manual");
+    return this.saving.saveActiveDocument();
   }
 
   private async createNewMarkdownFile(): Promise<void> {
@@ -1425,143 +1374,17 @@ export class DesktopWindowSession {
   }
 
   private async saveActiveDocumentAs(): Promise<void> {
-    const activeDocument = this.getActiveDocumentForActiveTab();
-
-    if (!activeDocument) {
-      this.emitToRenderer({
-        type: "status",
-        message: "No active document to save."
-      });
-      return;
-    }
-
-    if (activeDocument.location.kind === "app-draft") {
-      await this.promoteDraftDocument(activeDocument);
-      return;
-    }
-
-    const result = await dialog.showSaveDialog(this.window, {
-      defaultPath: this.getDefaultSaveAsPath(activeDocument),
-      filters: [{ name: "Markdown", extensions: ["md", "markdown", "mdown"] }],
-      title: "Save Markdown File As"
-    });
-
-    if (result.canceled || !result.filePath) {
-      this.emitToRenderer({ type: "status", message: "Save As cancelled." });
-      return;
-    }
-
-    const textToSave = this.prepareTextForSave(activeDocument);
-    const saveResult = await this.dependencies.fileSystem.writeTextAtomic(
-      { kind: "desktop-path", path: result.filePath },
-      textToSave
-    );
-
-    if (saveResult.kind !== "success") {
-      this.emitToRenderer({
-        type: "status",
-        message:
-          saveResult.kind === "conflict"
-            ? `Save As conflict: file was ${saveResult.reason}.`
-            : `Save As failed: ${saveResult.message}`
-      });
-      return;
-    }
-
-    await this.openFilePath(result.filePath);
-    await this.refreshWorkspaceEntries();
+    return this.saving.saveActiveDocumentAs();
   }
 
   private async saveDraftDocument(document: DocumentSession): Promise<boolean> {
-    if (document.location.kind !== "app-draft") {
-      return false;
-    }
-
-    this.autosaveScheduler.clear(document.id);
-    const savedText = document.rawText;
-    const metadata = await this.dependencies.draftStorage.writeDraft(
-      document.location,
-      savedText
-    );
-    this.updateShellData({
-      documents: this.shellData.documents.map((candidate) =>
-        candidate.id === document.id
-          ? markDocumentAfterSuccessfulWrite(
-              candidate,
-              savedText,
-              metadata,
-              savedText
-            )
-          : candidate
-      ),
-      status: `Draft saved for ${document.location.name}.`
-    });
-    this.persistSessionStateSoon();
-    this.emitShellSnapshot();
-    return true;
+    return this.draftPersistence.saveDraftDocument(document);
   }
 
   private async promoteDraftDocument(
     document: DocumentSession
   ): Promise<boolean> {
-    if (document.location.kind !== "app-draft") {
-      return false;
-    }
-
-    const result = await dialog.showSaveDialog(this.window, {
-      defaultPath: this.getDefaultSaveAsPath(document),
-      filters: [{ name: "Markdown", extensions: ["md", "markdown", "mdown"] }],
-      title: "Save Markdown File"
-    });
-
-    if (result.canceled || !result.filePath) {
-      this.emitToRenderer({ type: "status", message: "Save cancelled." });
-      return false;
-    }
-
-    const textToSave = this.prepareTextForSave(document);
-    const fileLocation = {
-      kind: "desktop-path" as const,
-      path: result.filePath
-    };
-    const saveResult = await this.dependencies.fileSystem.writeTextAtomic(
-      fileLocation,
-      textToSave
-    );
-
-    if (saveResult.kind !== "success") {
-      this.emitToRenderer({
-        type: "status",
-        message:
-          saveResult.kind === "conflict"
-            ? `Save conflict: file was ${saveResult.reason}.`
-            : `Save failed: ${saveResult.message}`
-      });
-      return false;
-    }
-
-    await this.dependencies.draftStorage.deleteDraft(document.location);
-    const nextSession =
-      (await createSessionForFilePath(
-        this.dependencies.fileSystem,
-        result.filePath,
-        this.dependencies.analyzeMarkdownMode
-      )) ??
-      createDocumentSession({
-        location: fileLocation,
-        metadata: saveResult.metadata,
-        rawText: textToSave
-      });
-
-    this.autosaveScheduler.clear(document.id);
-    this.replaceDocumentSession(document.id, nextSession);
-    this.updateShellData({
-      status: `Saved ${path.basename(result.filePath)}.`
-    });
-    await this.refreshWorkspaceEntries();
-    this.persistSessionStateSoon();
-    this.emitShellSnapshot();
-    return true;
+    return this.draftPersistence.promoteDraftDocument(document);
   }
 
   private async renameDocument(documentId: string): Promise<void> {
@@ -1572,269 +1395,33 @@ export class DesktopWindowSession {
     documentId: string,
     trigger: "autosave" | "manual"
   ): Promise<boolean> {
-    return this.saveQueue.enqueue(documentId, () =>
-      this.performSaveDocument(documentId, trigger).catch((error: unknown) => {
-        const document = this.getDocumentById(documentId);
-
-        if (document) {
-          this.updateShellData({
-            documents: this.shellData.documents.map((candidate) =>
-              candidate.id === documentId
-                ? markDocumentSessionSaveError(candidate)
-                : candidate
-            ),
-            status:
-              error instanceof Error
-                ? `Save failed: ${error.message}`
-                : "Save failed."
-          });
-          this.emitShellSnapshot();
-        }
-
-        return false;
-      })
-    );
+    return this.saving.saveDocument(documentId, trigger);
   }
 
   private async performSaveDocument(
     documentId: string,
     trigger: "autosave" | "manual"
   ): Promise<boolean> {
-    const activeDocument = this.shellData.documents.find(
-      (document) => document.id === documentId
-    );
-
-    if (!activeDocument) {
-      return false;
-    }
-
-    if (activeDocument.saveState === "idle") {
-      if (
-        trigger === "manual" &&
-        activeDocument.location.kind === "app-draft"
-      ) {
-        return this.promoteDraftDocument(activeDocument);
-      }
-
-      return true;
-    }
-
-    if (
-      activeDocument.saveState === "conflict" ||
-      activeDocument.saveState === "external-change"
-    ) {
-      this.emitToRenderer({
-        type: "status",
-        message: "Resolve the disk conflict before saving."
-      });
-      return false;
-    }
-
-    if (activeDocument.location.kind === "app-draft") {
-      if (trigger === "autosave") {
-        return this.saveDraftDocument(activeDocument);
-      } else {
-        return this.promoteDraftDocument(activeDocument);
-      }
-    }
-
-    if (activeDocument.location.kind !== "desktop-path") {
-      this.emitToRenderer({
-        type: "status",
-        message: "Save is only available for desktop files."
-      });
-      return false;
-    }
-
-    this.autosaveScheduler.clear(activeDocument.id);
-
-    const textToSave = this.prepareTextForSave(
-      activeDocument,
-      activeDocument.rawText
-    );
-
-    this.updateShellData({
-      documents: this.shellData.documents.map((document) =>
-        document.id === activeDocument.id
-          ? markDocumentSessionSaving(document)
-          : document
-      ),
-      status:
-        trigger === "autosave"
-          ? `Autosaving ${path.basename(activeDocument.location.path)}.`
-          : `Saving ${path.basename(activeDocument.location.path)}.`
-    });
-    this.emitShellSnapshot();
-
-    const activeDocumentPath = activeDocument.location.path;
-
-    this.selfWritePaths.add(activeDocumentPath);
-    const saveResult = await this.dependencies.fileSystem.writeTextAtomic(
-      activeDocument.location,
-      textToSave,
-      {
-        expectedMetadata: activeDocument.lastSavedMetadata
-      }
-    );
-    setTimeout(() => {
-      this.selfWritePaths.delete(activeDocumentPath);
-    }, 150);
-
-    if (saveResult.kind === "success") {
-      this.updateShellData({
-        documents: this.shellData.documents.map((document) =>
-          document.id === activeDocument.id
-            ? markDocumentAfterSuccessfulWrite(
-                document,
-                textToSave,
-                saveResult.metadata,
-                activeDocument.rawText
-              )
-            : document
-        ),
-        status:
-          trigger === "autosave"
-            ? `Autosaved ${path.basename(activeDocument.location.path)}.`
-            : `Saved ${path.basename(activeDocument.location.path)}.`
-      });
-      this.persistSessionStateSoon();
-      this.emitShellSnapshot();
-      return true;
-    }
-
-    if (saveResult.kind === "conflict") {
-      this.updateShellData({
-        documents: this.shellData.documents.map((document) =>
-          document.id === activeDocument.id
-            ? markDocumentSessionConflict(document)
-            : document
-        ),
-        status: `Save conflict: file was ${saveResult.reason}.`
-      });
-      this.emitShellSnapshot();
-      return false;
-    }
-
-    this.updateShellData({
-      documents: this.shellData.documents.map((document) =>
-        document.id === activeDocument.id
-          ? markDocumentSessionSaveError({
-              ...document,
-              rawText: textToSave
-            })
-          : document
-      ),
-      status: `Save failed: ${saveResult.message}`
-    });
-    this.emitShellSnapshot();
-    return false;
+    return this.saving.performSaveDocument(documentId, trigger);
   }
 
   private async reloadActiveDocumentFromDisk(): Promise<void> {
-    const activeDocument = this.getActiveDocumentForActiveTab();
-
-    if (!activeDocument || activeDocument.location.kind !== "desktop-path") {
-      this.emitToRenderer({
-        type: "status",
-        message: "No desktop file to reload."
-      });
-      return;
-    }
-
-    if (
-      activeDocument.saveState === "conflict" &&
-      !(await this.confirmReloadConflictedDocument())
-    ) {
-      this.emitToRenderer({ type: "status", message: "Reload cancelled." });
-      return;
-    }
-
-    if (
-      activeDocument.saveState !== "conflict" &&
-      shouldProtectDocumentSessionClose(activeDocument) &&
-      !(await this.confirmDiscardProtectedDocuments([activeDocument], "reload"))
-    ) {
-      this.emitToRenderer({ type: "status", message: "Reload cancelled." });
-      return;
-    }
-
-    const nextSession = await createSessionForFilePath(
-      this.dependencies.fileSystem,
-      activeDocument.location.path,
-      this.dependencies.analyzeMarkdownMode
-    );
-
-    if (!nextSession) {
-      this.emitToRenderer({
-        type: "status",
-        message: "Could not reload file from disk."
-      });
-      return;
-    }
-
-    this.updateShellData({
-      documents: this.shellData.documents.map((document) =>
-        document.id === activeDocument.id ? nextSession : document
-      ),
-      status: `Reloaded ${path.basename(activeDocument.location.path)} from disk.`
-    });
-    this.syncEditorModeForActiveDocument();
-    this.emitShellSnapshot();
-    this.emitToRenderer({
-      type: "document-baseline-reset",
-      documentId: activeDocument.id
-    });
+    return this.reload.reloadActiveDocumentFromDisk();
   }
 
   private prepareTextForSave(
     document: DocumentSession,
     text = document.rawText
   ): string {
-    if (document.lineEnding === "crlf" || document.lineEnding === "lf") {
-      return applyLineEnding(text, document.lineEnding);
-    }
-
-    if (document.lineEnding === "none") {
-      return applyLineEnding(text, this.getWritableDefaultLineEnding());
-    }
-
-    return text;
+    return this.saveText.prepareTextForSave(document, text);
   }
 
   private getWritableDefaultLineEnding(): "crlf" | "lf" {
-    return resolveDefaultLineEnding(
-      this.dependencies.getDefaultLineEnding(),
-      process.platform
-    );
+    return this.saveText.getWritableDefaultLineEnding();
   }
 
   private async keepEditingActiveDocument(): Promise<void> {
-    const activeDocument = this.getActiveDocumentForActiveTab();
-
-    if (!activeDocument) {
-      return;
-    }
-
-    const metadata =
-      activeDocument.location.kind === "desktop-path"
-        ? await this.dependencies.fileSystem.getMetadata(
-            activeDocument.location
-          )
-        : activeDocument.lastSavedMetadata;
-
-    this.updateShellData({
-      documents: this.shellData.documents.map((document) =>
-        document.id === activeDocument.id
-          ? {
-              ...document,
-              lastSavedMetadata: metadata,
-              saveState: "dirty"
-            }
-          : document
-      ),
-      status: "Kept in-memory edits. The next save will write over disk."
-    });
-    this.emitShellSnapshot();
+    return this.reload.keepEditingActiveDocument();
   }
 
   private revealDocumentInWorkspace(document: DocumentSession): void {
@@ -1871,23 +1458,7 @@ export class DesktopWindowSession {
   }
 
   private deleteDraftSoon(document: DocumentSession): void {
-    if (document.location.kind !== "app-draft") {
-      return;
-    }
-
-    const draftLocation = document.location;
-    const pendingSave = this.saveQueue.waitFor(document.id);
-    void pendingSave
-      .then(() => this.dependencies.draftStorage.deleteDraft(draftLocation))
-      .catch((error) => {
-        this.emitToRenderer({
-          type: "status",
-          message:
-            error instanceof Error
-              ? `Could not delete draft: ${error.message}`
-              : "Could not delete draft."
-        });
-      });
+    return this.draftPersistence.deleteDraftSoon(document);
   }
 
   private getWorkspaceFileActions(): WorkspaceFileActions {
