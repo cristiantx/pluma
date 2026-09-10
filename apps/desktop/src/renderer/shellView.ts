@@ -92,6 +92,7 @@ export function getShellSnapshot(
   isBridgeAvailable: boolean
 ): PlumaShellSnapshot {
   return {
+    ...(shellState.workspaceIndex ? { workspaceIndex: shellState.workspaceIndex } : {}),
     activeDocument: getActiveDocument(shellState),
     activeDocumentId: shellState.activeDocumentId,
     activeTabId: shellState.activeTabId,

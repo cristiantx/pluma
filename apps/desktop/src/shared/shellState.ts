@@ -71,6 +71,7 @@ export type RendererEvent =
   | { type: "status"; message: string }
   | {
       type: "workspace-changed";
+      workspaceIndex?: import("./quickAccess").WorkspaceIndexState;
       workspaceEntries: WorkspaceTreeEntry[];
       workspacePath: string | null;
     };

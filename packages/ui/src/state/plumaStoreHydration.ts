@@ -55,6 +55,7 @@ export function hydratePlumaShellSnapshot(
       tabs
     },
     workspace: {
+      ...(snapshot.workspaceIndex ? { workspaceIndex: snapshot.workspaceIndex } : {}),
       explorerNodes: snapshot.explorerNodes,
       hasWorkspace: snapshot.hasWorkspace,
       isBridgeAvailable: snapshot.isBridgeAvailable,

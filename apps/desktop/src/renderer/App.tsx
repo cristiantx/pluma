@@ -1,3 +1,4 @@
+import { useQuickAccessDesktop } from "./quickaccess/useQuickAccessDesktop";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { PlumaShell, initialPlumaStoreState, usePlumaStore } from "@pluma/ui";
@@ -147,6 +148,9 @@ export function App() {
           const store = usePlumaStore.getState();
           const workspacePath = event.workspacePath ?? "~/Documents/Pluma Docs";
           store.hydrateDesktopWorkspace({
+            ...(event.workspaceIndex
+              ? { workspaceIndex: event.workspaceIndex }
+              : {}),
             explorerNodes: getExplorerNodesFromEntries(
               event.workspaceEntries,
               store.document.activeDocument
@@ -263,6 +267,8 @@ export function App() {
       isActive = false;
     };
   }, [pushNotification, resolvedTheme, settingsLoaded, themePreference]);
+
+  useQuickAccessDesktop();
 
   return <PlumaShell />;
 }

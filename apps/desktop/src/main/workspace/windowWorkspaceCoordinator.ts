@@ -6,8 +6,13 @@ import type {
   WorkspaceTreeEntry
 } from "../../shared/shellState";
 import { WorkspaceWatcher } from "../watching/workspaceWatcher";
-import { tryCollectWorkspaceEntries } from "./desktopWorkspace";
+import { collectWorkspaceEntries } from "./desktopWorkspace";
 import { WorkspaceSearchController } from "./workspaceSearch";
+
+export type WorkspaceScanState = {
+  status: "loading" | "ready" | "error";
+  error: string | null;
+};
 
 export type WindowWorkspaceCoordinatorDependencies = {
   emitStatus: (message: string) => void;
@@ -16,11 +21,13 @@ export type WindowWorkspaceCoordinatorDependencies = {
   getShowHiddenFiles: () => boolean;
   getWorkspacePath: () => string | null;
   publishEntries: (entries: WorkspaceTreeEntry[]) => void;
+  publishScanState?: (state: WorkspaceScanState) => void;
 };
 
 export class WindowWorkspaceCoordinator {
   private refreshPromise: Promise<void> | null = null;
   private refreshVersion = 0;
+  private disposed = false;
   private readonly searchController = new WorkspaceSearchController();
   private readonly watcher: WorkspaceWatcher;
 
@@ -33,11 +40,15 @@ export class WindowWorkspaceCoordinator {
   }
 
   dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.refreshVersion += 1;
     this.watcher.close();
     this.searchController.dispose();
   }
 
   refresh(): Promise<void> {
+    if (this.disposed) return Promise.resolve();
     this.refreshVersion += 1;
 
     if (this.refreshPromise) {
@@ -47,7 +58,7 @@ export class WindowWorkspaceCoordinator {
     const refresh = async () => {
       let completedVersion = 0;
 
-      while (completedVersion !== this.refreshVersion) {
+      while (!this.disposed && completedVersion !== this.refreshVersion) {
         const refreshVersion = this.refreshVersion;
         const workspacePath = this.dependencies.getWorkspacePath();
         completedVersion = refreshVersion;
@@ -56,16 +67,40 @@ export class WindowWorkspaceCoordinator {
           continue;
         }
 
-        const workspaceEntries = await tryCollectWorkspaceEntries(
-          this.dependencies.fileSystem,
-          workspacePath,
-          {
-            respectGitIgnore: this.dependencies.getRespectGitIgnore(),
-            showHiddenFiles: this.dependencies.getShowHiddenFiles()
+        this.dependencies.publishScanState?.({
+          status: "loading",
+          error: null
+        });
+        let workspaceEntries: WorkspaceTreeEntry[];
+        try {
+          workspaceEntries = await collectWorkspaceEntries(
+            this.dependencies.fileSystem,
+            workspacePath,
+            0,
+            {
+              respectGitIgnore: this.dependencies.getRespectGitIgnore(),
+              showHiddenFiles: this.dependencies.getShowHiddenFiles()
+            }
+          );
+        } catch (error) {
+          if (
+            !this.disposed &&
+            refreshVersion === this.refreshVersion &&
+            workspacePath === this.dependencies.getWorkspacePath()
+          ) {
+            this.dependencies.publishScanState?.({
+              status: "error",
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Unable to scan workspace."
+            });
           }
-        );
+          continue;
+        }
 
         if (
+          this.disposed ||
           refreshVersion !== this.refreshVersion ||
           workspacePath !== this.dependencies.getWorkspacePath()
         ) {
@@ -73,6 +108,7 @@ export class WindowWorkspaceCoordinator {
         }
 
         this.dependencies.publishEntries(workspaceEntries);
+        this.dependencies.publishScanState?.({ status: "ready", error: null });
       }
     };
     const refreshPromise = refresh().finally(() => {
@@ -92,6 +128,7 @@ export class WindowWorkspaceCoordinator {
     const workspacePath = this.dependencies.getWorkspacePath();
 
     if (
+      this.disposed ||
       typeof query !== "string" ||
       !workspacePath ||
       !isWorkspaceSearchOptions(options)
@@ -111,7 +148,8 @@ export class WindowWorkspaceCoordinator {
   }
 
   updateWatcher(): void {
-    this.watcher.update(this.dependencies.getWorkspacePath());
+    if (!this.disposed)
+      this.watcher.update(this.dependencies.getWorkspacePath());
   }
 }
 

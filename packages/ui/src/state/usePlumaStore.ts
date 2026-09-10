@@ -1,3 +1,4 @@
+import { createQuickAccessActions } from "./plumaQuickAccessState.js";
 import { create } from "zustand";
 
 import type { AppSettings } from "../settings.js";
@@ -43,6 +44,7 @@ export { initialPlumaStoreState } from "./plumaStoreInitialState.js";
 export const usePlumaStore = create<PlumaStore>()((set, get) => ({
   ...initialPlumaStoreState,
   ...createEditorStateActions(set),
+  ...createQuickAccessActions(set),
 
   closeTab: (tabId) => {
     if (tabId === "settings") {

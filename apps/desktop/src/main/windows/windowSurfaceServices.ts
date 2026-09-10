@@ -133,6 +133,16 @@ export function createWindowSurfaceServices(ports: WindowSurfaceServicesPorts) {
     getRespectGitIgnore: ports.dependencies.getWorkspaceRespectGitIgnore,
     getShowHiddenFiles: ports.dependencies.getWorkspaceShowHiddenFiles,
     getWorkspacePath: () => ports.state.value.workspacePath,
+    publishScanState: (scan) => {
+      const index = ports.state.value.workspaceIndex ?? {
+        generation: 0,
+        revision: 0,
+        status: "ready" as const,
+        error: null
+      };
+      ports.state.update({ workspaceIndex: { ...index, ...scan } });
+      ports.emitShellSnapshot();
+    },
     publishEntries: (workspaceEntries) => {
       ports.state.update({ workspaceEntries });
       ports.emitShellSnapshot();

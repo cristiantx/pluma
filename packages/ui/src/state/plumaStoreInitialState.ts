@@ -1,3 +1,4 @@
+import { initialQuickAccessState } from "./plumaQuickAccessState.js";
 import type {
   PlumaCommandHandlers,
   PlumaStoreInitializer
@@ -31,6 +32,7 @@ const defaultCommandHandlers: PlumaCommandHandlers = {
 };
 
 export const initialPlumaStoreState: PlumaStoreInitializer = {
+  quickAccess: initialQuickAccessState,
   commands: {
     commandHandlers: defaultCommandHandlers
   },

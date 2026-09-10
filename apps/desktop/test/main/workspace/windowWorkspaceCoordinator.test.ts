@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../src/main/workspace/desktopWorkspace", () => ({
-  tryCollectWorkspaceEntries: mocks.collect
+  collectWorkspaceEntries: mocks.collect
 }));
 vi.mock("../../../src/main/workspace/workspaceSearch", () => ({
   WorkspaceSearchController: class {
@@ -27,7 +27,10 @@ vi.mock("../../../src/main/watching/workspaceWatcher", () => ({
   }
 }));
 
-import { WindowWorkspaceCoordinator } from "../../../src/main/workspace/windowWorkspaceCoordinator";
+import {
+  WindowWorkspaceCoordinator,
+  type WorkspaceScanState
+} from "../../../src/main/workspace/windowWorkspaceCoordinator";
 
 const fileSystem = {} as FileSystemAdapter<DesktopFileLocation>;
 const firstEntries: WorkspaceTreeEntry[] = [
@@ -39,7 +42,7 @@ const secondEntries: WorkspaceTreeEntry[] = [
 
 describe("WindowWorkspaceCoordinator", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   it("coalesces overlapping refresh requests and publishes the latest scan", async () => {
@@ -84,11 +87,99 @@ describe("WindowWorkspaceCoordinator", () => {
     expect(publishEntries).toHaveBeenCalledTimes(1);
     expect(publishEntries).toHaveBeenCalledWith(secondEntries);
   });
+  it("retains accepted entries on failure and distinguishes an empty successful scan", async () => {
+    const publishEntries = vi.fn();
+    const publishScanState = vi.fn();
+    const coordinator = createCoordinator(
+      () => "/workspace",
+      publishEntries,
+      publishScanState
+    );
+    mocks.collect
+      .mockResolvedValueOnce(firstEntries)
+      .mockRejectedValueOnce(new Error("Access denied"))
+      .mockResolvedValueOnce([]);
+    await coordinator.refresh();
+    await coordinator.refresh();
+    expect(publishEntries.mock.calls).toEqual([[firstEntries]]);
+    expect(publishScanState).toHaveBeenLastCalledWith({
+      status: "error",
+      error: "Access denied"
+    });
+    await coordinator.refresh();
+    expect(publishEntries.mock.calls).toEqual([[firstEntries], [[]]]);
+    expect(publishScanState.mock.calls.map(([state]) => state.status)).toEqual([
+      "loading",
+      "ready",
+      "loading",
+      "error",
+      "loading",
+      "ready"
+    ]);
+  });
+
+  it("does not publish or restart after disposal during a scan", async () => {
+    const first = deferred<WorkspaceTreeEntry[]>();
+    const publishEntries = vi.fn();
+    const publishScanState = vi.fn();
+    mocks.collect.mockReturnValueOnce(first.promise);
+    const coordinator = createCoordinator(
+      () => "/workspace",
+      publishEntries,
+      publishScanState
+    );
+    const pending = coordinator.refresh();
+    coordinator.dispose();
+    first.resolve(firstEntries);
+    await pending;
+    await coordinator.refresh();
+    coordinator.updateWatcher();
+    expect(publishEntries).not.toHaveBeenCalled();
+    expect(publishScanState.mock.calls).toEqual([
+      [{ status: "loading", error: null }]
+    ]);
+    expect(mocks.collect).toHaveBeenCalledTimes(1);
+    expect(mocks.watcherUpdate).not.toHaveBeenCalled();
+  });
+
+  it("suppresses an obsolete failure and scans the latest requested workspace", async () => {
+    let reject!: (error: Error) => void;
+    const first = new Promise<WorkspaceTreeEntry[]>((_, rejectPromise) => {
+      reject = rejectPromise;
+    });
+    const publishEntries = vi.fn();
+    const publishScanState = vi.fn();
+    let workspacePath = "/first";
+    mocks.collect
+      .mockReturnValueOnce(first)
+      .mockResolvedValueOnce(secondEntries);
+    const coordinator = createCoordinator(
+      () => workspacePath,
+      publishEntries,
+      publishScanState
+    );
+    const pending = coordinator.refresh();
+    workspacePath = "/second";
+    void coordinator.refresh();
+    reject(new Error("Stale failure"));
+    await pending;
+    expect(publishEntries).toHaveBeenCalledExactlyOnceWith(secondEntries);
+    expect(publishScanState.mock.calls.map(([state]) => state.status)).toEqual([
+      "loading",
+      "loading",
+      "ready"
+    ]);
+    expect(mocks.collect).toHaveBeenLastCalledWith(fileSystem, "/second", 0, {
+      respectGitIgnore: true,
+      showHiddenFiles: false
+    });
+  });
 });
 
 function createCoordinator(
   getWorkspacePath: () => string | null,
-  publishEntries: (entries: WorkspaceTreeEntry[]) => void
+  publishEntries: (entries: WorkspaceTreeEntry[]) => void,
+  publishScanState: (state: WorkspaceScanState) => void = vi.fn()
 ): WindowWorkspaceCoordinator {
   return new WindowWorkspaceCoordinator({
     emitStatus: vi.fn(),
@@ -96,7 +187,8 @@ function createCoordinator(
     getRespectGitIgnore: () => true,
     getShowHiddenFiles: () => false,
     getWorkspacePath,
-    publishEntries
+    publishEntries,
+    publishScanState
   });
 }
 

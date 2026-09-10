@@ -58,3 +58,7 @@ export type {
   SourceEditorFontSize,
   SourceEditorTabSize
 } from "./settings.js";
+export type {
+  QuickAccessServices,
+  QuickAccessTarget
+} from "./state/plumaQuickAccessTypes.js";

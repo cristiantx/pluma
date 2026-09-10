@@ -72,10 +72,15 @@ export function getShellStateEvents(
 
   if (
     previous.workspacePath !== current.workspacePath ||
-    previous.workspaceEntries !== current.workspaceEntries
+    previous.workspaceEntries !== current.workspaceEntries ||
+    JSON.stringify(previous.workspaceIndex) !==
+      JSON.stringify(current.workspaceIndex)
   ) {
     events.push({
       type: "workspace-changed",
+      ...(current.workspaceIndex
+        ? { workspaceIndex: current.workspaceIndex }
+        : {}),
       workspaceEntries: current.workspaceEntries,
       workspacePath: current.workspacePath
     });
