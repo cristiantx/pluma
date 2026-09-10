@@ -1,6 +1,28 @@
 import type { CommandDefinition } from "./commandTypes.js";
 
 export const documentCommands = {
+  "quick-open": {
+    label: "Quick Open",
+    category: "Navigation",
+    keywords: ["file", "go"],
+    route: "window",
+    availability: "always",
+    payload: "none",
+    flush: false,
+    palette: true,
+    shortcut: { key: "P", modifiers: ["Mod"] }
+  },
+  "command-palette": {
+    label: "Command Palette",
+    category: "Navigation",
+    keywords: ["commands", "actions"],
+    route: "window",
+    availability: "always",
+    payload: "none",
+    flush: false,
+    palette: true,
+    shortcut: { key: "P", modifiers: ["Mod", "Shift"] }
+  },
   "new-file": {
     label: "New File",
     route: "window",

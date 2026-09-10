@@ -9,6 +9,10 @@ export type CommandRoute =
 export type CommandAvailability =
   | "always"
   | "hasActiveDocument"
+  | "canCloseActiveTab"
+  | "canEditDocument"
+  | "canKeepEditing"
+  | "canReloadDocument"
   | "isDevelopment"
   | "canCloseAll"
   | "canCloseOthers"
@@ -35,6 +39,8 @@ export type CommandShortcut = {
 export type CommandPlatform = "darwin" | "win32" | "linux";
 export type CommandDefinition = {
   label: string;
+  category?: string;
+  keywords?: readonly string[];
   route: CommandRoute;
   availability: CommandAvailability;
   payload: CommandPayload;

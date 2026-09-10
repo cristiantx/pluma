@@ -33,3 +33,23 @@ export function getCodeMirrorBinding(
       ].join("-")
     : undefined;
 }
+
+export function getCommandShortcutLabel(
+  id: CommandId,
+  platform: CommandPlatform
+): string {
+  const shortcut = getCommandShortcut(id, platform);
+  if (!shortcut) return "";
+  const mac = platform === "darwin";
+  const labels = {
+    Mod: mac ? "⌘" : "Ctrl",
+    Command: "⌘",
+    Ctrl: mac ? "⌃" : "Ctrl",
+    Shift: mac ? "⇧" : "Shift",
+    Alt: mac ? "⌥" : "Alt"
+  };
+  return [
+    ...shortcut.modifiers.map((modifier) => labels[modifier]),
+    shortcut.key
+  ].join(mac ? "" : "+");
+}
