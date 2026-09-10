@@ -21,8 +21,15 @@ describe("DocumentTextFlushCoordinator", () => {
     const target = createTarget();
     const result = coordinator.request(target as never);
     const requestId = target.send.mock.calls[0]?.[1];
+    const settled = vi.fn();
+
+    void result.then(settled);
 
     coordinator.acknowledge(2, requestId);
+    await Promise.resolve();
+
+    expect(settled).not.toHaveBeenCalled();
+
     coordinator.acknowledge(1, requestId);
 
     await expect(result).resolves.toBe(true);
@@ -30,6 +37,36 @@ describe("DocumentTextFlushCoordinator", () => {
       "pluma:flush-pending-document-text",
       requestId
     );
+  });
+
+  it("fails closed when sending the flush request throws", async () => {
+    const coordinator = new DocumentTextFlushCoordinator();
+    const target = createTarget();
+    target.send.mockImplementation(() => {
+      throw new Error("renderer unavailable");
+    });
+
+    await expect(coordinator.request(target as never)).resolves.toBe(false);
+  });
+
+  it("cancels only pending flushes for the requested sender", async () => {
+    const coordinator = new DocumentTextFlushCoordinator();
+    const firstTarget = createTarget(1);
+    const secondTarget = createTarget(2);
+    const firstResult = coordinator.request(firstTarget as never);
+    const secondResult = coordinator.request(secondTarget as never);
+    const secondRequestId = secondTarget.send.mock.calls[0]?.[1];
+    const secondSettled = vi.fn();
+
+    void secondResult.then(secondSettled);
+    coordinator.cancelSender(1);
+
+    await expect(firstResult).resolves.toBe(false);
+    await Promise.resolve();
+    expect(secondSettled).not.toHaveBeenCalled();
+
+    coordinator.acknowledge(2, secondRequestId);
+    await expect(secondResult).resolves.toBe(true);
   });
 
   it("fails closed after the timeout", async () => {
