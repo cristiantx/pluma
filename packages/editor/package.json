@@ -24,6 +24,7 @@
     "@pluma/core": "workspace:*",
     "draftly": "github:cristiantx/draftly#531a36287730c1c41b0cd42a5c714b0d0e4fa32a&path:/packages/draftly",
     "react": "^19.1.0",
-    "katex": "^0.16.28"
+    "katex": "^0.16.28",
+    "@pluma/commands": "workspace:*"
   }
 }

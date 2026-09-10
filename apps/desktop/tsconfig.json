@@ -15,8 +15,17 @@
     "src/**/*.tsx"
   ],
   "references": [
-    { "path": "../../packages/core" },
-    { "path": "../../packages/editor" },
-    { "path": "../../packages/ui" }
+    {
+      "path": "../../packages/commands"
+    },
+    {
+      "path": "../../packages/core"
+    },
+    {
+      "path": "../../packages/editor"
+    },
+    {
+      "path": "../../packages/ui"
+    }
   ]
 }

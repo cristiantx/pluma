@@ -6,5 +6,15 @@
     "jsx": "react-jsx"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "references": [{ "path": "../core" }, { "path": "../editor" }]
+  "references": [
+    {
+      "path": "../commands"
+    },
+    {
+      "path": "../core"
+    },
+    {
+      "path": "../editor"
+    }
+  ]
 }

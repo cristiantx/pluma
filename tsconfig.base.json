@@ -21,7 +21,8 @@
       "@pluma/core-desktop": ["packages/core/src/desktop.ts"],
       "@pluma/editor": ["packages/editor/src/index.ts"],
       "@pluma/ui": ["packages/ui/src/index.ts"],
-      "@pluma/ui/settings": ["packages/ui/src/settings.ts"]
+      "@pluma/ui/settings": ["packages/ui/src/settings.ts"],
+      "@pluma/commands": ["packages/commands/src/index.ts"]
     }
   }
 }

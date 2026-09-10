@@ -18,6 +18,10 @@ export default defineConfig({
   plugins: [react({})],
   resolve: {
     alias: {
+      "@pluma/commands": path.resolve(
+        __dirname,
+        "../../packages/commands/src/index.ts"
+      ),
       "@pluma/core": path.resolve(
         __dirname,
         "../../packages/core/src/index.ts"

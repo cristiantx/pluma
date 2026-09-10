@@ -5,6 +5,10 @@ import { defineConfig } from "vite";
 export default defineConfig({
   resolve: {
     alias: {
+      "@pluma/commands": path.resolve(
+        __dirname,
+        "../../packages/commands/src/index.ts"
+      ),
       "@pluma/core": path.resolve(
         __dirname,
         "../../packages/core/src/index.ts"

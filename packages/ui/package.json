@@ -33,6 +33,7 @@
     "allotment": "^1.20.4",
     "lucide-react": "^1.16.0",
     "react": "^19.1.0",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.8",
+    "@pluma/commands": "workspace:*"
   }
 }
