@@ -1,10 +1,6 @@
 import { useEffect, useMemo } from "react";
-import { getPaletteEntries, getCommandShortcutLabel } from "@pluma/commands";
-import {
-  matchSearchText,
-  prepareSearchText,
-  mergeMatchRanges
-} from "@pluma/core";
+import { getQuickAccessCommandRows } from "./quickAccessCommandRows.js";
+
 import { usePlumaStore } from "../../state/usePlumaStore.js";
 import { QuickAccessDialog } from "./QuickAccessDialog.js";
 import type { QuickAccessRow } from "./quickAccessView.js";
@@ -73,38 +69,11 @@ export function QuickAccess() {
         labelMatches: nameMatches,
         descriptionMatches: pathMatches
       }));
-    const tokens = access.queries.commands
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((token) => prepareSearchText(token).characters);
-    return getPaletteEntries(JSON.parse(context)).flatMap((entry) => {
-      const label = prepareSearchText(entry.label);
-      const aliases = prepareSearchText(
-        `${entry.category} ${entry.keywords.join(" ")}`
-      );
-      const matches = tokens.map((token) => matchSearchText(label, token));
-      if (
-        matches.some(
-          (match, index) => !match && !matchSearchText(aliases, tokens[index]!)
-        )
-      )
-        return [];
-      return [
-        {
-          id: entry.key,
-          label: entry.label,
-          description: entry.reason ?? entry.category,
-          shortcut: getCommandShortcutLabel(entry.commandId, platform),
-          disabled: !entry.enabled,
-          ...(entry.reason ? { reason: entry.reason } : {}),
-          ...(entry.checked === undefined ? {} : { checked: entry.checked }),
-          labelMatches: mergeMatchRanges(
-            matches.flatMap((match) => match?.ranges ?? [])
-          )
-        }
-      ];
-    });
+    return getQuickAccessCommandRows(
+      JSON.parse(context),
+      access.queries.commands,
+      platform
+    );
   }, [access.mode, access.results, access.queries.commands, context, platform]);
   const mode = access.mode;
   const selected = mode ? access.selections[mode] : null;
@@ -164,7 +133,8 @@ export function QuickAccess() {
               ...access.queries,
               [mode]: mode === "commands" ? query.slice(1) : query
             },
-            error: null
+            error: null,
+            selections: { ...access.selections, [mode]: null }
           });
       }}
       {...(!hasWorkspace

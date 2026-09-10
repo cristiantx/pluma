@@ -43,6 +43,7 @@ export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
         item({ id: "new-file" }),
         item({ id: "open-file" }),
         item({ id: "open-folder" }),
+        item({ id: "quick-open" }),
         item({ id: "open-settings" }),
         { type: "separator" },
         item({ id: "save" }),
@@ -105,6 +106,7 @@ export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
     {
       label: "View",
       submenu: [
+        item({ id: "command-palette" }),
         item({ id: "toggle-mode" }),
         ...(options.isDevelopment ? [item({ id: "open-devtools" })] : []),
         { type: "separator" },

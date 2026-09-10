@@ -129,6 +129,7 @@ test("Bold executes through the retained editor selection after flushing", async
   await selectQuickAccessText(page);
   const before = await editorSnapshot(page);
   expect(before.selectedText.length).toBeGreaterThan(0);
+  await page.locator('[role="tab"][aria-selected="true"]').focus();
   await page.keyboard.press("Meta+Shift+p");
   await page.getByRole("combobox").fill(">Bold");
   await expect(page.getByRole("option", { name: /Bold/ })).not.toHaveAttribute(
@@ -141,4 +142,7 @@ test("Bold executes through the retained editor selection after flushing", async
     .poll(async () => (await quickAccessSnapshot(page)).rawText)
     .toContain(`**${before.selectedText}**`);
   expect((await quickAccessSnapshot(page)).calls).toEqual(["flush"]);
+  await expect(
+    page.locator(".rich-editor .cm-content[contenteditable=true]")
+  ).toBeFocused();
 });

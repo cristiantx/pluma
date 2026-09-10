@@ -1,3 +1,4 @@
+import type { QuickAccessRequest } from "./quickAccess";
 import type {
   CommandRequest,
   CommandInvocation,
@@ -12,9 +13,7 @@ declare global {
   interface Window {
     pluma: {
       platform: "darwin" | "win32" | "linux";
-      quickAccess(
-        request: import("./quickAccess").QuickAccessRequest
-      ): Promise<CommandExecutionResult>;
+      quickAccess(request: QuickAccessRequest): Promise<CommandExecutionResult>;
       closeTab(tabId: string): Promise<void>;
       getSettings(): Promise<AppSettings>;
       openAppDataFolder(): Promise<void>;

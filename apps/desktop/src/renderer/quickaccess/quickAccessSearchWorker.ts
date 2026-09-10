@@ -7,7 +7,7 @@ import {
   type FileCandidate,
   type PreparedFileCandidate,
   type RankedFileResult
-} from "@pluma/core";
+} from "@pluma/core/quick-access";
 import type {
   QuickAccessWorkerRequest,
   QuickAccessWorkerResponse

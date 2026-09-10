@@ -51,7 +51,7 @@ export type WindowWorkspaceActionsDependencies = {
   ): Promise<boolean>;
   openFilePath(
     path: string,
-    options?: { workspacePath?: string | null }
+    options?: { workspacePath?: string | null; isCurrent?: () => boolean }
   ): Promise<unknown>;
   handleContextCommand(
     request: Extract<
@@ -85,8 +85,15 @@ export function createWindowWorkspaceActions(
       };
     }
 
+    const generation =
+      dependencies.getShellData().workspaceIndex?.generation ?? 0;
     return (await dependencies.openFilePath(filePath, {
-      workspacePath: dependencies.getShellData().workspacePath
+      workspacePath,
+      isCurrent: () =>
+        !dependencies.getWindow().isDestroyed() &&
+        dependencies.getShellData().workspacePath === workspacePath &&
+        (dependencies.getShellData().workspaceIndex?.generation ?? 0) ===
+          generation
     })) as CommandExecutionResult;
   }
 

@@ -67,6 +67,25 @@ export function createDesktopCommandDispatcher(
       (!origin.session || origin.session.window.isDestroyed())
     )
       return unavailable();
+    const menuSession =
+      origin.kind === "menu" ? dependencies.getFocusedSession() : null;
+    if (
+      menuSession?.isQuickAccessOpen?.() &&
+      request.id !== "quick-open" &&
+      request.id !== "command-palette"
+    )
+      return unavailable();
+    if (invocation) {
+      const current = (
+        origin.kind === "renderer" ? origin.session : menuSession
+      )?.getInvocationContext?.();
+      if (
+        current?.activeTabId !== invocation.context.activeTabId ||
+        current?.documentId !== invocation.context.documentId ||
+        current?.workspaceGeneration !== invocation.context.workspaceGeneration
+      )
+        return unavailable();
+    }
     if (request.id === "new-window") {
       dependencies.createWindow();
       return commandExecuted;
@@ -82,7 +101,7 @@ export function createDesktopCommandDispatcher(
     const session =
       origin.kind === "renderer"
         ? origin.session
-        : (dependencies.getFocusedSession() ?? dependencies.createWindow());
+        : (menuSession ?? dependencies.createWindow());
     if (!session || session.window.isDestroyed()) return unavailable();
     if (
       origin.kind === "menu" &&

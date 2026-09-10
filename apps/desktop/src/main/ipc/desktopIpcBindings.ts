@@ -1,3 +1,4 @@
+import type { CommandExecutionResult } from "@pluma/commands";
 import {
   app,
   shell,
@@ -17,7 +18,7 @@ export type DesktopIpcBindingsDependencies = {
   dispatchCommand: (
     command: unknown,
     origin: DesktopCommandOrigin
-  ) => Promise<import("@pluma/commands").CommandExecutionResult>;
+  ) => Promise<CommandExecutionResult>;
   flushCoordinator: DocumentTextFlushCoordinator;
   getAppSettingsPath: () => string;
   getLatestFocusedSession: () => DesktopWindowSession | null;

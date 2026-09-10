@@ -1,3 +1,4 @@
+import type { CommandExecutionResult } from "@pluma/commands";
 import {
   getWindowCommandContext,
   getWindowInvocationContext,
@@ -244,7 +245,7 @@ export class DesktopWindowSession {
 
   async handleCommand(
     command: CommandName
-  ): Promise<void | import("@pluma/commands").CommandExecutionResult> {
+  ): Promise<void | CommandExecutionResult> {
     if (
       command === "close-active-tab" &&
       this.shellData.activeTabId === "settings"
@@ -283,9 +284,7 @@ export class DesktopWindowSession {
     return this.navigation.setActiveTab(tabId);
   }
 
-  async openWorkspaceFile(
-    filePath: unknown
-  ): Promise<import("@pluma/commands").CommandExecutionResult> {
+  async openWorkspaceFile(filePath: unknown): Promise<CommandExecutionResult> {
     return this.windowSurfaceServices.workspaceActions.openWorkspaceFile(
       filePath
     );

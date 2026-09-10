@@ -80,6 +80,41 @@ describe("createDocumentSaving", () => {
     expect(dependencies.updateState).not.toHaveBeenCalled();
   });
 
+  it("queues draft promotion and reads the latest document when the queue runs", async () => {
+    const document = createDocumentSession({
+      location: { kind: "app-draft", draftId: "draft-1", name: "Draft" },
+      metadata: null,
+      rawText: "Original"
+    });
+    const dependencies = createDependencies(document);
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.mocked(dependencies.enqueueDocumentSave).mockImplementation(
+      async (_id, operation) => {
+        await blocked;
+        return operation();
+      }
+    );
+    dependencies.promoteDraftDocumentResult = vi.fn(async () => ({
+      status: "cancelled" as const
+    }));
+    const result = createDocumentSaving(dependencies).saveActiveDocument();
+    expect(dependencies.promoteDraftDocumentResult).not.toHaveBeenCalled();
+    const latest = { ...document, rawText: "Pending edits flushed" };
+    vi.mocked(dependencies.getDocumentById).mockReturnValue(latest);
+    release();
+    await expect(result).resolves.toEqual({ status: "cancelled" });
+    expect(dependencies.enqueueDocumentSave).toHaveBeenCalledWith(
+      document.id,
+      expect.any(Function)
+    );
+    expect(dependencies.promoteDraftDocumentResult).toHaveBeenCalledWith(
+      latest
+    );
+  });
+
   it("emits the original Save As error without a hidden state-only mutation", async () => {
     const document = createDesktopDocument();
     const dependencies = createDependencies(document);

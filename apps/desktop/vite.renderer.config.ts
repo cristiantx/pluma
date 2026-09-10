@@ -22,6 +22,10 @@ export default defineConfig({
         __dirname,
         "../../packages/commands/src/index.ts"
       ),
+      "@pluma/core/quick-access": path.resolve(
+        __dirname,
+        "../../packages/core/src/quickAccess/index.ts"
+      ),
       "@pluma/core": path.resolve(
         __dirname,
         "../../packages/core/src/index.ts"

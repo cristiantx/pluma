@@ -102,7 +102,8 @@ export function useQuickAccessExecution(
           focusRequestId: latest.quickAccess.focusRequestId + 1
         });
       } else if (result.status === "cancelled") restore();
-      else if (file || (entry && route !== "renderer")) restore(Boolean(file));
+      else if (file || (entry && route !== "renderer" && route !== "editor"))
+        restore(Boolean(file));
     } catch (error) {
       const latest = usePlumaStore.getState();
       if (

@@ -26,5 +26,19 @@
     "remark-rehype": "^11.1.2",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.1.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./quick-access": {
+      "types": "./dist/quickAccess/index.d.ts",
+      "import": "./dist/quickAccess/index.js"
+    },
+    "./desktop": {
+      "types": "./dist/desktop.d.ts",
+      "import": "./dist/desktop.js"
+    }
   }
 }

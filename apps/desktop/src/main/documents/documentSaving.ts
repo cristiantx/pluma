@@ -81,7 +81,14 @@ export function createDocumentSaving(
       activeDocument.location.kind === "app-draft" &&
       dependencies.promoteDraftDocumentResult
     ) {
-      return dependencies.promoteDraftDocumentResult(activeDocument);
+      let result: CommandExecutionResult = commandCancelled;
+      await dependencies.enqueueDocumentSave(activeDocument.id, async () => {
+        const current = dependencies.getDocumentById(activeDocument.id);
+        if (!current) return false;
+        result = await dependencies.promoteDraftDocumentResult!(current);
+        return result.status === "executed";
+      });
+      return result;
     }
     const saved = await saveDocument(activeDocument.id, "manual");
     return saved

@@ -102,7 +102,7 @@ export function createDocumentOpening(
 
   async function openFilePath(
     filePath: string,
-    options: { workspacePath?: string | null } = {}
+    options: { workspacePath?: string | null; isCurrent?: () => boolean } = {}
   ): Promise<CommandExecutionResult> {
     const openDocument = dependencies.getDocumentByDesktopPath(filePath);
 
@@ -133,6 +133,12 @@ export function createDocumentOpening(
       return { status: "failed", message: "The file could not be opened." };
     }
 
+    if (options.isCurrent && !options.isCurrent()) {
+      return {
+        status: "unavailable",
+        reason: "The workspace changed while opening the file."
+      };
+    }
     const currentWorkspacePath = dependencies.getWorkspacePath();
     const workspacePath =
       options.workspacePath ??

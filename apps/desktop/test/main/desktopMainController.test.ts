@@ -109,6 +109,10 @@ const harness = vi.hoisted(() => {
     getAuthorizedAssetRoots = vi.fn(() => []);
     getProtectedDocuments = vi.fn(() => []);
     handleOpenTarget = vi.fn();
+    getCommandContext = vi.fn(() => ({
+      hasActiveDocument: true,
+      canCloseActiveTab: true
+    }));
     hasActiveDocument = vi.fn(() => true);
     getCommandDocumentId = vi.fn(() => "document");
     refreshSettingsSensitiveState = vi.fn();

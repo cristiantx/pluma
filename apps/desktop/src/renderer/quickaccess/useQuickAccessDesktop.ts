@@ -6,18 +6,22 @@ export function useQuickAccessDesktop() {
   useEffect(() => {
     const bridge = window.pluma;
     if (!bridge) return;
-    const search = createQuickAccessSearchAdapter();
+    let search = createQuickAccessSearchAdapter();
     const services: QuickAccessServices = {
       platform: bridge.platform,
       nativeAccelerators: true,
-      search: search.search,
+      search: (candidates, query) => search.search(candidates, query),
       execute: (request, context) => bridge.runCommand({ request, context }),
       activate: (target) => bridge.quickAccess(target),
       flush: () => bridge.quickAccess({ kind: "flush" }),
       setOpen: (open) => {
         void bridge.quickAccess({ kind: "set-open", open });
       },
-      refresh: () => bridge.quickAccess({ kind: "refresh" })
+      refresh: () => {
+        search.dispose();
+        search = createQuickAccessSearchAdapter();
+        return bridge.quickAccess({ kind: "refresh" });
+      }
     };
     usePlumaStore.getState().setQuickAccessServices(services);
     const unsubscribe = bridge.onEvent((event) => {

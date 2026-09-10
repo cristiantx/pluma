@@ -1,3 +1,4 @@
+import type { QuickAccessRequest } from "./shared/quickAccess";
 import type { CommandRequest, CommandInvocation } from "@pluma/commands";
 import { contextBridge, ipcRenderer } from "electron";
 import type {
@@ -24,7 +25,7 @@ function invokeAfterDocumentTextFlush(
 
 const api = {
   platform: process.platform,
-  quickAccess(request: import("./shared/quickAccess").QuickAccessRequest) {
+  quickAccess(request: QuickAccessRequest) {
     return invokeAfterDocumentTextFlush("pluma:quick-access", request);
   },
   closeTab(tabId: string) {

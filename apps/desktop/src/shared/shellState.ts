@@ -1,3 +1,4 @@
+import type { WorkspaceIndexState } from "./quickAccess";
 import type { EditorCommandId } from "@pluma/commands";
 import type { DocumentSession } from "@pluma/core";
 import type { AppSettings, EditorViewMode } from "@pluma/ui";
@@ -16,7 +17,7 @@ export type WorkspaceTreeEntry = {
 };
 
 export type DesktopShellSnapshot = {
-  workspaceIndex?: import("./quickAccess").WorkspaceIndexState;
+  workspaceIndex?: WorkspaceIndexState;
   activeDocumentId: string | null;
   activeTabId: string | null;
   documentViewModes: Record<string, EditorViewMode>;
@@ -71,7 +72,7 @@ export type RendererEvent =
   | { type: "status"; message: string }
   | {
       type: "workspace-changed";
-      workspaceIndex?: import("./quickAccess").WorkspaceIndexState;
+      workspaceIndex?: WorkspaceIndexState;
       workspaceEntries: WorkspaceTreeEntry[];
       workspacePath: string | null;
     };
