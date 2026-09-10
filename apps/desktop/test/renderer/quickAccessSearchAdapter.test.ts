@@ -154,7 +154,12 @@ describe("quick access worker cooperative scheduling", () => {
     vi.useFakeTimers();
     const scope = {
       onmessage: null as ((event: { data: unknown }) => void) | null,
-      postMessage: vi.fn()
+      postMessage: vi.fn(),
+      scheduler: {
+        yield: vi.fn(
+          () => new Promise<void>((resolve) => setTimeout(resolve, 0))
+        )
+      }
     };
     vi.stubGlobal("self", scope);
     try {
@@ -171,6 +176,7 @@ describe("quick access worker cooperative scheduling", () => {
         data: { type: "query", revision: 2, requestId: 2, query: "one" }
       });
       await vi.runAllTimersAsync();
+      expect(scope.scheduler.yield).toHaveBeenCalled();
       expect(scope.postMessage).toHaveBeenCalledExactlyOnceWith({
         type: "results",
         revision: 2,

@@ -16,6 +16,7 @@ import type {
 const workerScope = self as unknown as {
   onmessage: ((event: MessageEvent<QuickAccessWorkerRequest>) => void) | null;
   postMessage: (message: QuickAccessWorkerResponse) => void;
+  scheduler?: { yield(): Promise<void> };
 };
 type QueryRequest = Extract<QuickAccessWorkerRequest, { type: "query" }>;
 let revision = 0;
@@ -23,7 +24,10 @@ let candidates: FileCandidate[] = [];
 let prepared: PreparedFileCandidate[] | null = null;
 let pending: QueryRequest | null = null;
 let running = false;
-const yieldTask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+// Avoid the nested-timer delay while still allowing newer requests to interrupt.
+const yieldTask = () =>
+  workerScope.scheduler?.yield() ??
+  new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 async function runSearch(): Promise<void> {
   if (running) return;

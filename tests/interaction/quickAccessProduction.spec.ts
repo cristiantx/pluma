@@ -38,8 +38,9 @@ test("Quick Open and palette preserve pending edits through real main/preload sa
     await setRendererMode(page, "source");
     const editor = page.locator(".pluma-source-editor .cm-content");
     await editor.click();
-    await page.keyboard.press("Meta+End");
-    await page.keyboard.insertText("pending quick access");
+    const editedText = "Alpha text\npending quick access\n";
+    await page.keyboard.press("Meta+a");
+    await page.keyboard.insertText(editedText);
     await clickApplicationMenuItem(app.application, "Quick Open");
     const input = page.getByRole("combobox", { name: "Search files" });
     await expect(input).toBeFocused();
@@ -59,9 +60,7 @@ test("Quick Open and palette preserve pending edits through real main/preload sa
     await expect(commands).toBeFocused();
     await commands.fill(">Save");
     await commands.press("Enter");
-    await expect
-      .poll(() => readFile(alpha, "utf8"))
-      .toContain("pending quick access");
+    await expect.poll(() => readFile(alpha, "utf8")).toBe(editedText);
     await expect(
       page.getByRole("dialog", { name: "Command palette" })
     ).toHaveCount(0);
