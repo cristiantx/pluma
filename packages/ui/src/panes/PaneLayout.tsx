@@ -1,73 +1,89 @@
 import { Allotment } from "allotment";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
-type PaneProps = {
-  children: ReactNode;
-  minSize?: number;
-  preferredSize?: number | string;
-  visible?: boolean;
-  className?: string;
-};
+import { usePrimaryPaneMotion } from "./usePrimaryPaneMotion.js";
 
-type PaneLayoutProps = {
+export type PaneLayoutProps = {
   main: ReactNode;
   onPaneSizesChange?: (sizes: number[]) => void;
   paneSizes?: number[];
   primary: ReactNode;
+  primaryToggle?: ReactNode;
+  primaryVisible?: boolean;
   secondary?: ReactNode;
 };
-
-export function Pane({
-  children,
-  minSize,
-  preferredSize,
-  className,
-  visible
-}: PaneProps) {
-  return (
-    <Allotment.Pane
-      {...(className !== undefined ? { className } : {})}
-      {...(minSize !== undefined ? { minSize } : {})}
-      {...(preferredSize !== undefined ? { preferredSize } : {})}
-      {...(visible !== undefined ? { visible } : {})}
-    >
-      {children}
-    </Allotment.Pane>
-  );
-}
 
 export function PaneLayout({
   main,
   onPaneSizesChange,
   paneSizes,
   primary,
+  primaryToggle,
+  primaryVisible = true,
   secondary
 }: PaneLayoutProps) {
-  const defaultSizes = secondary ? [178, 842, 260] : [178, 842];
-  const initialSizes =
-    paneSizes && paneSizes.length === defaultSizes.length
-      ? paneSizes
-      : defaultSizes;
+  const [initialSizes] = useState(() => {
+    const defaults = secondary ? [220, 800, 260] : [220, 800];
+    return paneSizes?.length === defaults.length ? paneSizes : defaults;
+  });
+  const motion = usePrimaryPaneMotion({
+    visible: primaryVisible,
+    initialSizes,
+    onPaneSizesChange
+  });
+  const [defaultSizes] = useState(() =>
+    primaryVisible
+      ? initialSizes
+      : [
+          0,
+          (initialSizes[0] ?? 220) + (initialSizes[1] ?? 800),
+          ...initialSizes.slice(2)
+        ]
+  );
 
   return (
-    <Allotment
+    <div
       className="pane-layout"
-      defaultSizes={initialSizes}
-      {...(onPaneSizesChange ? { onChange: onPaneSizesChange } : {})}
-      vertical={false}
-      separator={false}
+      data-primary-animating={motion.animating}
+      data-primary-visible={primaryVisible}
+      ref={motion.containerRef}
     >
-      <Allotment.Pane className="primary" minSize={200} preferredSize={220}>
-        {primary}
-      </Allotment.Pane>
-      <Allotment.Pane className="main" minSize={420}>
-        {main}
-      </Allotment.Pane>
-      {secondary ? (
-        <Allotment.Pane className="secondary" minSize={200} preferredSize={260}>
-          {secondary}
+      <Allotment
+        ref={motion.layoutRef}
+        defaultSizes={defaultSizes}
+        onChange={motion.onChange}
+        vertical={false}
+        separator={false}
+      >
+        <Allotment.Pane
+          className="primary"
+          ref={motion.primaryRef}
+          minSize={0}
+          preferredSize={220}
+        >
+          <div
+            className="primary-slide"
+            ref={motion.slideRef}
+            inert={!primaryVisible}
+            aria-hidden={!primaryVisible}
+          >
+            {primary}
+          </div>
         </Allotment.Pane>
-      ) : null}
-    </Allotment>
+        <Allotment.Pane className="main" minSize={420}>
+          {main}
+        </Allotment.Pane>
+        {secondary ? (
+          <Allotment.Pane
+            className="secondary"
+            minSize={200}
+            preferredSize={260}
+          >
+            {secondary}
+          </Allotment.Pane>
+        ) : null}
+      </Allotment>
+      {primaryToggle}
+    </div>
   );
 }

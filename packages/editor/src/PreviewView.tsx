@@ -7,6 +7,7 @@ import {
   resolvePreviewImageUrls
 } from "./previewRenderer.js";
 import type { PreviewRenderResult } from "./previewRenderer.js";
+import { sizePreviewDiagrams } from "./previewDiagramSizing.js";
 import type { PreviewViewProps } from "./previewViewTypes.js";
 
 export function PreviewView({
@@ -55,6 +56,7 @@ export function PreviewView({
 
     if (content) {
       resolvePreviewImageUrls(content, imageBaseUrl);
+      sizePreviewDiagrams(content);
     }
   }, [imageBaseUrl, renderedPreview.html]);
 

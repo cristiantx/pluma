@@ -1,4 +1,4 @@
-import { FolderTree, PanelLeft, Search } from "lucide-react";
+import { FolderTree, Search } from "lucide-react";
 import { memo } from "react";
 
 import { usePlumaStore } from "../state/usePlumaStore.js";
@@ -7,7 +7,6 @@ import { TitleBarButton } from "./TitleBarButton.js";
 export const SidebarTitleBar = memo(function SidebarTitleBar() {
   const sidebarView = usePlumaStore((state) => state.workspace.sidebarView);
   const setSidebarView = usePlumaStore((state) => state.setSidebarView);
-  const toggleSidebar = usePlumaStore((state) => state.toggleSidebar);
   const isSearchView = sidebarView === "search";
   const SidebarViewIcon = isSearchView ? FolderTree : Search;
 
@@ -20,13 +19,6 @@ export const SidebarTitleBar = memo(function SidebarTitleBar() {
         icon={SidebarViewIcon}
         isPressed={isSearchView}
         onClick={() => setSidebarView(isSearchView ? "workspace" : "search")}
-      />
-      <TitleBarButton
-        aria-label="Hide sidebar"
-        className="sidebar-titlebar-toggle"
-        icon={PanelLeft}
-        isPressed
-        onClick={toggleSidebar}
       />
     </header>
   );

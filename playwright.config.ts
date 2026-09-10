@@ -30,6 +30,9 @@ export default defineConfig({
         "**/listMarkers.spec.ts",
         "**/table*.spec.ts",
         "**/diagramLifecycle.spec.ts",
+        "**/diagramSizing.spec.ts",
+        "**/sidebarMotion.spec.ts",
+        "**/sidebarTogglePresentation.spec.ts",
         "**/editorState.spec.ts"
       ]
     },

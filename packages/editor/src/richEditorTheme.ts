@@ -105,10 +105,16 @@ export const plumaRichEditorTheme: Extension = EditorView.theme({
   },
   ".cm-draftly-mermaid-rendered": {
     padding: "16px 0",
-    overflow: "auto"
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: "0",
+    overflow: "visible"
   },
   ".cm-draftly-mermaid-rendered svg": {
-    maxWidth: "100%",
+    display: "block",
+    minWidth: "0",
+    flexShrink: "1",
+    maxWidth: "100% !important",
     height: "auto"
   }
 });

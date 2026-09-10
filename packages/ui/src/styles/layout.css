@@ -45,10 +45,29 @@
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.1);
 }
 
-/* .shell[data-sidebar-visible="true"] .main-shell-panel {
-  height: calc(100% - 14px);
-  margin: 7px 0 7px 0; */
-/* } */
+.pane-layout {
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative;
+}
+
+.primary-slide {
+  height: 100%;
+}
+
+.pane-layout[data-primary-animating="true"] .primary-slide {
+  will-change: transform;
+}
+
+.pane-layout[data-primary-animating="true"] .sash,
+.pane-layout[data-primary-visible="false"] .sash:first-child {
+  pointer-events: none;
+}
+
+.shell[data-sidebar-visible="false"] .pane-layout .main {
+  border-radius: var(--radius-window);
+  box-shadow: none;
+}
 
 .shell[data-sidebar-visible="false"] .main-shell-panel {
   width: 100%;

@@ -254,11 +254,17 @@ function createPreviewViewCss(): string {
 
 .${plumaPreviewContentClassName} .cm-draftly-mermaid-rendered {
   padding: 16px 0;
-  overflow: auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: visible;
 }
 
 .${plumaPreviewContentClassName} .cm-draftly-mermaid-rendered svg {
-  max-width: 100%;
+  display: block;
+  min-width: 0;
+  flex-shrink: 1;
+  max-width: 100% !important;
   height: auto;
 }
 

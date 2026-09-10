@@ -1,5 +1,6 @@
 export { PlumaShell } from "./shell/PlumaShell.js";
-export { Pane, PaneLayout } from "./panes/PaneLayout.js";
+export { Pane } from "./panes/Pane.js";
+export { PaneLayout, type PaneLayoutProps } from "./panes/PaneLayout.js";
 export {
   reorderTabItems,
   reorderTabsFromDragEvent

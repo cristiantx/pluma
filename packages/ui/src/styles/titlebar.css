@@ -123,9 +123,23 @@ button {
   }
 }
 
-.titlebar-sidebar-toggle {
+/* The same control follows the sidebar edge, then parks beside the native
+   window controls while the remaining sidebar slides underneath it. */
+.pane-layout .sidebar-toggle {
   position: absolute;
-  left: 84px;
+  z-index: 3;
+  top: calc((var(--titlebar-height) - 22px) / 2);
+  left: 0;
+  height: 22px;
+  transform: translateX(
+    max(84px, calc(var(--primary-pane-width, 220px) - 30px))
+  );
+}
+
+/* Radix portals hints outside the moving pane, so hide those during motion too. */
+:root:has(.pane-layout[data-primary-animating="true"])
+  .titlebar-button-tooltip {
+  visibility: hidden;
 }
 
 .bridge-warning {

@@ -1,4 +1,4 @@
-import { Bug, PanelLeft } from "lucide-react";
+import { Bug } from "lucide-react";
 import { memo } from "react";
 
 import { usePlumaStore } from "../state/usePlumaStore.js";
@@ -14,26 +14,12 @@ export const TitleBar = memo(function TitleBar() {
   const workspaceLabel = usePlumaStore(
     (state) => state.workspace.workspaceLabel
   );
-  const isSidebarVisible = usePlumaStore(
-    (state) => state.layout.isSidebarVisible
-  );
   const triggerOpenDevTools = usePlumaStore(
     (state) => state.triggerOpenDevTools
   );
-  const toggleSidebar = usePlumaStore((state) => state.toggleSidebar);
-  const shouldShowSidebarRestore = hasWorkspace && !isSidebarVisible;
 
   return (
     <header className={`titlebar ${hasWorkspace ? "with-workspace" : ""}`}>
-      {shouldShowSidebarRestore ? (
-        <TitleBarButton
-          aria-label="Show sidebar"
-          className="titlebar-sidebar-toggle"
-          icon={PanelLeft}
-          onClick={toggleSidebar}
-        />
-      ) : null}
-
       {hasWorkspace ? (
         <div className="titlebar-path">
           <span>{workspaceLabel}</span>

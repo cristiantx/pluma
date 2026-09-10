@@ -4,7 +4,7 @@
   display: flex;
   align-items: stretch;
   --rich-editor-content-width: 820px;
-  --rich-editor-content-max-width: var(--rich-editor-content-width);
+  --rich-editor-content-max-width: 100%;
   --rich-editor-content-padding: 64px 92px 88px;
   --source-editor-content-width: 760px;
   --source-editor-shell-width: 888px;
@@ -12,17 +12,17 @@
 
 .editor-panes[data-rich-width="narrow"] {
   --rich-editor-content-width: 680px;
-  --rich-editor-content-max-width: var(--rich-editor-content-width);
+  --rich-editor-content-max-width: 100%;
 }
 
 .editor-panes[data-rich-width="wide"] {
   --rich-editor-content-width: 1040px;
-  --rich-editor-content-max-width: var(--rich-editor-content-width);
+  --rich-editor-content-max-width: 100%;
 }
 
 .editor-panes[data-rich-width="full"] {
   --rich-editor-content-width: 100%;
-  --rich-editor-content-max-width: none;
+  --rich-editor-content-max-width: 100%;
 }
 
 .editor-panes[data-source-width="narrow"] {

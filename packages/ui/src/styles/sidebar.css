@@ -24,11 +24,6 @@
   flex: 0 0 auto;
 }
 
-.sidebar-titlebar-toggle {
-  margin-left: auto;
-  -webkit-app-region: no-drag;
-}
-
 .sidebar-titlebar-view-toggle {
   -webkit-app-region: no-drag;
 }
