@@ -120,3 +120,7 @@ export function getFileLocationName(location: FileLocation): string {
 
   return location.name;
 }
+export * from "./quickAccess/searchTypes.js";
+export * from "./quickAccess/fileCandidates.js";
+export * from "./quickAccess/fileRanking.js";
+export * from "./quickAccess/fuzzyMatch.js";
