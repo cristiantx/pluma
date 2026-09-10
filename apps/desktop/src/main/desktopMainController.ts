@@ -19,7 +19,10 @@ import {
 import { downloadChromeExtension } from "electron-devtools-installer/dist/downloadChromeExtension.js";
 import started from "electron-squirrel-startup";
 
-import type { CommandName } from "../shared/shellState";
+import {
+  createDesktopCommandDispatcher,
+  type DesktopCommandSession
+} from "./commands/desktopCommandDispatcher";
 import {
   readAppSettings,
   readPersistedSessionState,
@@ -322,50 +325,32 @@ async function resetStoredAppSettings(): Promise<AppSettings> {
   return updateStoredAppSettings(defaultAppSettings);
 }
 
-async function handleMenuCommand(command: CommandName): Promise<void> {
-  if (command === "new-window") {
-    createWindow();
-    return;
-  }
-
-  const session = getLatestFocusedSession() ?? createWindow();
-
-  if (!(await flushSessionDocumentText(session))) {
-    return;
-  }
-
-  if (command === "reload-window") {
-    session.window.webContents.reload();
-    return;
-  }
-
-  if (command === "force-reload-window") {
-    session.window.webContents.reloadIgnoringCache();
-    return;
-  }
-
-  await session.handleCommand(command);
-}
-
-async function handleConvertLineEndings(target: "crlf" | "lf"): Promise<void> {
-  const session = getLatestFocusedSession();
-
-  if (!session || !(await flushSessionDocumentText(session))) {
-    return;
-  }
-
-  session.convertActiveDocumentLineEndings(target);
-}
+const dispatchCommand = (
+  value: unknown,
+  origin: Parameters<ReturnType<typeof createDesktopCommandDispatcher>>[1]
+) =>
+  createDesktopCommandDispatcher({
+    isDevelopment,
+    getFocusedSession: getLatestFocusedSession,
+    createWindow,
+    flushSession: (target) => flushSessionDocumentText(target),
+    setAutosaveEnabled,
+    setSpellcheckEnabled
+  })(value, origin);
 
 async function flushSessionDocumentText(
-  session: DesktopWindowSession
+  session: DesktopCommandSession
 ): Promise<boolean> {
+  const target = getOrderedSessions().find(
+    (candidate) => candidate === session
+  );
+  if (!target) return false;
   const flushed = await documentTextFlushCoordinator.request(
-    session.window.webContents
+    target.window.webContents
   );
 
   if (!flushed) {
-    session.emitStatus(
+    target.emitStatus(
       "Could not synchronize the latest document edits. Try the action again."
     );
   }
@@ -383,10 +368,7 @@ function getApplicationMenu(): Menu {
     },
     isDevelopment,
     spellcheckEnabled,
-    onCommand: (command) => void handleMenuCommand(command),
-    onConvertLineEndings: (target) => void handleConvertLineEndings(target),
-    onSetAutosaveEnabled: (enabled) => void setAutosaveEnabled(enabled),
-    onSetSpellcheckEnabled: (enabled) => void setSpellcheckEnabled(enabled)
+    onCommand: (command) => void dispatchCommand(command, { kind: "menu" })
   });
 }
 
@@ -576,12 +558,10 @@ function registerDesktopIpcHandlers(): void {
       documentTextFlushCoordinator.acknowledge(event.sender.id, requestId);
     },
     runCommand: async (event, command) => {
-      if (command === "new-window") {
-        createWindow();
-        return;
-      }
-
-      await getSessionForEvent(event)?.handleCommand(command);
+      await dispatchCommand(command, {
+        kind: "renderer",
+        session: getSessionForEvent(event)
+      });
     },
     searchWorkspace: (event, query, folderPath, options) =>
       getSessionForEvent(event)?.searchWorkspace(query, folderPath, options) ??

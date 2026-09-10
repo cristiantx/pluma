@@ -110,6 +110,7 @@ const harness = vi.hoisted(() => {
     getProtectedDocuments = vi.fn(() => []);
     handleOpenTarget = vi.fn();
     hasActiveDocument = vi.fn(() => true);
+    getCommandDocumentId = vi.fn(() => "document");
     refreshSettingsSensitiveState = vi.fn();
     restorePersistedState = vi.fn();
     searchWorkspace = vi.fn();

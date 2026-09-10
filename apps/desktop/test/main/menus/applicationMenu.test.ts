@@ -17,9 +17,6 @@ function buildMenuTemplate(
   hasActiveDocument = true
 ) {
   const onCommand = vi.fn();
-  const onConvertLineEndings = vi.fn();
-  const onSetAutosaveEnabled = vi.fn();
-  const onSetSpellcheckEnabled = vi.fn();
   const template = buildApplicationMenu({
     autosaveEnabled: true,
     commandAvailability: {
@@ -27,17 +24,11 @@ function buildMenuTemplate(
     },
     isDevelopment: false,
     spellcheckEnabled,
-    onCommand,
-    onConvertLineEndings,
-    onSetAutosaveEnabled,
-    onSetSpellcheckEnabled
+    onCommand
   }) as unknown as MenuItemConstructorOptions[];
 
   return {
     onCommand,
-    onConvertLineEndings,
-    onSetAutosaveEnabled,
-    onSetSpellcheckEnabled,
     template
   };
 }
@@ -83,7 +74,7 @@ describe("buildApplicationMenu", () => {
 
       expect(item.accelerator).toBe(accelerator);
       item.click?.({} as Electron.MenuItem, undefined, undefined);
-      expect(onCommand).toHaveBeenCalledWith(command);
+      expect(onCommand).toHaveBeenCalledWith({ id: command });
     }
   );
 
@@ -125,7 +116,7 @@ describe("buildApplicationMenu", () => {
   });
 
   it("maps the auto-save checkbox state and click value to its handler", () => {
-    const { onSetAutosaveEnabled, template } = buildMenuTemplate(true);
+    const { onCommand, template } = buildMenuTemplate(true);
     const item = getSubmenuItem(template, "File", "Auto Save");
 
     expect(item).toMatchObject({
@@ -134,7 +125,10 @@ describe("buildApplicationMenu", () => {
     });
 
     item.click?.({ checked: false } as Electron.MenuItem, undefined, undefined);
-    expect(onSetAutosaveEnabled).toHaveBeenCalledWith(false);
+    expect(onCommand).toHaveBeenCalledWith({
+      id: "set-autosave-enabled",
+      args: { enabled: false }
+    });
   });
 
   it("includes a checked spellcheck menu item when spellcheck is enabled", () => {
@@ -162,7 +156,7 @@ describe("buildApplicationMenu", () => {
   });
 
   it("calls the spellcheck setting handler with the next checked value", () => {
-    const { onSetSpellcheckEnabled, template } = buildMenuTemplate(false);
+    const { onCommand, template } = buildMenuTemplate(false);
     const item = getSubmenuItem(
       template,
       "Edit",
@@ -171,7 +165,10 @@ describe("buildApplicationMenu", () => {
 
     item.click?.({ checked: true } as Electron.MenuItem, undefined, undefined);
 
-    expect(onSetSpellcheckEnabled).toHaveBeenCalledWith(true);
+    expect(onCommand).toHaveBeenCalledWith({
+      id: "set-spellcheck-enabled",
+      args: { enabled: true }
+    });
   });
 
   it("disables document-based menu actions without an active document", () => {
@@ -196,7 +193,7 @@ describe("buildApplicationMenu", () => {
   });
 
   it("converts line endings from the edit submenu", () => {
-    const { onConvertLineEndings, template } = buildMenuTemplate(true);
+    const { onCommand, template } = buildMenuTemplate(true);
     const item = getSubmenuItem(template, "Edit", "Convert Line Endings To");
     const submenu = item.submenu as MenuItemConstructorOptions[];
 
@@ -204,6 +201,9 @@ describe("buildApplicationMenu", () => {
       .find((candidate) => candidate.label === "CRLF")
       ?.click?.({} as Electron.MenuItem, undefined, undefined);
 
-    expect(onConvertLineEndings).toHaveBeenCalledWith("crlf");
+    expect(onCommand).toHaveBeenCalledWith({
+      id: "convert-line-endings",
+      args: { target: "crlf" }
+    });
   });
 });

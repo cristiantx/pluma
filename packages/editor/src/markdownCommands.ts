@@ -1,40 +1,8 @@
-import { EditorSelection, type Extension } from "@codemirror/state";
-import { keymap, type EditorView, type KeyBinding } from "@codemirror/view";
+import { EditorSelection } from "@codemirror/state";
+import type { EditorView } from "@codemirror/view";
+import type { MarkdownCommandId } from "@pluma/commands";
 
-export type MarkdownCommandName =
-  | "toggle-bold"
-  | "toggle-italic"
-  | "toggle-heading-1"
-  | "toggle-heading-2"
-  | "toggle-heading-3";
-
-export const markdownCommandKeymap: Extension = keymap.of([
-  {
-    key: "Mod-b",
-    preventDefault: true,
-    run: wrapSelection("**")
-  },
-  {
-    key: "Mod-i",
-    preventDefault: true,
-    run: wrapSelection("_")
-  },
-  {
-    key: "Mod-Alt-1",
-    preventDefault: true,
-    run: toggleLinePrefix("# ")
-  },
-  {
-    key: "Mod-Alt-2",
-    preventDefault: true,
-    run: toggleLinePrefix("## ")
-  },
-  {
-    key: "Mod-Alt-3",
-    preventDefault: true,
-    run: toggleLinePrefix("### ")
-  }
-] satisfies KeyBinding[]);
+export type MarkdownCommandName = MarkdownCommandId;
 
 export function runMarkdownCommand(
   view: EditorView,

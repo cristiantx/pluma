@@ -4,7 +4,7 @@ type EditorCommandEventTarget = Pick<
 >;
 
 export function addEditorCommandEventListener(
-  onCommand: (command: unknown) => void,
+  onCommand: (command: EditorCommandId) => void,
   target: EditorCommandEventTarget = window
 ): () => void {
   const handleEditorCommandEvent = (event: Event) => {
@@ -12,7 +12,9 @@ export function addEditorCommandEventListener(
       return;
     }
 
-    onCommand(event.detail);
+    if (isEditorCommandId(event.detail)) {
+      onCommand(event.detail);
+    }
   };
 
   target.addEventListener("pluma:editor-command", handleEditorCommandEvent);
@@ -24,3 +26,7 @@ export function addEditorCommandEventListener(
     );
   };
 }
+import {
+  isEditorCommandId,
+  type EditorCommandId
+} from "@pluma/commands";

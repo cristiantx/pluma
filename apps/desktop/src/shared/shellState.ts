@@ -1,3 +1,4 @@
+import type { EditorCommandId } from "@pluma/commands";
 import type { DocumentSession } from "@pluma/core";
 import type { AppSettings, EditorViewMode } from "@pluma/ui";
 
@@ -72,26 +73,8 @@ export type RendererEvent =
       workspacePath: string | null;
     };
 
-type EditorCommandName = "find" | "find-next" | "find-previous" | "replace";
-
-export type CommandName =
-  | "close-active-tab"
-  | EditorCommandName
-  | "export-html"
-  | "export-pdf"
-  | "force-reload-window"
-  | "keep-editing"
-  | "new-file"
-  | "new-window"
-  | "open-devtools"
-  | "open-file"
-  | "open-folder"
-  | "open-settings"
-  | "reload-from-disk"
-  | "reload-window"
-  | "save"
-  | "save-as"
-  | "toggle-mode";
+export type { ShellCommandId as CommandName } from "@pluma/commands";
+type EditorCommandName = EditorCommandId;
 
 export const initialDesktopShellSnapshot: DesktopShellSnapshot = {
   activeDocumentId: null,

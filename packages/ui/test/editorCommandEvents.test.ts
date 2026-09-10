@@ -5,7 +5,7 @@ import { addEditorCommandEventListener } from "../src/shell/editorCommandEvents"
 describe("addEditorCommandEventListener", () => {
   it("passes editor command event details to the command handler", () => {
     const target = new EventTarget();
-    const commands: unknown[] = [];
+    const commands: string[] = [];
 
     const removeListener = addEditorCommandEventListener(
       (command) => commands.push(command),
@@ -24,5 +24,26 @@ describe("addEditorCommandEventListener", () => {
     );
 
     expect(commands).toEqual(["find"]);
+  });
+
+  it("ignores invalid editor command event details", () => {
+    const target = new EventTarget();
+    const commands: string[] = [];
+
+    const removeListener = addEditorCommandEventListener(
+      (command) => commands.push(command),
+      target
+    );
+
+    target.dispatchEvent(
+      new CustomEvent("pluma:editor-command", { detail: "toggle-bold" })
+    );
+    target.dispatchEvent(
+      new CustomEvent("pluma:editor-command", { detail: "not-a-command" })
+    );
+    target.dispatchEvent(new Event("pluma:editor-command"));
+
+    expect(commands).toEqual([]);
+    removeListener();
   });
 });

@@ -218,6 +218,10 @@ export class DesktopWindowSession {
     return [...roots];
   }
 
+  getCommandDocumentId(): string | null {
+    return this.getActiveDocumentForActiveTab()?.id ?? null;
+  }
+
   hasActiveDocument(): boolean {
     return this.getActiveDocumentForActiveTab() !== null;
   }

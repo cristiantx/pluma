@@ -10,6 +10,7 @@ import type {
   SourceEditorHandle
 } from "@pluma/editor";
 import { createEmptyEditorSearchQuery } from "@pluma/editor";
+import type { EditorCommandId } from "@pluma/commands";
 
 import { usePlumaStore } from "../state/usePlumaStore.js";
 
@@ -174,7 +175,7 @@ export function useEditorSearchController({
   );
 
   const handleEditorCommand = useCallback(
-    (command: unknown) => {
+    (command: EditorCommandId) => {
       if (command === "find") {
         ensureSourceSearchMode();
         setIsSearchOpen(true);

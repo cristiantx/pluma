@@ -1,235 +1,159 @@
+import {
+  type CommandContext,
+  type CommandPlatform,
+  type CommandRequest
+} from "@pluma/commands";
 import { app, Menu, type MenuItemConstructorOptions } from "electron";
 
-import type { CommandName } from "../../shared/shellState";
+import { commandMenuItem } from "./commandMenuItem";
 
-type ApplicationMenuCommandAvailability = {
-  hasActiveDocument: boolean;
-};
+type ApplicationMenuCommandAvailability = Pick<
+  CommandContext,
+  "hasActiveDocument"
+>;
 
 export type ApplicationMenuOptions = {
   autosaveEnabled: boolean;
   commandAvailability: ApplicationMenuCommandAvailability;
   isDevelopment: boolean;
   spellcheckEnabled: boolean;
-  onCommand: (command: CommandName) => void;
-  onConvertLineEndings: (target: "crlf" | "lf") => void;
-  onSetAutosaveEnabled: (enabled: boolean) => void;
-  onSetSpellcheckEnabled: (enabled: boolean) => void;
+  onCommand: (command: CommandRequest) => void;
 };
 
 export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
-  const windowSubmenu: MenuItemConstructorOptions[] =
-    process.platform === "darwin"
-      ? [{ role: "minimize" }, { role: "zoom" }, { role: "front" }]
-      : [{ role: "minimize" }, { role: "zoom" }, { role: "close" }];
+  const platform = getCommandPlatform();
+  const context: CommandContext = {
+    ...options.commandAvailability,
+    autosaveEnabled: options.autosaveEnabled,
+    isDevelopment: options.isDevelopment,
+    spellcheckEnabled: options.spellcheckEnabled
+  };
+  const item = (request: CommandRequest) =>
+    commandMenuItem(request, context, options.onCommand, platform);
+  const convertLineEndings = item({
+    id: "convert-line-endings",
+    args: { target: "lf" }
+  });
+  delete convertLineEndings.click;
 
   return Menu.buildFromTemplate([
-    ...getAppMenu(),
+    ...getAppMenu(item, platform),
     {
       label: "File",
       submenu: [
-        {
-          label: "New Window",
-          accelerator: "CmdOrCtrl+Shift+N",
-          click: () => options.onCommand("new-window")
-        },
-        {
-          label: "New File",
-          accelerator: "CmdOrCtrl+N",
-          click: () => options.onCommand("new-file")
-        },
-        {
-          label: "Open File",
-          accelerator: "CmdOrCtrl+O",
-          click: () => options.onCommand("open-file")
-        },
-        {
-          label: "Open Folder",
-          accelerator: "CmdOrCtrl+Shift+O",
-          click: () => options.onCommand("open-folder")
-        },
-        {
-          label: "Settings...",
-          accelerator: "CmdOrCtrl+,",
-          click: () => options.onCommand("open-settings")
-        },
+        item({ id: "new-window" }),
+        item({ id: "new-file" }),
+        item({ id: "open-file" }),
+        item({ id: "open-folder" }),
+        item({ id: "open-settings" }),
         { type: "separator" },
-        {
-          label: "Save",
-          accelerator: "CmdOrCtrl+S",
-          enabled: options.commandAvailability.hasActiveDocument,
-          click: () => options.onCommand("save")
-        },
-        {
-          label: "Save As",
-          accelerator: "CmdOrCtrl+Shift+S",
-          enabled: options.commandAvailability.hasActiveDocument,
-          click: () => options.onCommand("save-as")
-        },
+        item({ id: "save" }),
+        item({ id: "save-as" }),
         { type: "separator" },
-        {
-          label: "Export as HTML...",
-          enabled: options.commandAvailability.hasActiveDocument,
-          click: () => options.onCommand("export-html")
-        },
-        {
-          label: "Export as PDF...",
-          enabled: options.commandAvailability.hasActiveDocument,
-          click: () => options.onCommand("export-pdf")
-        },
+        item({ id: "export-html" }),
+        item({ id: "export-pdf" }),
         { type: "separator" },
-        {
-          checked: options.autosaveEnabled,
-          click: (menuItem) => {
-            options.onSetAutosaveEnabled(menuItem.checked);
-          },
-          label: "Auto Save",
-          type: "checkbox"
-        },
+        item({
+          id: "set-autosave-enabled",
+          args: { enabled: options.autosaveEnabled }
+        }),
         { type: "separator" },
-        {
-          label: "Close Tab",
-          accelerator: "CmdOrCtrl+W",
-          enabled: options.commandAvailability.hasActiveDocument,
-          click: () => options.onCommand("close-active-tab")
-        },
-        ...(process.platform === "darwin"
-          ? []
-          : [
-              {
-                label: "Quit",
-                role: "quit"
-              } satisfies MenuItemConstructorOptions
-            ])
+        item({ id: "close-active-tab" }),
+        ...(platform === "darwin" ? [] : [item({ id: "native-quit" })])
       ]
     },
     {
       label: "Edit",
       submenu: [
-        { label: "Undo", accelerator: "CmdOrCtrl+Z", role: "undo" },
-        { label: "Redo", accelerator: "Shift+CmdOrCtrl+Z", role: "redo" },
+        item({ id: "native-undo" }),
+        item({ id: "native-redo" }),
         { type: "separator" },
-        { label: "Cut", accelerator: "CmdOrCtrl+X", role: "cut" },
-        { label: "Copy", accelerator: "CmdOrCtrl+C", role: "copy" },
-        { label: "Paste", accelerator: "CmdOrCtrl+V", role: "paste" },
-        {
-          label: "Paste as Plain Text",
-          accelerator: "Shift+CmdOrCtrl+V",
-          role: "pasteAndMatchStyle"
-        },
+        item({ id: "native-cut" }),
+        item({ id: "native-copy" }),
+        item({ id: "native-paste" }),
+        item({ id: "native-pasteAndMatchStyle" }),
         { type: "separator" },
-        { label: "Select All", accelerator: "CmdOrCtrl+A", role: "selectAll" },
+        item({ id: "native-selectAll" }),
         { type: "separator" },
+        item({ id: "find" }),
+        item({ id: "find-next" }),
+        item({ id: "find-previous" }),
+        item({ id: "replace" }),
         {
-          label: "Find",
-          accelerator: "CmdOrCtrl+F",
-          enabled: options.commandAvailability.hasActiveDocument,
-          click: () => options.onCommand("find")
-        },
-        {
-          label: "Find Next",
-          accelerator: "CmdOrCtrl+G",
-          enabled: options.commandAvailability.hasActiveDocument,
-          click: () => options.onCommand("find-next")
-        },
-        {
-          label: "Find Previous",
-          accelerator: "Shift+CmdOrCtrl+G",
-          enabled: options.commandAvailability.hasActiveDocument,
-          click: () => options.onCommand("find-previous")
-        },
-        {
-          label: "Replace",
-          accelerator: "Alt+CmdOrCtrl+F",
-          enabled: options.commandAvailability.hasActiveDocument,
-          click: () => options.onCommand("replace")
-        },
-        {
-          label: "Convert Line Endings To",
-          enabled: options.commandAvailability.hasActiveDocument,
+          ...convertLineEndings,
           submenu: [
             {
-              label: "LF",
-              click: () => options.onConvertLineEndings("lf")
+              ...item({ id: "convert-line-endings", args: { target: "lf" } }),
+              label: "LF"
             },
             {
-              label: "CRLF",
-              click: () => options.onConvertLineEndings("crlf")
+              ...item({
+                id: "convert-line-endings",
+                args: { target: "crlf" }
+              }),
+              label: "CRLF"
             }
           ]
         },
         { type: "separator" },
-        {
-          checked: options.spellcheckEnabled,
-          click: (menuItem) => {
-            options.onSetSpellcheckEnabled(menuItem.checked);
-          },
-          label: "Check Spelling While Typing",
-          type: "checkbox"
-        },
+        item({
+          id: "set-spellcheck-enabled",
+          args: { enabled: options.spellcheckEnabled }
+        }),
         { type: "separator" },
-        { label: "Start Dictation...", role: "startSpeaking" }
+        item({ id: "native-startSpeaking" })
       ]
     },
     {
       label: "View",
       submenu: [
-        {
-          label: "Toggle Rich/Source Mode",
-          accelerator: "CmdOrCtrl+\\",
-          enabled: options.commandAvailability.hasActiveDocument,
-          click: () => options.onCommand("toggle-mode")
-        },
-        ...(options.isDevelopment
-          ? [
-              {
-                label: "Open DevTools",
-                accelerator:
-                  process.platform === "darwin"
-                    ? "Alt+Command+I"
-                    : "Ctrl+Shift+I",
-                click: () => options.onCommand("open-devtools")
-              } satisfies MenuItemConstructorOptions
-            ]
-          : []),
+        item({ id: "toggle-mode" }),
+        ...(options.isDevelopment ? [item({ id: "open-devtools" })] : []),
         { type: "separator" },
-        {
-          label: "Reload",
-          accelerator: "CmdOrCtrl+R",
-          click: () => options.onCommand("reload-window")
-        },
-        {
-          label: "Force Reload",
-          accelerator: "Shift+CmdOrCtrl+R",
-          click: () => options.onCommand("force-reload-window")
-        },
-        { role: "toggleDevTools" }
+        item({ id: "reload-window" }),
+        item({ id: "force-reload-window" }),
+        item({ id: "native-toggleDevTools" })
       ]
     },
     {
       label: "Window",
-      submenu: windowSubmenu
+      submenu: [
+        item({ id: "native-minimize" }),
+        item({ id: "native-zoom" }),
+        item({ id: platform === "darwin" ? "native-front" : "native-close" })
+      ]
     }
   ]);
 }
 
-function getAppMenu(): MenuItemConstructorOptions[] {
-  return process.platform === "darwin"
+function getAppMenu(
+  item: (request: CommandRequest) => MenuItemConstructorOptions,
+  platform: CommandPlatform
+): MenuItemConstructorOptions[] {
+  return platform === "darwin"
     ? [
         {
           label: app.name,
           submenu: [
-            { role: "about" },
+            item({ id: "native-about" }),
             { type: "separator" },
-            { role: "services" },
+            item({ id: "native-services" }),
             { type: "separator" },
-            { role: "hide" },
-            { role: "hideOthers" },
-            { role: "unhide" },
+            item({ id: "native-hide" }),
+            item({ id: "native-hideOthers" }),
+            item({ id: "native-unhide" }),
             { type: "separator" },
-            { role: "quit" }
+            item({ id: "native-quit" })
           ]
         }
       ]
     : [];
+}
+
+function getCommandPlatform(): CommandPlatform {
+  if (process.platform === "darwin" || process.platform === "win32") {
+    return process.platform;
+  }
+
+  return "linux";
 }

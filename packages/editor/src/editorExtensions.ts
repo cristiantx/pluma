@@ -5,7 +5,7 @@ import {
 } from "@codemirror/commands";
 import { search } from "@codemirror/search";
 import { drawSelection, dropCursor, keymap } from "@codemirror/view";
-import { markdownCommandKeymap } from "./markdownCommands.js";
+import { markdownCommandKeymap } from "./markdownCommandBindings.js";
 import { sourceSearchDecorations } from "./sourceSearchDecorations.js";
 
 export const editorExtensions = [

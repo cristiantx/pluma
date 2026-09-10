@@ -1,3 +1,4 @@
+import type { CommandRequest } from "@pluma/commands";
 import { contextBridge, ipcRenderer } from "electron";
 import type {
   CommandName,
@@ -55,7 +56,7 @@ const api = {
       options
     );
   },
-  runCommand(command: CommandName) {
+  runCommand(command: CommandName | CommandRequest) {
     return invokeAfterDocumentTextFlush("pluma:command", command);
   },
   setEditorMode(mode: EditorViewMode) {

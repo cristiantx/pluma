@@ -2,7 +2,6 @@ import { ipcMain, type IpcMainEvent, type IpcMainInvokeEvent } from "electron";
 
 import type { AppSettings } from "@pluma/ui/settings";
 import type {
-  CommandName,
   EditorViewMode,
   WorkspaceSearchMatch,
   WorkspaceSearchOptions
@@ -22,10 +21,7 @@ export type DesktopIpcHandlers = {
     event: IpcMainInvokeEvent,
     filePath: unknown
   ) => Promise<void>;
-  runCommand: (
-    event: IpcMainInvokeEvent,
-    command: CommandName
-  ) => Promise<void>;
+  runCommand: (event: IpcMainInvokeEvent, command: unknown) => Promise<void>;
   searchWorkspace: (
     event: IpcMainInvokeEvent,
     query: unknown,
@@ -62,7 +58,7 @@ export type DesktopIpcHandlers = {
 };
 
 export function registerIpcHandlers(handlers: DesktopIpcHandlers): void {
-  ipcMain.handle("pluma:command", async (event, command: CommandName) => {
+  ipcMain.handle("pluma:command", async (event, command: unknown) => {
     await handlers.runCommand(event, command);
   });
 

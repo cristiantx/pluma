@@ -1,3 +1,4 @@
+import type { CommandRequest } from "@pluma/commands";
 import type { CommandName, RendererEvent } from "./shellState";
 import type { WorkspaceSearchMatch } from "./shellState";
 import type { WorkspaceSearchOptions } from "./shellState";
@@ -17,7 +18,7 @@ declare global {
         folderPath: string | null,
         options: WorkspaceSearchOptions
       ): Promise<WorkspaceSearchMatch[]>;
-      runCommand(command: CommandName): Promise<void>;
+      runCommand(command: CommandName | CommandRequest): Promise<void>;
       resetSettings(): Promise<AppSettings>;
       setActiveDocument(documentId: string): Promise<void>;
       setActiveTab(tabId: string): Promise<void>;

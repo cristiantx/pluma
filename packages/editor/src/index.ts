@@ -11,7 +11,10 @@ export {
   type TextSearchResult
 } from "./editorSearch.js";
 export {
-  markdownCommandKeymap,
+  createMarkdownCommandKeymap,
+  markdownCommandKeymap
+} from "./markdownCommandBindings.js";
+export {
   runMarkdownCommand,
   type MarkdownCommandName
 } from "./markdownCommands.js";
