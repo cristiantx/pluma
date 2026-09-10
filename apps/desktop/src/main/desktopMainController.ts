@@ -1,56 +1,52 @@
+import type { WebContents } from "electron";
 import {
   app,
   BrowserWindow,
   Menu,
-  nativeImage,
   session,
-  shell,
   type IpcMainEvent,
   type IpcMainInvokeEvent
 } from "electron";
 import path from "node:path";
+import { registerDesktopIpcBindings } from "./ipc/desktopIpcBindings";
+import { registerDesktopAppLifecycle } from "./runtime/desktopAppLifecycle";
+import {
+  installDevelopmentExtensions,
+  setApplicationIcon
+} from "./runtime/desktopNativeIntegration";
+import { OpenTargetQueue } from "./runtime/openTargetQueue";
+import { DesktopQuitCoordinator } from "./session/desktopQuitCoordinator";
+import { restoreDesktopWindows } from "./session/desktopSessionRestoration";
+import { DesktopSettingsController } from "./settings/desktopSettingsController";
+import { createWindowSessionLifecycle } from "./windows/windowSessionLifecycle";
+import { WindowSessionRegistry } from "./windows/windowSessionRegistry";
 
 import { DesktopFileSystemAdapter } from "@pluma/core-desktop";
-import {
-  defaultAppSettings,
-  type AppSettings,
-  type DefaultLineEnding
-} from "@pluma/ui/settings";
-import { downloadChromeExtension } from "electron-devtools-installer/dist/downloadChromeExtension.js";
+import { type AppSettings } from "@pluma/ui/settings";
 import started from "electron-squirrel-startup";
 
-import {
-  createDesktopCommandDispatcher,
-  type DesktopCommandSession
-} from "./commands/desktopCommandDispatcher";
-import {
-  readAppSettings,
-  readPersistedSessionState,
-  writeAppSettings
-} from "./persistence/appPersistence";
-import { createAppDraftStorage } from "./persistence/appDraftStorage";
 import {
   registerLocalAssetProtocolHandler,
   registerLocalAssetProtocolScheme
 } from "./assets/localAssetProtocol";
-import { buildApplicationMenu } from "./menus/applicationMenu";
-import { registerIpcHandlers } from "./ipc/registerIpcHandlers";
+import {
+  createDesktopCommandDispatcher,
+  type DesktopCommandSession
+} from "./commands/desktopCommandDispatcher";
 import { DocumentTextFlushCoordinator } from "./ipc/documentTextFlushCoordinator";
 import { MarkdownAnalysisService } from "./markdown/markdownAnalysisService";
-import { getAppSettingsUpdate } from "./settings/appSettingsUpdate";
+import { buildApplicationMenu } from "./menus/applicationMenu";
+import { createAppDraftStorage } from "./persistence/appDraftStorage";
 import {
-  shouldPersistAfterWindowClosed,
-  shouldRouteWindowCloseThroughAppQuit
-} from "./session/quitPersistence";
+  readAppSettings,
+  writeAppSettings
+} from "./persistence/appPersistence";
 import {
   SessionStatePersistence,
   writeDesktopSessionState
 } from "./session/sessionStatePersistence";
-import { createMainWindow } from "./windows/createMainWindow";
-import {
-  DesktopWindowSession,
-  type DesktopWindowSessionDependencies
-} from "./windows/DesktopWindowSession";
+import type { DesktopWindowSession } from "./windows/DesktopWindowSession";
+import { type DesktopWindowSessionDependencies } from "./windows/DesktopWindowSession";
 
 export type DesktopMainProcessOptions = {
   mainBundleDirectory: string;
@@ -61,30 +57,32 @@ export type DesktopMainProcessOptions = {
 let mainBundleDirectory = "";
 let rendererDevServerUrl: string | undefined;
 let rendererName = "";
-let autosaveEnabled = true;
-let defaultLineEnding: DefaultLineEnding = "system";
-let openExportedFile = false;
-let restorePreviousSession = true;
-let spellcheckEnabled = true;
-let workspaceRespectGitIgnore = false;
-let workspaceShowHiddenFiles = true;
 let isDevelopment = false;
-let isQuitting = false;
-let latestFocusedWindowId: number | null = null;
-let pendingOpenTargets: string[] = [];
-let appSettingsSnapshot: AppSettings = { ...defaultAppSettings };
-let settingsMutationQueue: Promise<void> = Promise.resolve();
+
 let markdownAnalysisService: MarkdownAnalysisService | null = null;
 
 const fileSystem = new DesktopFileSystemAdapter();
-const sessions = new Map<number, DesktopWindowSession>();
+const sessions = new WindowSessionRegistry<DesktopWindowSession>({
+  getFocusedWindowId: () => BrowserWindow.getFocusedWindow()?.id ?? null,
+  getSenderWindowId: (sender) =>
+    BrowserWindow.fromWebContents(sender as WebContents)?.id ?? null
+});
+const settingsController = new DesktopSettingsController({
+  getSessions: () => [...sessions.values()],
+  refreshMenu: () => Menu.setApplicationMenu(getApplicationMenu()),
+  write: (settings) => writeAppSettings(getAppSettingsPath(), settings)
+});
+const openTargets = new OpenTargetQueue({
+  getLatestSession: getLatestFocusedSession,
+  createWindow
+});
 const documentTextFlushCoordinator = new DocumentTextFlushCoordinator();
-const windowsAllowedToClose = new Set<number>();
+
 const sessionStateFileName = "session-state.json";
 const appSettingsFileName = "settings.json";
 const autosaveDelayMs = 900;
 const draftsDirectoryName = "drafts";
-const reactDeveloperToolsExtensionId = "fmkadmapgofadopljbjfkapdkoienihi";
+
 const sessionStatePersistence = new SessionStatePersistence(async () => {
   if (!app.isReady()) {
     return;
@@ -95,6 +93,34 @@ const sessionStatePersistence = new SessionStatePersistence(async () => {
     getOrderedSessions(),
     getLatestFocusedSession()
   );
+});
+
+const quitCoordinator = new DesktopQuitCoordinator<DesktopWindowSession>({
+  getSessions: getOrderedSessions,
+  flush: flushSessionDocumentText,
+  persist: () => sessionStatePersistence.request(),
+  quit: () => app.quit(),
+  reportFailure: (message) => getLatestFocusedSession()?.emitStatus(message)
+});
+
+const windowLifecycle = createWindowSessionLifecycle({
+  sessions,
+  flushCoordinator: documentTextFlushCoordinator,
+  quitCoordinator,
+  settingsController,
+  getOptions: () => ({
+    mainBundleDirectory,
+    rendererDevServerUrl,
+    rendererName
+  }),
+  getAppIconPath,
+  getSessions: getOrderedSessions,
+  refreshMenu: refreshApplicationMenu,
+  persistSession: persistSessionStateSoon,
+  requestQuit: quitApplicationWithSessionPersistence,
+  flushOpenTargets: flushPendingOpenTargets,
+  createWindowDependencies,
+  flushDocumentText: flushSessionDocumentText
 });
 
 if (started) {
@@ -111,18 +137,6 @@ if (!gotSingleInstanceLock) {
 
 function getAppIconPath(): string {
   return path.resolve(mainBundleDirectory, "../../assets/icon.png");
-}
-
-function setApplicationIcon(): void {
-  const icon = nativeImage.createFromPath(getAppIconPath());
-
-  if (icon.isEmpty()) {
-    return;
-  }
-
-  if (process.platform === "darwin" && app.dock) {
-    app.dock.setIcon(icon);
-  }
 }
 
 function getSessionStatePath(): string {
@@ -148,76 +162,29 @@ function persistSessionStateSoon(): void {
 }
 
 function getOrderedSessions(): DesktopWindowSession[] {
-  return [...sessions.values()].filter(
-    (session) => !session.window.isDestroyed()
-  );
+  return sessions.ordered();
 }
 
 function getAuthorizedLocalAssetRoots(): string[] {
-  return [
-    ...new Set(
-      getOrderedSessions().flatMap((session) =>
-        session.getAuthorizedAssetRoots()
-      )
-    )
-  ];
+  return sessions.authorizedAssetRoots();
 }
 
 function getLatestFocusedSession(): DesktopWindowSession | null {
-  if (latestFocusedWindowId !== null) {
-    const latestSession = sessions.get(latestFocusedWindowId);
-
-    if (latestSession && !latestSession.window.isDestroyed()) {
-      return latestSession;
-    }
-  }
-
-  const focusedWindow = BrowserWindow.getFocusedWindow();
-  if (focusedWindow) {
-    return sessions.get(focusedWindow.id) ?? null;
-  }
-
-  return getOrderedSessions().at(-1) ?? null;
+  return sessions.latest();
 }
 
 function getSessionForEvent(
   event: IpcMainEvent | IpcMainInvokeEvent
 ): DesktopWindowSession | null {
-  const senderWindow = BrowserWindow.fromWebContents(event.sender);
-
-  return senderWindow ? (sessions.get(senderWindow.id) ?? null) : null;
+  return sessions.forSender(event.sender);
 }
 
 function queueOpenTargets(targets: string[]): void {
-  pendingOpenTargets.push(...targets);
-}
-
-function normalizeOpenTargets(argumentsList: string[]): string[] {
-  return argumentsList.filter((argument) => {
-    if (!argument || argument.startsWith("-")) {
-      return false;
-    }
-
-    if (argument === "." || argument === "..") {
-      return false;
-    }
-
-    return path.isAbsolute(argument);
-  });
+  openTargets.queue(targets);
 }
 
 async function flushPendingOpenTargets(): Promise<void> {
-  if (pendingOpenTargets.length === 0) {
-    return;
-  }
-
-  const session = getLatestFocusedSession() ?? createWindow();
-  const targets = pendingOpenTargets;
-  pendingOpenTargets = [];
-
-  for (const targetPath of targets) {
-    await session.handleOpenTarget(targetPath);
-  }
+  await openTargets.flush();
 }
 
 async function setAutosaveEnabled(enabled: boolean): Promise<void> {
@@ -227,20 +194,6 @@ async function setAutosaveEnabled(enabled: boolean): Promise<void> {
   getLatestFocusedSession()?.emitStatus(
     nextSettings.autosaveEnabled ? "Auto Save enabled." : "Auto Save disabled."
   );
-}
-
-function applySpellcheckEnabled(enabled: boolean): void {
-  for (const session of sessions.values()) {
-    if (!session.window.isDestroyed()) {
-      session.window.webContents.session.setSpellCheckerEnabled(enabled);
-    }
-  }
-}
-
-function emitSettingsChanged(settings: AppSettings): void {
-  for (const session of sessions.values()) {
-    session.emitSettingsChanged(settings);
-  }
 }
 
 async function setSpellcheckEnabled(enabled: boolean): Promise<void> {
@@ -257,72 +210,11 @@ async function setSpellcheckEnabled(enabled: boolean): Promise<void> {
 async function updateStoredAppSettings(
   update: Partial<AppSettings>
 ): Promise<AppSettings> {
-  return enqueueSettingsMutation(async () => {
-    const currentSettings = appSettingsSnapshot;
-    const nextSettings: AppSettings = {
-      ...currentSettings,
-      ...update
-    };
-
-    await writeAppSettings(getAppSettingsPath(), nextSettings);
-    applyAppSettingsSnapshot(nextSettings);
-
-    if (!autosaveEnabled) {
-      for (const session of sessions.values()) {
-        session.clearAutosaveTimers();
-      }
-    }
-
-    if (currentSettings.spellcheckEnabled !== nextSettings.spellcheckEnabled) {
-      applySpellcheckEnabled(spellcheckEnabled);
-    }
-
-    if (
-      currentSettings.workspaceShowHiddenFiles !==
-        nextSettings.workspaceShowHiddenFiles ||
-      currentSettings.workspaceRespectGitIgnore !==
-        nextSettings.workspaceRespectGitIgnore
-    ) {
-      for (const session of sessions.values()) {
-        void session.refreshSettingsSensitiveState().catch((error) => {
-          session.emitStatus(
-            error instanceof Error
-              ? `Failed to refresh workspace settings: ${error.message}`
-              : "Failed to refresh workspace settings."
-          );
-        });
-      }
-    }
-
-    emitSettingsChanged(nextSettings);
-    Menu.setApplicationMenu(getApplicationMenu());
-
-    return nextSettings;
-  });
+  return settingsController.update(update);
 }
 
 function applyAppSettingsSnapshot(nextSettings: AppSettings): void {
-  appSettingsSnapshot = nextSettings;
-  autosaveEnabled = nextSettings.autosaveEnabled;
-  defaultLineEnding = nextSettings.defaultLineEnding;
-  openExportedFile = nextSettings.openExportedFile;
-  restorePreviousSession = nextSettings.restorePreviousSession;
-  spellcheckEnabled = nextSettings.spellcheckEnabled;
-  workspaceRespectGitIgnore = nextSettings.workspaceRespectGitIgnore;
-  workspaceShowHiddenFiles = nextSettings.workspaceShowHiddenFiles;
-}
-
-function enqueueSettingsMutation<T>(operation: () => Promise<T>): Promise<T> {
-  const result = settingsMutationQueue.then(operation, operation);
-  settingsMutationQueue = result.then(
-    () => undefined,
-    () => undefined
-  );
-  return result;
-}
-
-async function resetStoredAppSettings(): Promise<AppSettings> {
-  return updateStoredAppSettings(defaultAppSettings);
+  settingsController.applyInitial(nextSettings);
 }
 
 const dispatchCommand = (
@@ -362,12 +254,12 @@ function getApplicationMenu(): Menu {
   const latestSession = getLatestFocusedSession();
 
   return buildApplicationMenu({
-    autosaveEnabled,
+    autosaveEnabled: settingsController.getSnapshot().autosaveEnabled,
     commandAvailability: {
       hasActiveDocument: latestSession?.hasActiveDocument() ?? false
     },
     isDevelopment,
-    spellcheckEnabled,
+    spellcheckEnabled: settingsController.getSnapshot().spellcheckEnabled,
     onCommand: (command) => void dispatchCommand(command, { kind: "menu" })
   });
 }
@@ -391,11 +283,15 @@ function createWindowDependencies(
     },
     autosaveDelayMs,
     fileSystem,
-    getAutosaveEnabled: () => autosaveEnabled,
-    getDefaultLineEnding: () => defaultLineEnding,
-    getOpenExportedFile: () => openExportedFile,
-    getWorkspaceRespectGitIgnore: () => workspaceRespectGitIgnore,
-    getWorkspaceShowHiddenFiles: () => workspaceShowHiddenFiles,
+    getAutosaveEnabled: () => settingsController.getSnapshot().autosaveEnabled,
+    getDefaultLineEnding: () =>
+      settingsController.getSnapshot().defaultLineEnding,
+    getOpenExportedFile: () =>
+      settingsController.getSnapshot().openExportedFile,
+    getWorkspaceRespectGitIgnore: () =>
+      settingsController.getSnapshot().workspaceRespectGitIgnore,
+    getWorkspaceShowHiddenFiles: () =>
+      settingsController.getSnapshot().workspaceShowHiddenFiles,
     isDevelopment,
     analyzeMarkdownMode: (rawText) => {
       const service = markdownAnalysisService;
@@ -412,255 +308,11 @@ function createWindowDependencies(
 }
 
 function createWindow(): DesktopWindowSession {
-  let markRendererReady: () => void = () => undefined;
-  const rendererReady = new Promise<void>((resolve) => {
-    markRendererReady = resolve;
-  });
-  const window = createMainWindow({
-    appIconPath: getAppIconPath(),
-    mainBundleDirectory,
-    rendererDevServerUrl,
-    rendererName,
-    spellcheckEnabled,
-    onClosed: ({ webContentsId, windowId }) => {
-      markRendererReady();
-      const session = sessions.get(windowId);
-      session?.dispose();
-      documentTextFlushCoordinator.cancelSender(webContentsId);
-      sessions.delete(windowId);
-      windowsAllowedToClose.delete(windowId);
-
-      if (latestFocusedWindowId === windowId) {
-        latestFocusedWindowId = getOrderedSessions().at(-1)?.window.id ?? null;
-      }
-
-      refreshApplicationMenu();
-      if (shouldPersistAfterWindowClosed(isQuitting)) {
-        persistSessionStateSoon();
-      }
-    },
-    onClose: (event) => {
-      if (isQuitting || windowsAllowedToClose.has(window.id)) {
-        return;
-      }
-
-      if (
-        shouldRouteWindowCloseThroughAppQuit({
-          isQuitting,
-          isWindowAllowedToClose: windowsAllowedToClose.has(window.id),
-          openWindowCount: getOrderedSessions().length,
-          platform: process.platform
-        })
-      ) {
-        event.preventDefault();
-        void quitApplicationWithSessionPersistence();
-        return;
-      }
-
-      event.preventDefault();
-      void closeWindowAfterFlush(window.id);
-    },
-    onLoaded: () => {
-      const session = sessions.get(window.id);
-      session?.emitInitialState();
-      markRendererReady();
-      void flushPendingOpenTargets();
-    }
-  });
-  const session = new DesktopWindowSession(
-    createWindowDependencies(window, () => rendererReady)
-  );
-
-  sessions.set(window.id, session);
-  latestFocusedWindowId = window.id;
-  window.on("focus", () => {
-    latestFocusedWindowId = window.id;
-    refreshApplicationMenu();
-  });
-
-  return session;
+  return windowLifecycle.createWindow();
 }
 
-async function closeWindowAfterFlush(windowId: number): Promise<void> {
-  const session = sessions.get(windowId);
-
-  if (!session || session.window.isDestroyed()) {
-    return;
-  }
-
-  if (!(await flushSessionDocumentText(session))) {
-    return;
-  }
-
-  if (
-    session.getProtectedDocuments().length > 0 &&
-    !(await session.closeWindowWithProtection())
-  ) {
-    return;
-  }
-
-  windowsAllowedToClose.add(windowId);
-  session.window.close();
-}
-
-async function restorePersistedSessionState(): Promise<void> {
-  if (!restorePreviousSession) {
-    createWindow();
-    return;
-  }
-
-  const persistedState = await readPersistedSessionState(getSessionStatePath());
-
-  if (!persistedState || persistedState.windows.length === 0) {
-    createWindow();
-    return;
-  }
-
-  const restoredSessions = persistedState.windows.map(() => createWindow());
-  await Promise.all(
-    restoredSessions.map((session, index) =>
-      session.restorePersistedState(persistedState.windows[index]!)
-    )
-  );
-
-  const activeSession =
-    restoredSessions[persistedState.activeWindowIndex] ?? restoredSessions[0];
-  activeSession?.window.focus();
-}
-
-async function confirmQuitAcrossWindows(): Promise<boolean> {
-  for (const session of getOrderedSessions()) {
-    if (!(await session.closeWindowWithProtection())) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-async function quitApplicationWithSessionPersistence(): Promise<void> {
-  const flushResults = await Promise.all(
-    getOrderedSessions().map(flushSessionDocumentText)
-  );
-
-  if (flushResults.some((flushed) => !flushed)) {
-    return;
-  }
-
-  if (!(await confirmQuitAcrossWindows())) {
-    return;
-  }
-
-  isQuitting = true;
-  await sessionStatePersistence.request();
-  app.quit();
-}
-
-function registerDesktopIpcHandlers(): void {
-  registerIpcHandlers({
-    acknowledgeDocumentTextFlush: (event, requestId) => {
-      documentTextFlushCoordinator.acknowledge(event.sender.id, requestId);
-    },
-    runCommand: async (event, command) => {
-      await dispatchCommand(command, {
-        kind: "renderer",
-        session: getSessionForEvent(event)
-      });
-    },
-    searchWorkspace: (event, query, folderPath, options) =>
-      getSessionForEvent(event)?.searchWorkspace(query, folderPath, options) ??
-      Promise.resolve([]),
-    setEditorMode: (event, mode) => {
-      getSessionForEvent(event)?.setEditorMode(mode);
-    },
-    setActiveDocument: async (event, documentId) => {
-      await getSessionForEvent(event)?.setActiveDocument(documentId);
-    },
-    setActiveTab: async (event, tabId) => {
-      await getSessionForEvent(event)?.setActiveTab(tabId);
-    },
-    openWorkspaceFile: async (event, filePath) => {
-      await getSessionForEvent(event)?.openWorkspaceFile(filePath);
-    },
-    closeTab: async (event, tabId) => {
-      await getSessionForEvent(event)?.closeTab(tabId);
-    },
-    showTabContextMenu: (event, tabId, tabIds) => {
-      getSessionForEvent(event)?.showTabContextMenu(tabId, tabIds);
-    },
-    showWorkspaceContextMenu: (event, targetPath, kind) => {
-      getSessionForEvent(event)?.showWorkspaceContextMenu(targetPath, kind);
-    },
-    updatePaneSizes: (event, paneSizes) => {
-      getSessionForEvent(event)?.updatePaneSizes(paneSizes);
-    },
-    updateDocumentText: (event, documentId, rawText) => {
-      getSessionForEvent(event)?.updateDocumentText(documentId, rawText);
-    },
-    getSettings: async () => {
-      return appSettingsSnapshot;
-    },
-    openAppDataFolder: async () => {
-      await shell.openPath(app.getPath("userData"));
-    },
-    openExternalUrl: async (_event, url) => {
-      if (!isExternalWebUrl(url)) {
-        getLatestFocusedSession()?.emitStatus("External URL open was ignored.");
-        return;
-      }
-
-      await shell.openExternal(url);
-    },
-    openSettingsFile: async () => {
-      await writeAppSettings(getAppSettingsPath(), appSettingsSnapshot);
-      await shell.openPath(getAppSettingsPath());
-    },
-    resetSettings: async () => resetStoredAppSettings(),
-    updateSettings: async (_event, settings) => {
-      return updateStoredAppSettings(getAppSettingsUpdate(settings));
-    }
-  });
-}
-
-function isExternalWebUrl(url: unknown): url is string {
-  if (typeof url !== "string") {
-    return false;
-  }
-
-  try {
-    const parsedUrl = new URL(url);
-
-    return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-async function installDevelopmentExtensions(): Promise<void> {
-  if (!isDevelopment) {
-    return;
-  }
-
-  try {
-    const installedExtension = session.defaultSession.extensions
-      .getAllExtensions()
-      .find((extension) => extension.id === reactDeveloperToolsExtensionId);
-
-    if (installedExtension) {
-      return;
-    }
-
-    const extensionPath = await downloadChromeExtension(
-      reactDeveloperToolsExtensionId
-    );
-    await session.defaultSession.extensions.loadExtension(extensionPath);
-  } catch (error) {
-    console.warn(
-      error instanceof Error
-        ? `React DevTools installation failed: ${error.message}`
-        : "React DevTools installation failed."
-    );
-  }
+function quitApplicationWithSessionPersistence(): Promise<void> {
+  return quitCoordinator.request();
 }
 
 export function startDesktopMainProcess(
@@ -674,75 +326,42 @@ export function startDesktopMainProcess(
     onError: (message) => getLatestFocusedSession()?.emitStatus(message),
     workerPath: path.join(mainBundleDirectory, "markdownAnalysisWorker.js")
   });
-  registerDesktopIpcHandlers();
-
-  app.whenReady().then(async () => {
-    registerLocalAssetProtocolHandler(
-      session.defaultSession,
-      getAuthorizedLocalAssetRoots
-    );
-    setApplicationIcon();
-    await installDevelopmentExtensions();
-    const settings = await readAppSettings(getAppSettingsPath());
-    applyAppSettingsSnapshot(settings);
-    applySpellcheckEnabled(spellcheckEnabled);
-    Menu.setApplicationMenu(getApplicationMenu());
-    await restorePersistedSessionState();
-    queueOpenTargets(normalizeOpenTargets(process.argv.slice(1)));
-    void flushPendingOpenTargets();
-
-    app.on("activate", () => {
-      if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
-      }
-    });
+  registerDesktopIpcBindings({
+    dispatchCommand,
+    flushCoordinator: documentTextFlushCoordinator,
+    getAppSettingsPath,
+    getLatestFocusedSession,
+    getSessionForEvent,
+    settingsController
   });
 
-  app.on("open-file", (event, filePath) => {
-    event.preventDefault();
-    queueOpenTargets([filePath]);
-    void flushPendingOpenTargets();
-  });
-
-  app.on("second-instance", (_event, argv) => {
-    const session = getLatestFocusedSession();
-
-    if (session) {
-      if (session.window.isMinimized()) {
-        session.window.restore();
-      }
-
-      session.window.focus();
+  registerDesktopAppLifecycle({
+    sessions,
+    quitCoordinator,
+    createWindow,
+    getLatestSession: getLatestFocusedSession,
+    queueOpenTargets,
+    flushOpenTargets: flushPendingOpenTargets,
+    onReady: async () => {
+      registerLocalAssetProtocolHandler(
+        session.defaultSession,
+        getAuthorizedLocalAssetRoots
+      );
+      setApplicationIcon(getAppIconPath());
+      await installDevelopmentExtensions(isDevelopment);
+      const settings = await readAppSettings(getAppSettingsPath());
+      applyAppSettingsSnapshot(settings);
+      settingsController.applySpellcheck();
+      Menu.setApplicationMenu(getApplicationMenu());
+      await restoreDesktopWindows({
+        enabled: settingsController.getSnapshot().restorePreviousSession,
+        sessionStatePath: getSessionStatePath(),
+        createWindow
+      });
+    },
+    onWillQuit: () => {
+      markdownAnalysisService?.dispose();
+      markdownAnalysisService = null;
     }
-
-    queueOpenTargets(normalizeOpenTargets(argv));
-    void flushPendingOpenTargets();
-  });
-
-  app.on("before-quit", (event) => {
-    if (isQuitting) {
-      return;
-    }
-
-    event.preventDefault();
-
-    void quitApplicationWithSessionPersistence();
-  });
-
-  app.on("window-all-closed", () => {
-    for (const session of sessions.values()) {
-      session.dispose();
-    }
-
-    sessions.clear();
-
-    if (process.platform !== "darwin") {
-      app.quit();
-    }
-  });
-
-  app.on("will-quit", () => {
-    markdownAnalysisService?.dispose();
-    markdownAnalysisService = null;
   });
 }

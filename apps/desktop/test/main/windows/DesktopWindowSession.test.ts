@@ -173,15 +173,21 @@ function updateSessionShellData(
 ): void {
   (
     session as unknown as {
-      updateShellData(update: Partial<DesktopShellSnapshot>): void;
+      state: {
+        update(update: Partial<DesktopShellSnapshot>): void;
+      };
     }
-  ).updateShellData(update);
+  ).state.update(update);
 }
 
 function getSessionShellData(
   session: DesktopWindowSession
 ): DesktopShellSnapshot {
-  return (session as unknown as { shellData: DesktopShellSnapshot }).shellData;
+  return (
+    session as unknown as {
+      state: { value: DesktopShellSnapshot };
+    }
+  ).state.value;
 }
 
 describe("DesktopWindowSession", () => {
@@ -1024,15 +1030,17 @@ describe("DesktopWindowSession", () => {
     };
     const { session } = createSession({}, { fileSystem });
     updateSessionShellData(session, { workspacePath: "/workspace" });
-    const refreshWorkspaceEntries = (
+    const workspace = (
       session as unknown as {
-        refreshWorkspaceEntries(): Promise<void>;
+        windowSurfaceServices: {
+          workspace: { refresh(): Promise<void> };
+        };
       }
-    ).refreshWorkspaceEntries.bind(session);
-    const firstRefresh = refreshWorkspaceEntries();
+    ).windowSurfaceServices.workspace;
+    const firstRefresh = workspace.refresh();
 
     await vi.waitFor(() => expect(pendingDirectoryReads).toHaveLength(1));
-    const secondRefresh = refreshWorkspaceEntries();
+    const secondRefresh = workspace.refresh();
     pendingDirectoryReads.shift()?.([
       {
         kind: "file",

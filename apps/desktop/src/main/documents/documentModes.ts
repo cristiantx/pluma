@@ -71,10 +71,12 @@ export function createDocumentModes(dependencies: DocumentModeDependencies) {
 
   function getDocumentViewModesSnapshot(): Record<string, EditorViewMode> {
     return Object.fromEntries(
-      { documents: dependencies.getDocuments() }.documents.map((document) => [
-        document.id,
-        getAllowedEditorMode(document, getStoredDocumentMode(document))
-      ])
+      dependencies
+        .getDocuments()
+        .map((document) => [
+          document.id,
+          getAllowedEditorMode(document, getStoredDocumentMode(document))
+        ])
     );
   }
 

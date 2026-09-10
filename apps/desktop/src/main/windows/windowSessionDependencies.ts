@@ -1,0 +1,22 @@
+import { type DesktopFileLocation, type FileSystemAdapter } from "@pluma/core";
+import { type BrowserWindow } from "electron";
+import type { AppDraftStorage } from "../persistence/appDraftStorage";
+import { type MarkdownModeAnalyzer } from "../workspace/desktopWorkspace";
+export type DesktopWindowSessionDependencies = {
+  analyzeMarkdownMode: MarkdownModeAnalyzer;
+  appDocumentsPath: string;
+  autosaveDelayMs: number;
+  draftStorage: AppDraftStorage;
+  flushDocumentText?: () => Promise<boolean>;
+  fileSystem: FileSystemAdapter<DesktopFileLocation>;
+  getAutosaveEnabled: () => boolean;
+  getDefaultLineEnding: () => "crlf" | "lf" | "system";
+  getOpenExportedFile: () => boolean;
+  getWorkspaceRespectGitIgnore: () => boolean;
+  getWorkspaceShowHiddenFiles: () => boolean;
+  isDevelopment: boolean;
+  onMenuStateChange: () => void;
+  onPersistSessionState: () => void;
+  waitForRendererReady: () => Promise<void>;
+  window: BrowserWindow;
+};

@@ -1,3 +1,4 @@
+import { RestoredDocumentMerge } from "./restoredDocumentMerge";
 import type { DocumentSession } from "@pluma/core";
 
 import type {
@@ -9,6 +10,8 @@ import { mapWithConcurrency } from "../runtime/asyncConcurrency.js";
 const restoredDocumentConcurrency = 2;
 
 export type RestorePorts = {
+  isCurrent?(): boolean;
+  getDocuments?(): DocumentSession[];
   loadReference(
     reference: PersistedDocumentReference
   ): Promise<DocumentSession | null>;
@@ -29,6 +32,8 @@ export async function restoreWindowSession(
   persistedState: PersistedWindowSessionState,
   ports: RestorePorts
 ): Promise<void> {
+  const isCurrent = () => ports.isCurrent?.() ?? true;
+  const merge = new RestoredDocumentMerge();
   const documentRefs: PersistedDocumentReference[] =
     persistedState.documentRefs ??
     persistedState.documentPaths.map((documentPath) => ({
@@ -46,7 +51,9 @@ export async function restoreWindowSession(
   for (const documentRef of prioritizedRefs) {
     const key = createDocumentModeKeyFromPersistedReference(documentRef);
     attemptedKeys.add(key);
+    if (!isCurrent()) return;
     const document = await ports.loadReference(documentRef);
+    if (!isCurrent()) return;
 
     if (document) {
       activeDocument = document;
@@ -59,8 +66,13 @@ export async function restoreWindowSession(
     }
   }
 
+  if (!isCurrent()) return;
   ports.publishInitial(activeDocument, persistedState);
+  merge.record(
+    ports.getDocuments?.() ?? (activeDocument ? [activeDocument] : [])
+  );
   await ports.waitForRendererReady();
+  if (!isCurrent()) return;
 
   const remainingRefs = documentRefs.filter(
     (documentRef) =>
@@ -72,7 +84,9 @@ export async function restoreWindowSession(
     remainingRefs,
     restoredDocumentConcurrency,
     async (documentRef) => {
+      if (!isCurrent()) return;
       const document = await ports.loadReference(documentRef);
+      if (!isCurrent()) return;
 
       if (!document) {
         return;
@@ -86,8 +100,14 @@ export async function restoreWindowSession(
         document,
         documentRef.editorMode ?? persistedState.editorMode
       );
+      const restored = getLoadedDocumentsInPersistedOrder(
+        documentRefs,
+        loadedDocuments
+      );
       ports.publishDocuments(
-        getLoadedDocumentsInPersistedOrder(documentRefs, loadedDocuments)
+        ports.getDocuments
+          ? merge.merge(restored, ports.getDocuments())
+          : restored
       );
     }
   );

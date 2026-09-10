@@ -56,7 +56,7 @@ export function createDocumentTabs(dependencies: DocumentTabsDependencies) {
       dependencies.deleteDraftSoon(closingDocument);
     }
 
-    ({ clear: dependencies.clearAutosave }).clear(documentId);
+    dependencies.clearAutosave(documentId);
     const nextDocuments = dependencies
       .getShellData()
       .documents.filter((document) => document.id !== documentId);
@@ -99,7 +99,7 @@ export function createDocumentTabs(dependencies: DocumentTabsDependencies) {
         dependencies.deleteDraftSoon(closingDocument);
       }
 
-      ({ clear: dependencies.clearAutosave }).clear(documentId);
+      dependencies.clearAutosave(documentId);
     }
 
     const nextDocuments = dependencies

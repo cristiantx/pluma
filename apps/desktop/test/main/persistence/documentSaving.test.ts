@@ -1,5 +1,5 @@
 import { createDocumentSession, type DocumentSession } from "@pluma/core";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createDocumentSaving,
@@ -60,6 +60,10 @@ describe("createDocumentSaving", () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("emits conflict rejection without a hidden state-only mutation", async () => {
     const document = createDesktopDocument("conflict");
     const dependencies = createDependencies(document);
@@ -101,5 +105,35 @@ describe("createDocumentSaving", () => {
       message: "Save As failed: Permission denied"
     });
     expect(dependencies.updateState).not.toHaveBeenCalled();
+  });
+
+  it("releases self-write tracking after an atomic write throws", async () => {
+    vi.useFakeTimers();
+    const document = createDesktopDocument();
+    const dependencies = createDependencies(document);
+    vi.mocked(dependencies.fileSystem.writeTextAtomic).mockRejectedValue(
+      new Error("disk unavailable")
+    );
+    const saving = createDocumentSaving(dependencies);
+
+    await expect(saving.saveDocument(document.id, "manual")).resolves.toBe(
+      false
+    );
+
+    expect(dependencies.markSelfWritePath).toHaveBeenCalledWith(
+      "/workspace/notes.md"
+    );
+    expect(dependencies.updateState).toHaveBeenLastCalledWith({
+      documents: [expect.objectContaining({ saveState: "error" })],
+      status: "Save failed: disk unavailable"
+    });
+    expect(dependencies.emitShellSnapshot).toHaveBeenCalledTimes(2);
+    expect(dependencies.unmarkSelfWritePath).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(150);
+
+    expect(dependencies.unmarkSelfWritePath).toHaveBeenCalledWith(
+      "/workspace/notes.md"
+    );
   });
 });

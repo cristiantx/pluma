@@ -26,7 +26,4 @@ export function addEditorCommandEventListener(
     );
   };
 }
-import {
-  isEditorCommandId,
-  type EditorCommandId
-} from "@pluma/commands";
+import { isEditorCommandId, type EditorCommandId } from "@pluma/commands";

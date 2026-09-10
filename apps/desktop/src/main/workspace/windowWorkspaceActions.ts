@@ -38,6 +38,7 @@ export type WindowWorkspaceActionsDependencies = {
   syncEditorModeForActiveDocument(): void;
   updateActiveFileWatcher(): void;
   updateWorkspaceWatcher(): void;
+  invalidateRestoration(): void;
   persistSessionStateSoon(): void;
   refreshWorkspaceEntries(): Promise<void>;
   confirmDiscardDocumentsSequentially(
@@ -105,6 +106,7 @@ export function createWindowWorkspaceActions(
       return;
     }
 
+    dependencies.invalidateRestoration();
     dependencies.closeDocumentSessions(
       dependencies.getShellData().documents.map((document) => document.id),
       "Closed documents for workspace switch."
@@ -119,7 +121,7 @@ export function createWindowWorkspaceActions(
       workspacePath: directoryPath
     });
     dependencies.syncEditorModeForActiveDocument();
-    ({ clearAll: dependencies.clearAutosave }).clearAll();
+    dependencies.clearAutosave();
     dependencies.updateActiveFileWatcher();
     dependencies.updateWorkspaceWatcher();
     dependencies.persistSessionStateSoon();

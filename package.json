@@ -19,7 +19,8 @@
     "validate": "pnpm lint && pnpm lint:markdown && pnpm format:check && pnpm typecheck && pnpm test && pnpm build",
     "test:interaction": "playwright test --project=renderer",
     "test:electron": "playwright test --project=electron",
-    "test:packaged": "playwright test --project=packaged"
+    "test:packaged": "playwright test --project=packaged",
+    "test:production": "playwright test --project=production"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",

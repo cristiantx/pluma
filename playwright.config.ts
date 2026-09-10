@@ -33,6 +33,7 @@ export default defineConfig({
       ]
     },
     { name: "electron", testMatch: "**/electron.spec.ts" },
-    { name: "packaged", testMatch: "**/packaged.spec.ts" }
+    { name: "packaged", testMatch: "**/packaged.spec.ts" },
+    { name: "production", testMatch: "**/production.spec.ts" }
   ]
 });

@@ -226,14 +226,21 @@ export function createDocumentSaving(
     const activeDocumentPath = activeDocument.location.path;
 
     dependencies.markSelfWritePath(activeDocumentPath);
-    const saveResult = await dependencies.fileSystem.writeTextAtomic(
-      activeDocument.location,
-      textToSave,
-      { expectedMetadata: activeDocument.lastSavedMetadata }
-    );
-    setTimeout(() => {
-      dependencies.unmarkSelfWritePath(activeDocumentPath);
-    }, 150);
+    let saveResult: Awaited<
+      ReturnType<typeof dependencies.fileSystem.writeTextAtomic>
+    >;
+    try {
+      saveResult = await dependencies.fileSystem.writeTextAtomic(
+        activeDocument.location,
+        textToSave,
+        { expectedMetadata: activeDocument.lastSavedMetadata }
+      );
+    } finally {
+      setTimeout(
+        () => dependencies.unmarkSelfWritePath(activeDocumentPath),
+        150
+      );
+    }
 
     if (saveResult.kind === "success") {
       dependencies.updateState({
