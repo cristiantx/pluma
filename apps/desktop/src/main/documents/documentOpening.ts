@@ -1,3 +1,8 @@
+import {
+  commandExecuted,
+  commandCancelled,
+  type CommandExecutionResult
+} from "@pluma/commands";
 import { dialog, type BrowserWindow } from "electron";
 import { stat } from "node:fs/promises";
 import path from "node:path";
@@ -41,7 +46,7 @@ export type DocumentOpeningDependencies = {
   getWorkspaceEntries: () => WorkspaceTreeEntry[];
   getWorkspacePath: () => string | null;
   mergeDocumentSession: (document: DocumentSession) => void;
-  openFolderPath: (directoryPath: string) => Promise<void>;
+  openFolderPath: (directoryPath: string) => Promise<unknown>;
   persistSessionStateSoon: () => void;
   syncEditorModeForActiveDocument: () => void;
   updateActiveFileWatcher: () => void;
@@ -98,7 +103,7 @@ export function createDocumentOpening(
   async function openFilePath(
     filePath: string,
     options: { workspacePath?: string | null } = {}
-  ): Promise<void> {
+  ): Promise<CommandExecutionResult> {
     const openDocument = dependencies.getDocumentByDesktopPath(filePath);
 
     if (openDocument) {
@@ -111,7 +116,7 @@ export function createDocumentOpening(
       dependencies.updateActiveFileWatcher();
       dependencies.persistSessionStateSoon();
       dependencies.emitShellSnapshot();
-      return;
+      return commandExecuted;
     }
 
     const session = await createSessionForFilePath(
@@ -125,7 +130,7 @@ export function createDocumentOpening(
         type: "status",
         message: `Could not read metadata for "${filePath}".`
       });
-      return;
+      return { status: "failed", message: "The file could not be opened." };
     }
 
     const currentWorkspacePath = dependencies.getWorkspacePath();
@@ -149,6 +154,7 @@ export function createDocumentOpening(
     });
     dependencies.persistSessionStateSoon();
     dependencies.emitShellSnapshot();
+    return commandExecuted;
   }
 
   async function handleOpenTarget(targetPath: string): Promise<void> {
@@ -199,7 +205,7 @@ export function createDocumentOpening(
     dependencies.emitShellSnapshot();
   }
 
-  async function openFileFromDialog(): Promise<void> {
+  async function openFileFromDialog(): Promise<CommandExecutionResult> {
     const result = await dialog.showOpenDialog(dependencies.window, {
       properties: ["openFile"],
       filters: [{ name: "Markdown", extensions: ["md", "markdown", "mdown"] }]
@@ -210,7 +216,7 @@ export function createDocumentOpening(
         type: "status",
         message: "Open file cancelled."
       });
-      return;
+      return commandCancelled;
     }
 
     const selectedPath = result.filePaths[0];
@@ -219,10 +225,10 @@ export function createDocumentOpening(
         type: "status",
         message: "Open file did not return a path."
       });
-      return;
+      return commandCancelled;
     }
 
-    await openFilePath(selectedPath);
+    return openFilePath(selectedPath);
   }
 
   return {

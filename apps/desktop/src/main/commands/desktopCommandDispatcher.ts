@@ -1,5 +1,10 @@
 import {
   commandRegistry,
+  commandExecuted,
+  parseCommandInvocation,
+  type CommandContext,
+  type CommandExecutionResult,
+  type CommandInvocationContext,
   getCommandState,
   parseCommandRequest,
   type CommandRequest,
@@ -19,7 +24,12 @@ export type DesktopCommandSession = {
   ): Promise<void>;
   hasActiveDocument(): boolean;
   getCommandDocumentId(): string | null;
-  handleCommand(command: ShellCommandId): Promise<void>;
+  isQuickAccessOpen?(): boolean;
+  getCommandContext?(): CommandContext;
+  getInvocationContext?(): CommandInvocationContext;
+  handleCommand(
+    command: ShellCommandId
+  ): Promise<void | CommandExecutionResult>;
   convertActiveDocumentLineEndings(target: "lf" | "crlf"): void;
 };
 export type DesktopCommandOrigin =
@@ -40,37 +50,60 @@ export function createDesktopCommandDispatcher(
   return async function dispatchCommand(
     value: unknown,
     origin: DesktopCommandOrigin
-  ): Promise<void> {
-    const request = parseCommandRequest(value);
-    if (!request) return;
+  ): Promise<CommandExecutionResult> {
+    const invocation = parseCommandInvocation(value);
+    const request = invocation?.request ?? parseCommandRequest(value);
+    const unavailable = (): CommandExecutionResult => ({
+      status: "unavailable",
+      reason: "The command is no longer available in this context."
+    });
+    if (!request) return unavailable();
     const definition = commandRegistry[request.id];
-    if (definition.route === "native" || definition.route === "editor") return;
+    if (definition.route === "native" || definition.route === "editor")
+      return unavailable();
     // Renderer authority comes from its IPC sender, even for application actions.
     if (
       origin.kind === "renderer" &&
       (!origin.session || origin.session.window.isDestroyed())
     )
-      return;
+      return unavailable();
     if (request.id === "new-window") {
       dependencies.createWindow();
-      return;
+      return commandExecuted;
     }
     if (request.id === "set-autosave-enabled") {
       await dependencies.setAutosaveEnabled(request.args.enabled);
-      return;
+      return commandExecuted;
     }
     if (request.id === "set-spellcheck-enabled") {
       await dependencies.setSpellcheckEnabled(request.args.enabled);
-      return;
+      return commandExecuted;
     }
     const session =
       origin.kind === "renderer"
         ? origin.session
         : (dependencies.getFocusedSession() ?? dependencies.createWindow());
-    if (!session || session.window.isDestroyed()) return;
+    if (!session || session.window.isDestroyed()) return unavailable();
+    if (
+      origin.kind === "menu" &&
+      session.isQuickAccessOpen?.() &&
+      request.id !== "quick-open" &&
+      request.id !== "command-palette"
+    )
+      return unavailable();
+    const contextMatches = () => {
+      if (!invocation) return true;
+      const current = session.getInvocationContext?.();
+      return (
+        current?.activeTabId === invocation.context.activeTabId &&
+        current?.documentId === invocation.context.documentId &&
+        current?.workspaceGeneration === invocation.context.workspaceGeneration
+      );
+    };
+    if (!contextMatches()) return unavailable();
     if (definition.route === "tab" || definition.route === "workspace") {
       if (origin.kind === "menu" && !(await dependencies.flushSession(session)))
-        return;
+        return unavailable();
       if (!session.window.isDestroyed())
         await session.handleContextCommand(
           request as Extract<
@@ -78,51 +111,54 @@ export function createDesktopCommandDispatcher(
             { id: `tab-${string}` | `workspace-${string}` }
           >
         );
-      return;
+      return unavailable();
     }
     const documentId = session.getCommandDocumentId();
     const enabled = () =>
       getCommandState(request.id, {
+        ...session.getCommandContext?.(),
         hasActiveDocument: session.hasActiveDocument(),
         isDevelopment: dependencies.isDevelopment
       }).enabled;
-    if (!enabled()) return;
+    if (!enabled()) return unavailable();
     if (
       origin.kind === "menu" &&
       definition.flush &&
       !(await dependencies.flushSession(session))
     )
-      return;
-    if (session.window.isDestroyed() || !enabled()) return;
+      return unavailable();
+    if (session.window.isDestroyed() || !enabled() || !contextMatches())
+      return unavailable();
     if (
-      definition.availability === "hasActiveDocument" &&
+      definition.availability !== "always" &&
+      definition.availability !== "isDevelopment" &&
       session.getCommandDocumentId() !== documentId
     )
-      return;
-    await executeSessionCommand(session, request);
+      return unavailable();
+    return (await executeSessionCommand(session, request)) ?? commandExecuted;
   };
 }
 
 async function executeSessionCommand(
   session: DesktopCommandSession,
   request: CommandRequest
-): Promise<void> {
+): Promise<void | CommandExecutionResult> {
   switch (request.id) {
     case "reload-window":
       session.window.webContents.reload();
-      return;
+      return commandExecuted;
     case "force-reload-window":
       session.window.webContents.reloadIgnoringCache();
-      return;
+      return commandExecuted;
     case "convert-line-endings":
       session.convertActiveDocumentLineEndings(request.args.target);
-      return;
+      return commandExecuted;
   }
   const definition = commandRegistry[request.id];
   if (
     (definition.route === "window" || definition.route === "renderer") &&
     definition.payload === "none"
   ) {
-    await session.handleCommand(request.id as ShellCommandId);
+    return session.handleCommand(request.id as ShellCommandId);
   }
 }

@@ -55,7 +55,7 @@ export type WorkspaceFileActionDependencies = {
   openFilePath: (
     filePath: string,
     options?: { workspacePath?: string | null }
-  ) => Promise<void>;
+  ) => Promise<unknown>;
   openFolderSearch: (folderPath: string) => void;
   persistSessionStateSoon: () => void;
   refreshWorkspaceEntries: () => Promise<void>;

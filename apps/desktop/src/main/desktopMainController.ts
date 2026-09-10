@@ -256,6 +256,7 @@ function getApplicationMenu(): Menu {
   return buildApplicationMenu({
     autosaveEnabled: settingsController.getSnapshot().autosaveEnabled,
     commandAvailability: {
+      ...latestSession?.getCommandContext(),
       hasActiveDocument: latestSession?.hasActiveDocument() ?? false
     },
     isDevelopment,

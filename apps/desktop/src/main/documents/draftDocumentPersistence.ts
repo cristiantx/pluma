@@ -1,3 +1,8 @@
+import {
+  commandExecuted,
+  commandCancelled,
+  type CommandExecutionResult
+} from "@pluma/commands";
 import path from "node:path";
 
 import {
@@ -76,11 +81,11 @@ export function createDraftDocumentPersistence(
     return true;
   }
 
-  async function promoteDraftDocument(
+  async function promoteDraftDocumentResult(
     document: DocumentSession
-  ): Promise<boolean> {
+  ): Promise<CommandExecutionResult> {
     if (document.location.kind !== "app-draft") {
-      return false;
+      return commandCancelled;
     }
 
     const result = await dialog.showSaveDialog(dependencies.window, {
@@ -94,7 +99,7 @@ export function createDraftDocumentPersistence(
         type: "status",
         message: "Save cancelled."
       });
-      return false;
+      return commandCancelled;
     }
 
     const textToSave = dependencies.prepareTextForSave(document);
@@ -115,7 +120,7 @@ export function createDraftDocumentPersistence(
             ? `Save conflict: file was ${saveResult.reason}.`
             : `Save failed: ${saveResult.message}`
       });
-      return false;
+      return { status: "failed", message: "The draft could not be saved." };
     }
 
     await dependencies.draftStorage.deleteDraft(document.location);
@@ -139,7 +144,13 @@ export function createDraftDocumentPersistence(
     await dependencies.refreshWorkspaceEntries();
     dependencies.persistSessionStateSoon();
     dependencies.emitShellSnapshot();
-    return true;
+    return commandExecuted;
+  }
+
+  async function promoteDraftDocument(
+    document: DocumentSession
+  ): Promise<boolean> {
+    return (await promoteDraftDocumentResult(document)).status === "executed";
   }
 
   function deleteDraftSoon(document: DocumentSession): void {
@@ -165,6 +176,7 @@ export function createDraftDocumentPersistence(
   return {
     deleteDraftSoon,
     promoteDraftDocument,
+    promoteDraftDocumentResult,
     saveDraftDocument
   };
 }

@@ -99,6 +99,8 @@ export function createWindowPersistenceServices(
     getDefaultSaveAsPath: (...args) =>
       ports.getOpening().getDefaultSaveAsPath(...args),
     saveDraftDocument: (...args) => draftPersistence.saveDraftDocument(...args),
+    promoteDraftDocumentResult: (...args) =>
+      draftPersistence.promoteDraftDocumentResult(...args),
     promoteDraftDocument: (...args) =>
       draftPersistence.promoteDraftDocument(...args),
     prepareTextForSave: (...args) => saveText.prepareTextForSave(...args),

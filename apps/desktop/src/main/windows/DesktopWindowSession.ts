@@ -1,3 +1,8 @@
+import {
+  getWindowCommandContext,
+  getWindowInvocationContext,
+  handleQuickAccessRequest
+} from "../commands/quickAccessCommandHandlers";
 import type { CommandRequest } from "@pluma/commands";
 import { type BrowserWindow } from "electron";
 import { createWindowContextCommands } from "../commands/windowContextCommands";
@@ -29,6 +34,28 @@ import type {
 import { type PersistedWindowSessionState } from "../persistence/appPersistence";
 
 export class DesktopWindowSession {
+  private quickAccessOpen = false;
+  isQuickAccessOpen() {
+    return this.quickAccessOpen;
+  }
+  getCommandContext() {
+    return getWindowCommandContext(this.shellData);
+  }
+  getInvocationContext() {
+    return getWindowInvocationContext(this.shellData);
+  }
+  async handleQuickAccess(value: unknown) {
+    return handleQuickAccessRequest(value, {
+      getSnapshot: () => this.shellData,
+      setOpen: (open) => {
+        this.quickAccessOpen = open;
+      },
+      activate: (id) => this.navigation.setActiveTab(id),
+      openFile: (path) =>
+        this.windowSurfaceServices.workspaceActions.openWorkspaceFile(path),
+      refresh: () => this.windowSurfaceServices.workspace.refresh()
+    });
+  }
   private readonly contextCommands = createWindowContextCommands({
     getSurface: () => this.windowSurfaceServices,
     getWindow: () => this.window,
@@ -215,7 +242,16 @@ export class DesktopWindowSession {
     return this.windowDocumentServices.opening.handleOpenTarget(targetPath);
   }
 
-  async handleCommand(command: CommandName): Promise<void> {
+  async handleCommand(
+    command: CommandName
+  ): Promise<void | import("@pluma/commands").CommandExecutionResult> {
+    if (
+      command === "close-active-tab" &&
+      this.shellData.activeTabId === "settings"
+    ) {
+      this.windowDocumentServices.closing.emitCloseSettingsTab();
+      return { status: "executed" };
+    }
     return this.windowSurfaceServices.commands.handleCommand(command);
   }
 
@@ -247,7 +283,9 @@ export class DesktopWindowSession {
     return this.navigation.setActiveTab(tabId);
   }
 
-  async openWorkspaceFile(filePath: unknown): Promise<void> {
+  async openWorkspaceFile(
+    filePath: unknown
+  ): Promise<import("@pluma/commands").CommandExecutionResult> {
     return this.windowSurfaceServices.workspaceActions.openWorkspaceFile(
       filePath
     );

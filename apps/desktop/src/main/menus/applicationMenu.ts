@@ -7,10 +7,7 @@ import { app, Menu, type MenuItemConstructorOptions } from "electron";
 
 import { commandMenuItem } from "./commandMenuItem";
 
-type ApplicationMenuCommandAvailability = Pick<
-  CommandContext,
-  "hasActiveDocument"
->;
+type ApplicationMenuCommandAvailability = CommandContext;
 
 export type ApplicationMenuOptions = {
   autosaveEnabled: boolean;
@@ -23,6 +20,7 @@ export type ApplicationMenuOptions = {
 export function buildApplicationMenu(options: ApplicationMenuOptions): Menu {
   const platform = getCommandPlatform();
   const context: CommandContext = {
+    canCloseActiveTab: options.commandAvailability.hasActiveDocument ?? false,
     ...options.commandAvailability,
     autosaveEnabled: options.autosaveEnabled,
     isDevelopment: options.isDevelopment,

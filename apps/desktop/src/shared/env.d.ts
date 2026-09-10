@@ -1,4 +1,8 @@
-import type { CommandRequest } from "@pluma/commands";
+import type {
+  CommandRequest,
+  CommandInvocation,
+  CommandExecutionResult
+} from "@pluma/commands";
 import type { CommandName, RendererEvent } from "./shellState";
 import type { WorkspaceSearchMatch } from "./shellState";
 import type { WorkspaceSearchOptions } from "./shellState";
@@ -7,6 +11,10 @@ import type { AppSettings, EditorViewMode } from "@pluma/ui";
 declare global {
   interface Window {
     pluma: {
+      platform: "darwin" | "win32" | "linux";
+      quickAccess(
+        request: import("./quickAccess").QuickAccessRequest
+      ): Promise<CommandExecutionResult>;
       closeTab(tabId: string): Promise<void>;
       getSettings(): Promise<AppSettings>;
       openAppDataFolder(): Promise<void>;
@@ -18,7 +26,9 @@ declare global {
         folderPath: string | null,
         options: WorkspaceSearchOptions
       ): Promise<WorkspaceSearchMatch[]>;
-      runCommand(command: CommandName | CommandRequest): Promise<void>;
+      runCommand(
+        command: CommandName | CommandRequest | CommandInvocation
+      ): Promise<CommandExecutionResult>;
       resetSettings(): Promise<AppSettings>;
       setActiveDocument(documentId: string): Promise<void>;
       setActiveTab(tabId: string): Promise<void>;

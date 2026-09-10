@@ -16,6 +16,7 @@ export type WorkspaceTreeEntry = {
 };
 
 export type DesktopShellSnapshot = {
+  workspaceIndex?: import("./quickAccess").WorkspaceIndexState;
   activeDocumentId: string | null;
   activeTabId: string | null;
   documentViewModes: Record<string, EditorViewMode>;
@@ -31,6 +32,7 @@ export type DesktopShellSnapshot = {
 export type DesktopDocumentPatch = Partial<Omit<DocumentSession, "id">>;
 
 export type RendererEvent =
+  | { type: "quick-access-request"; mode: "files" | "commands" }
   | { type: "document-baseline-reset"; documentId: string }
   | {
       activeDocumentId: string | null;

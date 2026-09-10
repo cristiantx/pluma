@@ -1,87 +1,102 @@
+import { commandExecuted, type CommandExecutionResult } from "@pluma/commands";
 import type { CommandName, RendererEvent } from "../../shared/shellState";
 
 export type WindowCommandHandlerDependencies = {
-  closeActiveDocumentSession: () => Promise<void>;
-  createNewMarkdownFile: () => Promise<void>;
+  closeActiveDocumentSession: () => Promise<void | CommandExecutionResult>;
+  createNewMarkdownFile: () => Promise<void | CommandExecutionResult>;
   emitToRenderer: (event: RendererEvent) => void;
-  exportActiveDocument: (format: "html" | "pdf") => Promise<void>;
+  exportActiveDocument: (
+    format: "html" | "pdf"
+  ) => Promise<void | CommandExecutionResult>;
   getNextEditorMode: () => "source" | "rich" | "preview";
   isDevelopment: boolean;
-  keepEditingActiveDocument: () => Promise<void>;
+  keepEditingActiveDocument: () => Promise<void | CommandExecutionResult>;
   openDevTools: () => void;
-  openFileFromDialog: () => Promise<void>;
-  openFolderFromDialog: () => Promise<void>;
+  openFileFromDialog: () => Promise<void | CommandExecutionResult>;
+  openFolderFromDialog: () => Promise<void | CommandExecutionResult>;
   persistSessionStateSoon: () => void;
-  reloadActiveDocumentFromDisk: () => Promise<void>;
-  saveActiveDocument: () => Promise<void>;
-  saveActiveDocumentAs: () => Promise<void>;
+  reloadActiveDocumentFromDisk: () => Promise<void | CommandExecutionResult>;
+  saveActiveDocument: () => Promise<void | CommandExecutionResult>;
+  saveActiveDocumentAs: () => Promise<void | CommandExecutionResult>;
   setActiveTab: (tabId: "settings") => void;
   setModeForActiveDocument: (mode: "source" | "rich" | "preview") => void;
 };
 
 export type WindowCommandHandlers = {
-  handleCommand: (command: CommandName) => Promise<void>;
+  handleCommand: (
+    command: CommandName
+  ) => Promise<void | CommandExecutionResult>;
 };
 
 export function createWindowCommandHandlers(
   dependencies: WindowCommandHandlerDependencies
 ): WindowCommandHandlers {
-  async function handleCommand(command: CommandName): Promise<void> {
+  async function handleCommand(
+    command: CommandName
+  ): Promise<void | CommandExecutionResult> {
     switch (command) {
+      case "quick-open":
+      case "command-palette":
+        dependencies.emitToRenderer({
+          type: "quick-access-request",
+          mode: command === "quick-open" ? "files" : "commands"
+        });
+        return commandExecuted;
       case "close-active-tab":
-        await dependencies.closeActiveDocumentSession();
-        return;
+        return (
+          (await dependencies.closeActiveDocumentSession()) ?? commandExecuted
+        );
       case "find":
       case "find-next":
       case "find-previous":
       case "replace":
         dependencies.emitToRenderer({ type: "editor-command", command });
-        return;
+        return commandExecuted;
       case "export-html":
-        await dependencies.exportActiveDocument("html");
-        return;
+        return (
+          (await dependencies.exportActiveDocument("html")) ?? commandExecuted
+        );
       case "export-pdf":
-        await dependencies.exportActiveDocument("pdf");
-        return;
+        return (
+          (await dependencies.exportActiveDocument("pdf")) ?? commandExecuted
+        );
       case "keep-editing":
-        await dependencies.keepEditingActiveDocument();
-        return;
+        return (
+          (await dependencies.keepEditingActiveDocument()) ?? commandExecuted
+        );
       case "new-file":
-        await dependencies.createNewMarkdownFile();
-        return;
+        return (await dependencies.createNewMarkdownFile()) ?? commandExecuted;
       case "new-window":
       case "reload-window":
       case "force-reload-window":
-        return;
+        return commandExecuted;
       case "open-file":
-        await dependencies.openFileFromDialog();
-        return;
+        return (await dependencies.openFileFromDialog()) ?? commandExecuted;
       case "open-folder":
-        await dependencies.openFolderFromDialog();
-        return;
+        return (await dependencies.openFolderFromDialog()) ?? commandExecuted;
       case "open-settings":
         dependencies.setActiveTab("settings");
         dependencies.emitToRenderer({ type: "open-settings" });
-        return;
+        return commandExecuted;
       case "reload-from-disk":
-        await dependencies.reloadActiveDocumentFromDisk();
-        return;
+        return (
+          (await dependencies.reloadActiveDocumentFromDisk()) ?? commandExecuted
+        );
       case "save":
-        await dependencies.saveActiveDocument();
-        return;
+        return (await dependencies.saveActiveDocument()) ?? commandExecuted;
       case "save-as":
-        await dependencies.saveActiveDocumentAs();
-        return;
+        return (await dependencies.saveActiveDocumentAs()) ?? commandExecuted;
       case "toggle-mode":
         dependencies.setModeForActiveDocument(dependencies.getNextEditorMode());
         dependencies.persistSessionStateSoon();
-        return;
+        return commandExecuted;
       case "open-devtools":
         if (dependencies.isDevelopment) {
           dependencies.openDevTools();
         }
-        return;
+        return commandExecuted;
     }
+    return commandExecuted;
   }
 
   return { handleCommand };

@@ -1,4 +1,4 @@
-import type { CommandRequest } from "@pluma/commands";
+import type { CommandRequest, CommandInvocation } from "@pluma/commands";
 import { contextBridge, ipcRenderer } from "electron";
 import type {
   CommandName,
@@ -23,6 +23,10 @@ function invokeAfterDocumentTextFlush(
 }
 
 const api = {
+  platform: process.platform,
+  quickAccess(request: import("./shared/quickAccess").QuickAccessRequest) {
+    return invokeAfterDocumentTextFlush("pluma:quick-access", request);
+  },
   closeTab(tabId: string) {
     return invokeAfterDocumentTextFlush("pluma:close-tab", tabId);
   },
@@ -56,7 +60,7 @@ const api = {
       options
     );
   },
-  runCommand(command: CommandName | CommandRequest) {
+  runCommand(command: CommandName | CommandRequest | CommandInvocation) {
     return invokeAfterDocumentTextFlush("pluma:command", command);
   },
   setEditorMode(mode: EditorViewMode) {

@@ -96,7 +96,7 @@ export const documentCommands = {
   "close-active-tab": {
     label: "Close Tab",
     route: "window",
-    availability: "hasActiveDocument",
+    availability: "canCloseActiveTab",
     payload: "none",
     flush: true,
     palette: true,
@@ -135,7 +135,7 @@ export const documentCommands = {
   "keep-editing": {
     label: "Keep Editing",
     route: "window",
-    availability: "hasActiveDocument",
+    availability: "canKeepEditing",
     payload: "none",
     flush: true,
     palette: true
@@ -143,7 +143,7 @@ export const documentCommands = {
   "reload-from-disk": {
     label: "Reload from Disk",
     route: "window",
-    availability: "hasActiveDocument",
+    availability: "canReloadDocument",
     payload: "none",
     flush: true,
     palette: true

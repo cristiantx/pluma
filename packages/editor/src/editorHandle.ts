@@ -1,3 +1,4 @@
+import { runMarkdownCommand } from "./markdownCommands.js";
 import {
   findNext,
   findPrevious,
@@ -25,6 +26,11 @@ export function createEditorHandle(
   markProgrammaticScroll: () => void
 ): SourceEditorHandle {
   return {
+    getStateToken: () => getView()?.state,
+    runCommand: (command) => {
+      const view = getView();
+      return view ? runMarkdownCommand(view, command) : false;
+    },
     findNext: (options) => runSourceEditorCommand(getView(), findNext, options),
     findPrevious: (options) =>
       runSourceEditorCommand(getView(), findPrevious, options),

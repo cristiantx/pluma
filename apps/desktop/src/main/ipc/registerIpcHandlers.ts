@@ -8,6 +8,10 @@ import type {
 } from "../../shared/shellState";
 
 export type DesktopIpcHandlers = {
+  quickAccess?: (
+    event: IpcMainInvokeEvent,
+    request: unknown
+  ) => Promise<unknown>;
   acknowledgeDocumentTextFlush: (
     event: IpcMainEvent,
     requestId: unknown
@@ -21,7 +25,7 @@ export type DesktopIpcHandlers = {
     event: IpcMainInvokeEvent,
     filePath: unknown
   ) => Promise<void>;
-  runCommand: (event: IpcMainInvokeEvent, command: unknown) => Promise<void>;
+  runCommand: (event: IpcMainInvokeEvent, command: unknown) => Promise<unknown>;
   searchWorkspace: (
     event: IpcMainInvokeEvent,
     query: unknown,
@@ -58,8 +62,11 @@ export type DesktopIpcHandlers = {
 };
 
 export function registerIpcHandlers(handlers: DesktopIpcHandlers): void {
+  ipcMain.handle("pluma:quick-access", (event, request: unknown) =>
+    handlers.quickAccess?.(event, request)
+  );
   ipcMain.handle("pluma:command", async (event, command: unknown) => {
-    await handlers.runCommand(event, command);
+    return handlers.runCommand(event, command);
   });
 
   ipcMain.handle("pluma:set-editor-mode", (event, mode: EditorViewMode) => {

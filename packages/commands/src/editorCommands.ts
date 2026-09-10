@@ -40,7 +40,7 @@ export const editorCommands = {
   "toggle-bold": {
     label: "Bold",
     route: "editor",
-    availability: "hasActiveDocument",
+    availability: "canEditDocument",
     payload: "none",
     flush: false,
     palette: true,
@@ -49,7 +49,7 @@ export const editorCommands = {
   "toggle-italic": {
     label: "Italic",
     route: "editor",
-    availability: "hasActiveDocument",
+    availability: "canEditDocument",
     payload: "none",
     flush: false,
     palette: true,
@@ -58,7 +58,7 @@ export const editorCommands = {
   "toggle-heading-1": {
     label: "Heading 1",
     route: "editor",
-    availability: "hasActiveDocument",
+    availability: "canEditDocument",
     payload: "none",
     flush: false,
     palette: true,
@@ -67,7 +67,7 @@ export const editorCommands = {
   "toggle-heading-2": {
     label: "Heading 2",
     route: "editor",
-    availability: "hasActiveDocument",
+    availability: "canEditDocument",
     payload: "none",
     flush: false,
     palette: true,
@@ -76,7 +76,7 @@ export const editorCommands = {
   "toggle-heading-3": {
     label: "Heading 3",
     route: "editor",
-    availability: "hasActiveDocument",
+    availability: "canEditDocument",
     payload: "none",
     flush: false,
     palette: true,

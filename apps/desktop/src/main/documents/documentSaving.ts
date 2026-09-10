@@ -1,3 +1,8 @@
+import {
+  commandExecuted,
+  commandCancelled,
+  type CommandExecutionResult
+} from "@pluma/commands";
 import path from "node:path";
 
 import {
@@ -33,6 +38,9 @@ export type DocumentSavingDependencies = {
   getActiveDocumentForActiveTab(): DocumentSession | null;
   getDefaultSaveAsPath(document: DocumentSession): string;
   saveDraftDocument(document: DocumentSession): Promise<boolean>;
+  promoteDraftDocumentResult?(
+    document: DocumentSession
+  ): Promise<CommandExecutionResult>;
   promoteDraftDocument(document: DocumentSession): Promise<boolean>;
   prepareTextForSave(document: DocumentSession, text?: string): string;
   markSelfWritePath(filePath: string): void;
@@ -41,7 +49,7 @@ export type DocumentSavingDependencies = {
   emitToRenderer(event: RendererEvent): void;
   persistSessionStateSoon(): void;
   emitShellSnapshot(): void;
-  openFilePath(filePath: string): Promise<void>;
+  openFilePath(filePath: string): Promise<unknown>;
   refreshWorkspace(): Promise<void>;
 };
 
@@ -51,14 +59,14 @@ export type DocumentSaving = {
     documentId: string,
     trigger: SaveTrigger
   ): Promise<boolean>;
-  saveActiveDocument(): Promise<void>;
-  saveActiveDocumentAs(): Promise<void>;
+  saveActiveDocument(): Promise<CommandExecutionResult>;
+  saveActiveDocumentAs(): Promise<CommandExecutionResult>;
 };
 
 export function createDocumentSaving(
   dependencies: DocumentSavingDependencies
 ): DocumentSaving {
-  const saveActiveDocument = async (): Promise<void> => {
+  const saveActiveDocument = async (): Promise<CommandExecutionResult> => {
     const activeDocument = dependencies.getActiveDocumentForActiveTab();
 
     if (!activeDocument) {
@@ -66,13 +74,28 @@ export function createDocumentSaving(
         type: "status",
         message: "No active document to save."
       });
-      return;
+      return commandCancelled;
     }
 
-    await saveDocument(activeDocument.id, "manual");
+    if (
+      activeDocument.location.kind === "app-draft" &&
+      dependencies.promoteDraftDocumentResult
+    ) {
+      return dependencies.promoteDraftDocumentResult(activeDocument);
+    }
+    const saved = await saveDocument(activeDocument.id, "manual");
+    return saved
+      ? commandExecuted
+      : activeDocument.location.kind === "app-draft"
+        ? commandCancelled
+        : {
+            status: "failed",
+            message:
+              "The document could not be saved. Resolve any disk conflict and retry."
+          };
   };
 
-  const saveActiveDocumentAs = async (): Promise<void> => {
+  const saveActiveDocumentAs = async (): Promise<CommandExecutionResult> => {
     const activeDocument = dependencies.getActiveDocumentForActiveTab();
 
     if (!activeDocument) {
@@ -80,12 +103,15 @@ export function createDocumentSaving(
         type: "status",
         message: "No active document to save."
       });
-      return;
+      return commandCancelled;
     }
 
     if (activeDocument.location.kind === "app-draft") {
-      await dependencies.promoteDraftDocument(activeDocument);
-      return;
+      if (dependencies.promoteDraftDocumentResult)
+        return dependencies.promoteDraftDocumentResult(activeDocument);
+      return (await dependencies.promoteDraftDocument(activeDocument))
+        ? commandExecuted
+        : commandCancelled;
     }
 
     const result = await dialog.showSaveDialog(dependencies.window, {
@@ -99,7 +125,7 @@ export function createDocumentSaving(
         type: "status",
         message: "Save As cancelled."
       });
-      return;
+      return commandCancelled;
     }
 
     const textToSave = dependencies.prepareTextForSave(activeDocument);
@@ -116,11 +142,12 @@ export function createDocumentSaving(
             ? `Save As conflict: file was ${saveResult.reason}.`
             : `Save As failed: ${saveResult.message}`
       });
-      return;
+      return { status: "failed", message: "Save As could not write the file." };
     }
 
     await dependencies.openFilePath(result.filePath);
     await dependencies.refreshWorkspace();
+    return commandExecuted;
   };
 
   const saveDocument = (

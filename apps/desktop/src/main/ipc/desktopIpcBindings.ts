@@ -17,7 +17,7 @@ export type DesktopIpcBindingsDependencies = {
   dispatchCommand: (
     command: unknown,
     origin: DesktopCommandOrigin
-  ) => Promise<void>;
+  ) => Promise<import("@pluma/commands").CommandExecutionResult>;
   flushCoordinator: DocumentTextFlushCoordinator;
   getAppSettingsPath: () => string;
   getLatestFocusedSession: () => DesktopWindowSession | null;
@@ -31,11 +31,27 @@ export function registerDesktopIpcBindings(
   dependencies: DesktopIpcBindingsDependencies
 ): void {
   registerIpcHandlers({
+    quickAccess: async (event, request) => {
+      const session = dependencies.getSessionForEvent(event);
+      if (!session)
+        return {
+          status: "unavailable",
+          reason: "The window is no longer available."
+        };
+      try {
+        return await session.handleQuickAccess(request);
+      } catch (error) {
+        return {
+          status: "failed",
+          message: error instanceof Error ? error.message : "The action failed."
+        };
+      }
+    },
     acknowledgeDocumentTextFlush: (event, requestId) => {
       dependencies.flushCoordinator.acknowledge(event.sender.id, requestId);
     },
     runCommand: async (event, command) => {
-      await dependencies.dispatchCommand(command, {
+      return dependencies.dispatchCommand(command, {
         kind: "renderer",
         session: dependencies.getSessionForEvent(event)
       });

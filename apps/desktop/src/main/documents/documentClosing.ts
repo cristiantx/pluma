@@ -1,4 +1,9 @@
 import {
+  commandExecuted,
+  commandCancelled,
+  type CommandExecutionResult
+} from "@pluma/commands";
+import {
   shouldProtectDocumentSessionClose,
   type DocumentSession
 } from "@pluma/core";
@@ -92,7 +97,7 @@ export function createDocumentClosing(
     return canClose;
   }
 
-  async function closeActiveDocumentSession(): Promise<void> {
+  async function closeActiveDocumentSession(): Promise<CommandExecutionResult> {
     const activeDocument = dependencies.getActiveDocumentForActiveTab();
 
     if (!activeDocument) {
@@ -100,7 +105,7 @@ export function createDocumentClosing(
         type: "status",
         message: "No active document to close."
       });
-      return;
+      return commandCancelled;
     }
 
     if (
@@ -112,7 +117,7 @@ export function createDocumentClosing(
         message: "Close tab cancelled."
       });
       dependencies.emitShellSnapshot();
-      return;
+      return commandCancelled;
     }
 
     dependencies.closeDocumentSession(
@@ -120,6 +125,7 @@ export function createDocumentClosing(
     );
     dependencies.persistSessionStateSoon();
     dependencies.emitShellSnapshot();
+    return commandExecuted;
   }
 
   async function closeDocumentsWithProtection(

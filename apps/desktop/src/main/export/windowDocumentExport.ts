@@ -1,3 +1,8 @@
+import {
+  commandExecuted,
+  commandCancelled,
+  type CommandExecutionResult
+} from "@pluma/commands";
 import { type DocumentSession } from "@pluma/core";
 import { shell, type BrowserWindow } from "electron";
 import path from "node:path";
@@ -16,7 +21,7 @@ export function createWindowDocumentExport(
 ) {
   async function exportActiveDocument(
     format: ExportDocumentFormat
-  ): Promise<void> {
+  ): Promise<CommandExecutionResult> {
     const activeDocument = dependencies.getActiveDocumentForActiveTab();
 
     if (!activeDocument) {
@@ -24,7 +29,7 @@ export function createWindowDocumentExport(
         type: "status",
         message: "No active document to export."
       });
-      return;
+      return commandCancelled;
     }
 
     try {
@@ -35,7 +40,7 @@ export function createWindowDocumentExport(
         parentWindow: dependencies.window
       });
 
-      await handleExportResult(result, format);
+      return handleExportResult(result, format);
     } catch (error) {
       dependencies.emitToRenderer({
         type: "status",
@@ -44,19 +49,23 @@ export function createWindowDocumentExport(
             ? `Export failed: ${error.message}`
             : "Export failed."
       });
+      return {
+        status: "failed",
+        message: error instanceof Error ? error.message : "Export failed."
+      };
     }
   }
 
   async function handleExportResult(
     result: ExportDocumentResult,
     format: ExportDocumentFormat
-  ): Promise<void> {
+  ): Promise<CommandExecutionResult> {
     if (result.kind === "cancelled") {
       dependencies.emitToRenderer({
         type: "status",
         message: "Export cancelled."
       });
-      return;
+      return commandCancelled;
     }
 
     if (dependencies.getOpenExportedFile()) {
@@ -70,6 +79,7 @@ export function createWindowDocumentExport(
           ? `Exported HTML to ${path.basename(result.filePath)}.`
           : `Exported PDF to ${path.basename(result.filePath)}.`
     });
+    return commandExecuted;
   }
   return { exportActiveDocument, handleExportResult };
 }

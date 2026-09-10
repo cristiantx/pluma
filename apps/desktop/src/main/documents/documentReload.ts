@@ -1,3 +1,8 @@
+import {
+  commandExecuted,
+  commandCancelled,
+  type CommandExecutionResult
+} from "@pluma/commands";
 import path from "node:path";
 
 import {
@@ -33,7 +38,7 @@ export type DocumentReloadDependencies = {
 };
 
 export function createDocumentReload(dependencies: DocumentReloadDependencies) {
-  async function reloadActiveDocumentFromDisk(): Promise<void> {
+  async function reloadActiveDocumentFromDisk(): Promise<CommandExecutionResult> {
     const activeDocument = dependencies.getActiveDocumentForActiveTab();
 
     if (!activeDocument || activeDocument.location.kind !== "desktop-path") {
@@ -41,7 +46,7 @@ export function createDocumentReload(dependencies: DocumentReloadDependencies) {
         type: "status",
         message: "No desktop file to reload."
       });
-      return;
+      return commandCancelled;
     }
 
     if (
@@ -52,7 +57,7 @@ export function createDocumentReload(dependencies: DocumentReloadDependencies) {
         type: "status",
         message: "Reload cancelled."
       });
-      return;
+      return commandCancelled;
     }
 
     if (
@@ -67,7 +72,7 @@ export function createDocumentReload(dependencies: DocumentReloadDependencies) {
         type: "status",
         message: "Reload cancelled."
       });
-      return;
+      return commandCancelled;
     }
 
     const nextSession = await createSessionForFilePath(
@@ -81,7 +86,7 @@ export function createDocumentReload(dependencies: DocumentReloadDependencies) {
         type: "status",
         message: "Could not reload file from disk."
       });
-      return;
+      return { status: "failed", message: "Could not reload file from disk." };
     }
 
     dependencies.updateShellData({
@@ -98,13 +103,14 @@ export function createDocumentReload(dependencies: DocumentReloadDependencies) {
       type: "document-baseline-reset",
       documentId: activeDocument.id
     });
+    return commandExecuted;
   }
 
-  async function keepEditingActiveDocument(): Promise<void> {
+  async function keepEditingActiveDocument(): Promise<CommandExecutionResult> {
     const activeDocument = dependencies.getActiveDocumentForActiveTab();
 
     if (!activeDocument) {
-      return;
+      return commandCancelled;
     }
 
     const metadata =
@@ -125,6 +131,7 @@ export function createDocumentReload(dependencies: DocumentReloadDependencies) {
       status: "Kept in-memory edits. The next save will write over disk."
     });
     dependencies.emitShellSnapshot();
+    return commandExecuted;
   }
 
   return { keepEditingActiveDocument, reloadActiveDocumentFromDisk };

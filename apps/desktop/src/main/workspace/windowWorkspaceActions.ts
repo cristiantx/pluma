@@ -1,3 +1,8 @@
+import {
+  commandExecuted,
+  commandCancelled,
+  type CommandExecutionResult
+} from "@pluma/commands";
 import type { CommandRequest, CommandIdForRoute } from "@pluma/commands";
 import {
   isMarkdownFilePath,
@@ -47,7 +52,7 @@ export type WindowWorkspaceActionsDependencies = {
   openFilePath(
     path: string,
     options?: { workspacePath?: string | null }
-  ): Promise<void>;
+  ): Promise<unknown>;
   handleContextCommand(
     request: Extract<
       CommandRequest,
@@ -60,7 +65,9 @@ export function createWindowWorkspaceActions(
   dependencies: WindowWorkspaceActionsDependencies
 ) {
   let workspaceFileActions: WorkspaceFileActions | null = null;
-  async function openWorkspaceFile(filePath: unknown): Promise<void> {
+  async function openWorkspaceFile(
+    filePath: unknown
+  ): Promise<CommandExecutionResult> {
     const workspacePath = dependencies.getShellData().workspacePath;
     if (
       typeof filePath !== "string" ||
@@ -72,21 +79,26 @@ export function createWindowWorkspaceActions(
         type: "status",
         message: "Workspace file open was ignored."
       });
-      return;
+      return {
+        status: "unavailable",
+        reason: "This file is outside the current workspace."
+      };
     }
 
-    await dependencies.openFilePath(filePath, {
+    return (await dependencies.openFilePath(filePath, {
       workspacePath: dependencies.getShellData().workspacePath
-    });
+    })) as CommandExecutionResult;
   }
 
-  async function openFolderPath(directoryPath: string): Promise<void> {
+  async function openFolderPath(
+    directoryPath: string
+  ): Promise<CommandExecutionResult> {
     if (directoryPath === dependencies.getShellData().workspacePath) {
       dependencies.emitToRenderer({
         type: "status",
         message: `Workspace ${path.basename(directoryPath)} is already open.`
       });
-      return;
+      return commandCancelled;
     }
 
     const protectedDocuments = dependencies.getProtectedDocuments();
@@ -103,7 +115,7 @@ export function createWindowWorkspaceActions(
         message: "Workspace switch cancelled."
       });
       dependencies.emitShellSnapshot();
-      return;
+      return commandCancelled;
     }
 
     dependencies.invalidateRestoration();
@@ -127,9 +139,10 @@ export function createWindowWorkspaceActions(
     dependencies.persistSessionStateSoon();
     dependencies.emitShellSnapshot();
     await dependencies.refreshWorkspaceEntries();
+    return commandExecuted;
   }
 
-  async function openFolderFromDialog(): Promise<void> {
+  async function openFolderFromDialog(): Promise<CommandExecutionResult> {
     const result = await dialog.showOpenDialog(dependencies.getWindow(), {
       properties: ["openDirectory"]
     });
@@ -139,7 +152,7 @@ export function createWindowWorkspaceActions(
         type: "status",
         message: "Open folder cancelled."
       });
-      return;
+      return commandCancelled;
     }
 
     const selectedPath = result.filePaths[0];
@@ -148,10 +161,10 @@ export function createWindowWorkspaceActions(
         type: "status",
         message: "Open folder did not return a path."
       });
-      return;
+      return commandCancelled;
     }
 
-    await openFolderPath(selectedPath);
+    return openFolderPath(selectedPath);
   }
 
   function isValidWorkspaceTarget(

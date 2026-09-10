@@ -1,3 +1,4 @@
+import type { MarkdownCommandId } from "@pluma/commands";
 import type { EditorSessionController } from "./editorSessionController.js";
 import type {
   EditorCursorAnchor,
@@ -36,6 +37,8 @@ export type SourceEditorHandle = {
   findNext: (options?: EditorSearchActionOptions) => void;
   findPrevious: (options?: EditorSearchActionOptions) => void;
   focus: () => void;
+  runCommand: (command: MarkdownCommandId) => boolean;
+  getStateToken: () => unknown;
   getCursorAnchor: () => EditorCursorAnchor | null;
   getScrollAnchor: () => EditorScrollAnchor | null;
   getSearchStatus: () => EditorSearchStatus;
