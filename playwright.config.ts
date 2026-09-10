@@ -24,6 +24,7 @@ export default defineConfig({
       name: "renderer",
       testMatch: [
         "**/renderer.spec.ts",
+        "**/quickAccess.spec.ts",
         "**/geometry.spec.ts",
         "**/selection*.spec.ts",
         "**/listMarkers.spec.ts",
@@ -33,7 +34,13 @@ export default defineConfig({
       ]
     },
     { name: "electron", testMatch: "**/electron.spec.ts" },
-    { name: "packaged", testMatch: "**/packaged.spec.ts" },
-    { name: "production", testMatch: "**/production.spec.ts" }
+    {
+      name: "packaged",
+      testMatch: ["**/packaged.spec.ts", "**/quickAccessPackaged.spec.ts"]
+    },
+    {
+      name: "production",
+      testMatch: ["**/production.spec.ts", "**/quickAccessProduction.spec.ts"]
+    }
   ]
 });

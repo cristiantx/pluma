@@ -1,3 +1,4 @@
+import { QuickAccess } from "./quickaccess/QuickAccess.js";
 import { useMemo } from "react";
 
 import { PaneLayout } from "../panes/PaneLayout.js";
@@ -34,6 +35,7 @@ export function PlumaShell() {
         mainPane
       )}
       <NotificationCenter />
+      <QuickAccess />
     </main>
   );
 }

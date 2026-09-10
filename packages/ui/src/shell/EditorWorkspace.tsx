@@ -1,3 +1,4 @@
+import { useEditorQuickAccessAdapter } from "./quickaccess/useEditorQuickAccessAdapter.js";
 import { memo, useCallback, useEffect, useRef } from "react";
 
 import {
@@ -124,6 +125,15 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
     showRichEditor,
     showSource,
     sourceEditorRef
+  });
+
+  useEditorQuickAccessAdapter({
+    documentId: activeDocumentId,
+    activeTabId,
+    mode: isSourceOnly ? "source" : editorViewMode,
+    source: sourceEditorRef,
+    rich: richEditorRef,
+    onSearch: handleEditorCommand
   });
 
   const revealPendingLinkAnchor = useCallback(() => {
@@ -310,7 +320,11 @@ export const EditorWorkspace = memo(function EditorWorkspace() {
     resolvedTheme
   };
   const previewPane = showPreview ? (
-    <article className="preview-pane" aria-label="Markdown preview">
+    <article
+      className="preview-pane"
+      aria-label="Markdown preview"
+      tabIndex={-1}
+    >
       <div className="preview-document">
         <PreviewView {...previewProps} />
       </div>
