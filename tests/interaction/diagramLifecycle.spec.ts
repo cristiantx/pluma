@@ -113,7 +113,10 @@ const scrollMarkdown =
   ).join("") +
   "Final scroll target.\n";
 
-async function scrollDiagramOutAndBack(page: Page) {
+async function scrollDiagramOutAndBack(
+  page: Page,
+  whileOffscreen?: () => Promise<void>
+) {
   const scroller = page.locator(".rich-editor .cm-scroller");
   await scroller.evaluate((element) => {
     element.scrollTop = element.scrollHeight;
@@ -122,6 +125,7 @@ async function scrollDiagramOutAndBack(page: Page) {
     page.locator(".cm-line").filter({ hasText: /^Final scroll target/ })
   ).toBeVisible();
   await expect(page.locator(".cm-draftly-mermaid-rendered")).toHaveCount(0);
+  await whileOffscreen?.();
   await scroller.evaluate((element) => {
     element.scrollTop = 0;
   });
@@ -148,7 +152,12 @@ test("settled diagrams survive five viewport removals without changing the docum
     .getAttribute("id");
   expect(svgId).toBeTruthy();
   for (let round = 0; round < 5; round++) {
-    await scrollDiagramOutAndBack(page);
+    await scrollDiagramOutAndBack(page, async () => {
+      await page
+        .locator(".cm-line")
+        .filter({ hasText: /^Final scroll target/ })
+        .click({ position: { x: 20 + round * 16, y: 8 } });
+    });
     await expect(
       page.locator(".cm-draftly-mermaid-rendered svg")
     ).toHaveAttribute("id", svgId!);

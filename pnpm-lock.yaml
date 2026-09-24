@@ -186,8 +186,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       draftly:
-        specifier: github:cristiantx/draftly#4e72e2de333d3003c6dd655da4a20a82a3de9738&path:/packages/draftly
-        version: https://codeload.github.com/cristiantx/draftly/tar.gz/4e72e2de333d3003c6dd655da4a20a82a3de9738#path:/packages/draftly(@codemirror/commands@6.10.3)(@codemirror/lang-markdown@6.5.0)(@codemirror/language-data@6.5.2)(@codemirror/language@6.12.3)(@codemirror/state@6.6.0)(@codemirror/view@6.43.0)(katex@0.16.47)
+        specifier: github:cristiantx/draftly#f67710eb4506d068f822f0c74a3b33ee2ad13567&path:/packages/draftly
+        version: https://codeload.github.com/cristiantx/draftly/tar.gz/f67710eb4506d068f822f0c74a3b33ee2ad13567#path:/packages/draftly(@codemirror/commands@6.10.3)(@codemirror/lang-markdown@6.5.0)(@codemirror/language-data@6.5.2)(@codemirror/language@6.12.3)(@codemirror/state@6.6.0)(@codemirror/view@6.43.0)(katex@0.16.47)
       katex:
         specifier: ^0.16.28
         version: 0.16.47
@@ -2342,8 +2342,8 @@ packages:
   dompurify@3.4.7:
     resolution: {integrity: sha512-2jBxDJY4RR06tQNy4w5FlFH7kfxsQZlufd0sbv+chfHCxeJwrFw2baUDsSwvBISD4K4RDbd0PTfy3uNXsR6siA==}
 
-  draftly@https://codeload.github.com/cristiantx/draftly/tar.gz/4e72e2de333d3003c6dd655da4a20a82a3de9738#path:/packages/draftly:
-    resolution: {gitHosted: true, path: /packages/draftly, tarball: https://codeload.github.com/cristiantx/draftly/tar.gz/4e72e2de333d3003c6dd655da4a20a82a3de9738}
+  draftly@https://codeload.github.com/cristiantx/draftly/tar.gz/f67710eb4506d068f822f0c74a3b33ee2ad13567#path:/packages/draftly:
+    resolution: {gitHosted: true, integrity: sha512-JYbTOP/0saE7Jep/i86dvgXXPL4b+DMD9MMHiFdpqArhYr4EqqyChPsj5mJzBK5W0VKQceMO0XhcsPc9Q00ZUg==, path: /packages/draftly, tarball: https://codeload.github.com/cristiantx/draftly/tar.gz/f67710eb4506d068f822f0c74a3b33ee2ad13567}
     version: 2.0.0
     peerDependencies:
       '@codemirror/commands': ^6.10.1
@@ -7093,7 +7093,7 @@ snapshots:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
-  draftly@https://codeload.github.com/cristiantx/draftly/tar.gz/4e72e2de333d3003c6dd655da4a20a82a3de9738#path:/packages/draftly(@codemirror/commands@6.10.3)(@codemirror/lang-markdown@6.5.0)(@codemirror/language-data@6.5.2)(@codemirror/language@6.12.3)(@codemirror/state@6.6.0)(@codemirror/view@6.43.0)(katex@0.16.47):
+  draftly@https://codeload.github.com/cristiantx/draftly/tar.gz/f67710eb4506d068f822f0c74a3b33ee2ad13567#path:/packages/draftly(@codemirror/commands@6.10.3)(@codemirror/lang-markdown@6.5.0)(@codemirror/language-data@6.5.2)(@codemirror/language@6.12.3)(@codemirror/state@6.6.0)(@codemirror/view@6.43.0)(katex@0.16.47):
     dependencies:
       '@codemirror/commands': 6.10.3
       '@codemirror/lang-markdown': 6.5.0

@@ -29,8 +29,20 @@ function harness() {
   return { view, requestMeasure, onError };
 }
 
-function widget(definition = "graph LR\nA --> B", theme = "default") {
-  return new MermaidBlockWidget(definition, {}, theme, 0, 30, "caret");
+function widget(
+  definition = "graph LR\nA --> B",
+  theme = "default",
+  renderState?: { svg: string | null }
+) {
+  return new MermaidBlockWidget(
+    definition,
+    {},
+    theme,
+    0,
+    30,
+    "caret",
+    renderState
+  );
 }
 
 afterEach(() => {
@@ -38,7 +50,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("patched Mermaid widget lifecycle", () => {
+describe("Mermaid widget lifecycle", () => {
   it("restores successful output synchronously over five remounts", async () => {
     const { view, requestMeasure } = harness();
     render.mockResolvedValue({ svg: "<svg>diagram</svg>", error: null });
@@ -83,6 +95,20 @@ describe("patched Mermaid widget lifecycle", () => {
     const replacement = widget();
     replacement.destroy(dom);
     expect(replacement.toDOM(view).innerHTML).toBe("<svg>inherited</svg>");
+    expect(render).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores output after an off-screen widget replacement", async () => {
+    const { view } = harness();
+    const renderState = { svg: null };
+    render.mockResolvedValue({ svg: "<svg>state-backed</svg>", error: null });
+    const initial = widget(undefined, undefined, renderState);
+    const dom = initial.toDOM(view);
+    await Promise.resolve();
+    initial.destroy(dom);
+
+    const replacement = widget(undefined, undefined, renderState);
+    expect(replacement.toDOM(view).innerHTML).toBe("<svg>state-backed</svg>");
     expect(render).toHaveBeenCalledTimes(1);
   });
 
