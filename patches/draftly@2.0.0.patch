@@ -1,0 +1,510 @@
+diff --git a/dist/chunk-IHYONIJH.js b/dist/chunk-IHYONIJH.js
+index a27c2e0..18b4a30 100644
+--- a/dist/chunk-IHYONIJH.js
++++ b/dist/chunk-IHYONIJH.js
+@@ -64,82 +64,115 @@ function parseAttributes(fenceLine) {
+   }
+   return attributes;
+ }
+-var MermaidBlockWidget = class extends WidgetType {
+-  constructor(definition, attributes, defaultTheme, from, to, activation = "select") {
+-    super();
+-    this.definition = definition;
+-    this.attributes = attributes;
+-    this.defaultTheme = defaultTheme;
+-    this.from = from;
+-    this.to = to;
+-    this.activation = activation;
+-  }
+-  /**
+-   * Compares **content only**.
+-   *
+-   * `eq()` answers "can CodeMirror keep the DOM it already built?". Document positions
+-   * shift on any edit earlier in the document, so including them made the answer
+-   * permanently no -- every diagram below an edit re-ran an async
+-   * mermaid.render() on every keystroke, flashing "Rendering diagram…" as it went. The handlers resolve the range from the live DOM instead.
+-   */
+-  eq(other) {
+-    return other.activation === this.activation && other.definition === this.definition && other.defaultTheme === this.defaultTheme && shallowEqualRecord(other.attributes, this.attributes);
+-  }
+-  /**
+-   * Set by {@link destroy}. `mermaid.render()` is async and routinely outlives the
+-   * element it was started for, so the resolution handler must be able to tell.
+-   */
+-  disposed = false;
+-  destroy() {
+-    this.disposed = true;
+-  }
+-  toDOM(view) {
+-    const div = document.createElement("button");
+-    div.type = "button";
+-    div.style.border = "0";
+-    div.style.background = "transparent";
+-    div.style.color = "inherit";
+-    div.style.width = "100%";
+-    div.className = "cm-draftly-mermaid-rendered";
+-    div.style.cursor = "pointer";
+-    div.setAttribute(
+-      "aria-label",
+-      `Edit Mermaid diagram: ${this.definition.replace(/\s+/g, " ").trim().slice(0, 200)}`
+-    );
+-    div.innerHTML = `<div class="cm-draftly-mermaid-loading">Rendering diagram\u2026</div>`;
+-    renderMermaid(this.definition, this.attributes, this.defaultTheme).then(({ svg, error }) => {
+-      if (this.disposed || !div.isConnected) {
+-        return;
+-      }
+-      if (error) {
+-        div.classList.add("cm-draftly-mermaid-error");
+-        div.innerHTML = `<span role="alert">[Mermaid Error: ${escapeHtml(error)}]</span>`;
+-        view.state.facet(draftlyOnPluginErrorFacet)?.("mermaid", new Error(error));
+-      } else {
+-        div.innerHTML = svg;
+-        const diagram = div.querySelector("svg");
+-        const box = diagram?.viewBox.baseVal;
+-        if (diagram && box?.width) diagram.style.width = `${box.width}px`;
+-      }
+-      view.requestMeasure();
+-    });
+-    div.addEventListener("mousedown", (event) => event.preventDefault());
+-    div.addEventListener("click", (e) => {
+-      e.preventDefault();
+-      e.stopPropagation();
+-      const range = resolveWidgetRange(view, div, ["MermaidBlock"]) ?? { from: this.from, to: this.to };
+-      view.dispatch({
+-        selection: this.activation === "caret" ? { anchor: Math.min(view.state.doc.lineAt(range.from).to + 1, range.to) } : { anchor: range.from, head: range.to },
+-        scrollIntoView: true
+-      });
+-      view.focus();
+-    });
+-    return div;
+-  }
+-  ignoreEvent() {
+-    return true;
+-  }
+-};
++const mounts = new WeakMap();
++/**
++ * Widget to render mermaid block diagrams
++ */
++class MermaidBlockWidget extends WidgetType {
++    definition;
++    attributes;
++    defaultTheme;
++    from;
++    to;
++    activation;
++    constructor(definition, attributes, defaultTheme, from, to, activation = "select") {
++        super();
++        this.definition = definition;
++        this.attributes = attributes;
++        this.defaultTheme = defaultTheme;
++        this.from = from;
++        this.to = to;
++        this.activation = activation;
++    }
++    /**
++     * Compares **content only**.
++     *
++     * `eq()` answers "can CodeMirror keep the DOM it already built?". Document positions
++     * shift on any edit earlier in the document, so including them made the answer
++     * permanently no -- every diagram below an edit re-ran an async
++     * mermaid.render() on every keystroke, flashing "Rendering diagram…" as it went. The handlers resolve the range from the live DOM instead.
++     */
++    eq(other) {
++        return (other.activation === this.activation &&
++            other.definition === this.definition &&
++            other.defaultTheme === this.defaultTheme &&
++            shallowEqualRecord(other.attributes, this.attributes));
++    }
++    renderedSvg = null;
++    destroy(dom) {
++        const mount = mounts.get(dom);
++        if (mount) {
++            mount.disposed = true;
++            this.renderedSvg = mount.svg;
++        }
++    }
++    toDOM(view) {
++        const div = document.createElement("button");
++        div.type = "button";
++        div.style.border = "0";
++        div.style.background = "transparent";
++        div.style.color = "inherit";
++        div.style.width = "100%";
++        div.className = "cm-draftly-mermaid-rendered";
++        div.style.cursor = "pointer";
++        // A rendered SVG has no text alternative of its own, and the diagram source it was
++        // built from is hidden by the decoration. Naming it from the source is the only
++        // description available -- imperfect, but it is the difference between "graphic" and
++        // nothing at all.
++        div.setAttribute("aria-label", `Edit Mermaid diagram: ${this.definition.replace(/\s+/g, " ").trim().slice(0, 200)}`);
++        const mount = { disposed: false, svg: this.renderedSvg };
++        mounts.set(div, mount);
++        const showSvg = (svg) => {
++            div.innerHTML = svg;
++            const diagram = div.querySelector("svg");
++            const box = diagram?.viewBox.baseVal;
++            if (diagram && box?.width)
++                diagram.style.width = `${box.width}px`;
++        };
++        if (mount.svg !== null) {
++            showSvg(mount.svg);
++        }
++        else {
++            div.innerHTML = `<div class="cm-draftly-mermaid-loading">Rendering diagram…</div>`;
++            renderMermaid(this.definition, this.attributes, this.defaultTheme).then(({ svg, error }) => {
++                // Retain only successful output; detached mounts must never touch the view.
++                if (!error) {
++                    mount.svg = svg;
++                    this.renderedSvg = svg;
++                }
++                if (mount.disposed || !div.isConnected)
++                    return;
++                if (error) {
++                    div.classList.add("cm-draftly-mermaid-error");
++                    div.innerHTML = `<span role="alert">[Mermaid Error: ${escapeHtml(error)}]</span>`;
++                    view.state.facet(draftlyOnPluginErrorFacet)?.("mermaid", new Error(error));
++                }
++                else {
++                    showSvg(svg);
++                }
++                view.requestMeasure();
++            });
++        }
++        div.addEventListener("mousedown", (event) => event.preventDefault());
++        // Click handler to select the raw mermaid text
++        div.addEventListener("click", (e) => {
++            e.preventDefault();
++            e.stopPropagation();
++            const range = resolveWidgetRange(view, div, ["MermaidBlock"]) ?? { from: this.from, to: this.to };
++            view.dispatch({
++                selection: this.activation === "caret"
++                    ? { anchor: Math.min(view.state.doc.lineAt(range.from).to + 1, range.to) }
++                    : { anchor: range.from, head: range.to },
++                scrollIntoView: true,
++            });
++            view.focus();
++        });
++        return div;
++    }
++    ignoreEvent() {
++        return true;
++    }
++}
+ 
+ // src/plugins/mermaid/blocks.ts
+ function readDiagrams(state) {
+@@ -431,6 +464,4 @@ var theme = createTheme({
+   }
+ });
+ 
+-export { MermaidPlugin };
+-//# sourceMappingURL=chunk-IHYONIJH.js.map
+-//# sourceMappingURL=chunk-IHYONIJH.js.map
+\ No newline at end of file
++export { MermaidPlugin };
+\ No newline at end of file
+diff --git a/dist/chunk-JY4RLQ62.cjs b/dist/chunk-JY4RLQ62.cjs
+index dddcb9d..de11c53 100644
+--- a/dist/chunk-JY4RLQ62.cjs
++++ b/dist/chunk-JY4RLQ62.cjs
+@@ -70,82 +70,115 @@ function parseAttributes(fenceLine) {
+   }
+   return attributes;
+ }
+-var MermaidBlockWidget = class extends view.WidgetType {
+-  constructor(definition, attributes, defaultTheme, from, to, activation = "select") {
+-    super();
+-    this.definition = definition;
+-    this.attributes = attributes;
+-    this.defaultTheme = defaultTheme;
+-    this.from = from;
+-    this.to = to;
+-    this.activation = activation;
+-  }
+-  /**
+-   * Compares **content only**.
+-   *
+-   * `eq()` answers "can CodeMirror keep the DOM it already built?". Document positions
+-   * shift on any edit earlier in the document, so including them made the answer
+-   * permanently no -- every diagram below an edit re-ran an async
+-   * mermaid.render() on every keystroke, flashing "Rendering diagram…" as it went. The handlers resolve the range from the live DOM instead.
+-   */
+-  eq(other) {
+-    return other.activation === this.activation && other.definition === this.definition && other.defaultTheme === this.defaultTheme && chunkXQHP5MJD_cjs.shallowEqualRecord(other.attributes, this.attributes);
+-  }
+-  /**
+-   * Set by {@link destroy}. `mermaid.render()` is async and routinely outlives the
+-   * element it was started for, so the resolution handler must be able to tell.
+-   */
+-  disposed = false;
+-  destroy() {
+-    this.disposed = true;
+-  }
+-  toDOM(view) {
+-    const div = document.createElement("button");
+-    div.type = "button";
+-    div.style.border = "0";
+-    div.style.background = "transparent";
+-    div.style.color = "inherit";
+-    div.style.width = "100%";
+-    div.className = "cm-draftly-mermaid-rendered";
+-    div.style.cursor = "pointer";
+-    div.setAttribute(
+-      "aria-label",
+-      `Edit Mermaid diagram: ${this.definition.replace(/\s+/g, " ").trim().slice(0, 200)}`
+-    );
+-    div.innerHTML = `<div class="cm-draftly-mermaid-loading">Rendering diagram\u2026</div>`;
+-    renderMermaid(this.definition, this.attributes, this.defaultTheme).then(({ svg, error }) => {
+-      if (this.disposed || !div.isConnected) {
+-        return;
+-      }
+-      if (error) {
+-        div.classList.add("cm-draftly-mermaid-error");
+-        div.innerHTML = `<span role="alert">[Mermaid Error: ${chunkFAW6KSSV_cjs.escapeHtml(error)}]</span>`;
+-        view.state.facet(chunkOCI3S4CF_cjs.draftlyOnPluginErrorFacet)?.("mermaid", new Error(error));
+-      } else {
+-        div.innerHTML = svg;
+-        const diagram = div.querySelector("svg");
+-        const box = diagram?.viewBox.baseVal;
+-        if (diagram && box?.width) diagram.style.width = `${box.width}px`;
+-      }
+-      view.requestMeasure();
+-    });
+-    div.addEventListener("mousedown", (event) => event.preventDefault());
+-    div.addEventListener("click", (e) => {
+-      e.preventDefault();
+-      e.stopPropagation();
+-      const range = chunkXQHP5MJD_cjs.resolveWidgetRange(view, div, ["MermaidBlock"]) ?? { from: this.from, to: this.to };
+-      view.dispatch({
+-        selection: this.activation === "caret" ? { anchor: Math.min(view.state.doc.lineAt(range.from).to + 1, range.to) } : { anchor: range.from, head: range.to },
+-        scrollIntoView: true
+-      });
+-      view.focus();
+-    });
+-    return div;
+-  }
+-  ignoreEvent() {
+-    return true;
+-  }
+-};
++const mounts = new WeakMap();
++/**
++ * Widget to render mermaid block diagrams
++ */
++class MermaidBlockWidget extends view.WidgetType {
++    definition;
++    attributes;
++    defaultTheme;
++    from;
++    to;
++    activation;
++    constructor(definition, attributes, defaultTheme, from, to, activation = "select") {
++        super();
++        this.definition = definition;
++        this.attributes = attributes;
++        this.defaultTheme = defaultTheme;
++        this.from = from;
++        this.to = to;
++        this.activation = activation;
++    }
++    /**
++     * Compares **content only**.
++     *
++     * `eq()` answers "can CodeMirror keep the DOM it already built?". Document positions
++     * shift on any edit earlier in the document, so including them made the answer
++     * permanently no -- every diagram below an edit re-ran an async
++     * mermaid.render() on every keystroke, flashing "Rendering diagram…" as it went. The handlers resolve the range from the live DOM instead.
++     */
++    eq(other) {
++        return (other.activation === this.activation &&
++            other.definition === this.definition &&
++            other.defaultTheme === this.defaultTheme &&
++            chunkXQHP5MJD_cjs.shallowEqualRecord(other.attributes, this.attributes));
++    }
++    renderedSvg = null;
++    destroy(dom) {
++        const mount = mounts.get(dom);
++        if (mount) {
++            mount.disposed = true;
++            this.renderedSvg = mount.svg;
++        }
++    }
++    toDOM(view) {
++        const div = document.createElement("button");
++        div.type = "button";
++        div.style.border = "0";
++        div.style.background = "transparent";
++        div.style.color = "inherit";
++        div.style.width = "100%";
++        div.className = "cm-draftly-mermaid-rendered";
++        div.style.cursor = "pointer";
++        // A rendered SVG has no text alternative of its own, and the diagram source it was
++        // built from is hidden by the decoration. Naming it from the source is the only
++        // description available -- imperfect, but it is the difference between "graphic" and
++        // nothing at all.
++        div.setAttribute("aria-label", `Edit Mermaid diagram: ${this.definition.replace(/\s+/g, " ").trim().slice(0, 200)}`);
++        const mount = { disposed: false, svg: this.renderedSvg };
++        mounts.set(div, mount);
++        const showSvg = (svg) => {
++            div.innerHTML = svg;
++            const diagram = div.querySelector("svg");
++            const box = diagram?.viewBox.baseVal;
++            if (diagram && box?.width)
++                diagram.style.width = `${box.width}px`;
++        };
++        if (mount.svg !== null) {
++            showSvg(mount.svg);
++        }
++        else {
++            div.innerHTML = `<div class="cm-draftly-mermaid-loading">Rendering diagram…</div>`;
++            renderMermaid(this.definition, this.attributes, this.defaultTheme).then(({ svg, error }) => {
++                // Retain only successful output; detached mounts must never touch the view.
++                if (!error) {
++                    mount.svg = svg;
++                    this.renderedSvg = svg;
++                }
++                if (mount.disposed || !div.isConnected)
++                    return;
++                if (error) {
++                    div.classList.add("cm-draftly-mermaid-error");
++                    div.innerHTML = `<span role="alert">[Mermaid Error: ${chunkFAW6KSSV_cjs.escapeHtml(error)}]</span>`;
++                    view.state.facet(chunkOCI3S4CF_cjs.draftlyOnPluginErrorFacet)?.("mermaid", new Error(error));
++                }
++                else {
++                    showSvg(svg);
++                }
++                view.requestMeasure();
++            });
++        }
++        div.addEventListener("mousedown", (event) => event.preventDefault());
++        // Click handler to select the raw mermaid text
++        div.addEventListener("click", (e) => {
++            e.preventDefault();
++            e.stopPropagation();
++            const range = chunkXQHP5MJD_cjs.resolveWidgetRange(view, div, ["MermaidBlock"]) ?? { from: this.from, to: this.to };
++            view.dispatch({
++                selection: this.activation === "caret"
++                    ? { anchor: Math.min(view.state.doc.lineAt(range.from).to + 1, range.to) }
++                    : { anchor: range.from, head: range.to },
++                scrollIntoView: true,
++            });
++            view.focus();
++        });
++        return div;
++    }
++    ignoreEvent() {
++        return true;
++    }
++}
+ 
+ // src/plugins/mermaid/blocks.ts
+ function readDiagrams(state) {
+@@ -437,6 +470,4 @@ var theme = chunkPULMPDQL_cjs.createTheme({
+   }
+ });
+ 
+-exports.MermaidPlugin = MermaidPlugin;
+-//# sourceMappingURL=chunk-JY4RLQ62.cjs.map
+-//# sourceMappingURL=chunk-JY4RLQ62.cjs.map
+\ No newline at end of file
++exports.MermaidPlugin = MermaidPlugin;
+\ No newline at end of file
+diff --git a/src/plugins/mermaid/widget.ts b/src/plugins/mermaid/widget.ts
+index 3ad283e..7056297 100644
+--- a/src/plugins/mermaid/widget.ts
++++ b/src/plugins/mermaid/widget.ts
+@@ -4,6 +4,10 @@ import { resolveWidgetRange, shallowEqualRecord } from "../../lib/widget-positio
+ import { escapeHtml } from "../../lib/escape-html";
+ import { renderMermaid } from "./render";
+ 
++// Equal replacement widgets can inherit a mounted element, so its lifetime must
++// be shared independently of the widget description that originally created it.
++const mounts = new WeakMap<HTMLElement, { disposed: boolean; svg: string | null }>();
++
+ /**
+  * Widget to render mermaid block diagrams
+  */
+@@ -36,14 +40,14 @@ export class MermaidBlockWidget extends WidgetType {
+     );
+   }
+ 
+-  /**
+-   * Set by {@link destroy}. `mermaid.render()` is async and routinely outlives the
+-   * element it was started for, so the resolution handler must be able to tell.
+-   */
+-  private disposed = false;
++  private renderedSvg: string | null = null;
+ 
+-  override destroy(): void {
+-    this.disposed = true;
++  override destroy(dom: HTMLElement): void {
++    const mount = mounts.get(dom);
++    if (mount) {
++      mount.disposed = true;
++      this.renderedSvg = mount.svg;
++    }
+   }
+ 
+   toDOM(view: EditorView) {
+@@ -66,31 +70,35 @@ export class MermaidBlockWidget extends WidgetType {
+       `Edit Mermaid diagram: ${this.definition.replace(/\s+/g, " ").trim().slice(0, 200)}`
+     );
+ 
+-    // Show loading state initially
+-    div.innerHTML = `<div class="cm-draftly-mermaid-loading">Rendering diagram…</div>`;
+-
+-    // Render mermaid asynchronously. Both guards matter: `disposed` catches a widget
+-    // CodeMirror told us about, `isConnected` catches an element that left the document
+-    // without destroy() being reached.
+-    renderMermaid(this.definition, this.attributes, this.defaultTheme).then(({ svg, error }) => {
+-      if (this.disposed || !div.isConnected) {
+-        return;
+-      }
+-
+-      if (error) {
+-        // classList.add, not `className +=` -- the latter accumulates if the element is
+-        // ever written to twice.
+-        div.classList.add("cm-draftly-mermaid-error");
+-        div.innerHTML = `<span role="alert">[Mermaid Error: ${escapeHtml(error)}]</span>`;
+-        view.state.facet(draftlyOnPluginErrorFacet)?.("mermaid", new Error(error));
+-      } else {
+-        div.innerHTML = svg;
+-        const diagram = div.querySelector("svg");
+-        const box = diagram?.viewBox.baseVal;
+-        if (diagram && box?.width) diagram.style.width = `${box.width}px`;
+-      }
+-      view.requestMeasure();
+-    });
++    const mount = { disposed: false, svg: this.renderedSvg };
++    mounts.set(div, mount);
++    const showSvg = (svg: string) => {
++      div.innerHTML = svg;
++      const diagram = div.querySelector("svg");
++      const box = diagram?.viewBox.baseVal;
++      if (diagram && box?.width) diagram.style.width = `${box.width}px`;
++    };
++    if (mount.svg !== null) {
++      showSvg(mount.svg);
++    } else {
++      div.innerHTML = `<div class="cm-draftly-mermaid-loading">Rendering diagram…</div>`;
++      renderMermaid(this.definition, this.attributes, this.defaultTheme).then(({ svg, error }) => {
++        // Retain only successful output; detached mounts must never touch the view.
++        if (!error) {
++          mount.svg = svg;
++          this.renderedSvg = svg;
++        }
++        if (mount.disposed || !div.isConnected) return;
++        if (error) {
++          div.classList.add("cm-draftly-mermaid-error");
++          div.innerHTML = `<span role="alert">[Mermaid Error: ${escapeHtml(error)}]</span>`;
++          view.state.facet(draftlyOnPluginErrorFacet)?.("mermaid", new Error(error));
++        } else {
++          showSvg(svg);
++        }
++        view.requestMeasure();
++      });
++    }
+ 
+     div.addEventListener("mousedown", (event) => event.preventDefault());
+     // Click handler to select the raw mermaid text

@@ -13,6 +13,7 @@ import { createEmptyEditorSearchQuery } from "@pluma/editor";
 import type { EditorCommandId } from "@pluma/commands";
 
 import { usePlumaStore } from "../state/usePlumaStore.js";
+import { reconcileEditorSearchStatus } from "./editorSearchStatus.js";
 
 type SearchCommand =
   | "find-next"
@@ -54,6 +55,7 @@ export function useEditorSearchController({
   const [searchStatus, setSearchStatus] = useState<EditorSearchStatus>(
     createEmptySearchStatus
   );
+  const isSearchOpenRef = useRef(false);
   const deferredSearchCommandRef = useRef<DeferredSearchCommand | null>(null);
 
   const getActiveEditor = useCallback(() => {
@@ -74,11 +76,18 @@ export function useEditorSearchController({
     sourceEditorRef
   ]);
 
-  const refreshSearchStatus = useCallback(() => {
-    setSearchStatus(
-      getActiveEditor()?.getSearchStatus() ?? createEmptySearchStatus()
-    );
-  }, [getActiveEditor]);
+  const refreshSearchStatus = useCallback(
+    ({ force = false }: { force?: boolean } = {}) => {
+      if (!force && !isSearchOpenRef.current) {
+        return;
+      }
+
+      const next =
+        getActiveEditor()?.getSearchStatus() ?? createEmptySearchStatus();
+      setSearchStatus((current) => reconcileEditorSearchStatus(current, next));
+    },
+    [getActiveEditor]
+  );
 
   const ensureSourceSearchMode = useCallback(() => {
     if (editorViewMode !== "preview") {
@@ -94,19 +103,22 @@ export function useEditorSearchController({
       setSearchQuery(query);
       richEditorRef.current?.setSearchQuery(query);
       sourceEditorRef.current?.setSearchQuery(query);
-      window.requestAnimationFrame(refreshSearchStatus);
+      window.requestAnimationFrame(() => refreshSearchStatus({ force: true }));
     },
     [refreshSearchStatus, richEditorRef, sourceEditorRef]
   );
 
   const closeSearchPanel = useCallback(() => {
+    isSearchOpenRef.current = false;
     setIsSearchOpen(false);
     deferredSearchCommandRef.current = null;
     getActiveEditor()?.focus();
     richEditorRef.current?.setSearchQuery(createEmptyEditorSearchQuery());
     sourceEditorRef.current?.setSearchQuery(createEmptyEditorSearchQuery());
-    window.requestAnimationFrame(refreshSearchStatus);
-  }, [getActiveEditor, refreshSearchStatus, richEditorRef, sourceEditorRef]);
+    setSearchStatus((current) =>
+      reconcileEditorSearchStatus(current, createEmptySearchStatus())
+    );
+  }, [getActiveEditor, richEditorRef, sourceEditorRef]);
 
   const runSearchCommand = useCallback(
     (command: SearchCommand, options: EditorSearchActionOptions = {}) => {
@@ -134,7 +146,7 @@ export function useEditorSearchController({
         editor.replaceAll(options);
       }
 
-      window.requestAnimationFrame(refreshSearchStatus);
+      window.requestAnimationFrame(() => refreshSearchStatus({ force: true }));
     },
     [ensureSourceSearchMode, getActiveEditor, refreshSearchStatus, searchQuery]
   );
@@ -178,6 +190,7 @@ export function useEditorSearchController({
     (command: EditorCommandId) => {
       if (command === "find") {
         ensureSourceSearchMode();
+        isSearchOpenRef.current = true;
         setIsSearchOpen(true);
         setIsReplaceVisible(false);
         richEditorRef.current?.setSearchQuery(searchQuery);
@@ -199,6 +212,7 @@ export function useEditorSearchController({
 
       if (command === "replace") {
         ensureSourceSearchMode();
+        isSearchOpenRef.current = true;
         setIsSearchOpen(true);
         setIsReplaceVisible(true);
         richEditorRef.current?.setSearchQuery(searchQuery);
