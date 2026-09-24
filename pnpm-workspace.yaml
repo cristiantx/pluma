@@ -3,8 +3,6 @@ packages:
   - packages/*
 nodeLinker: hoisted
 enableGlobalVirtualStore: false
-patchedDependencies:
-  draftly@2.0.0: patches/draftly@2.0.0.patch
 allowBuilds:
   electron: true
   electron-winstaller: true
