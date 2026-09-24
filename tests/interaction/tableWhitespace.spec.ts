@@ -151,3 +151,29 @@ test("blank space after an explicit cell line break places the caret after its f
   await expectCellCaret(cell, visibleLength + "BREAK".length);
   await expectScrollUnchanged(page, scroll);
 });
+
+test("a space typed at the end of a table cell separates continued text", async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 960, height: 820 });
+  await page.goto("/");
+  await hydrate(page, tableWhitespaceMarkdown);
+  const cell = page
+    .locator(".cm-draftly-table-body-row .cm-draftly-table-cell")
+    .first();
+  const end = await cellLineEnd(cell);
+  await page.mouse.click(end.x, end.y);
+  await expectCellCaret(cell, cancelledCell.length);
+
+  await page.keyboard.insertText(" ");
+  expect((await documentSnapshot(page)).rawText).toBe(
+    tableWhitespaceMarkdown.replace(cancelledCell, `${cancelledCell} `)
+  );
+  await expectCellCaret(cell, cancelledCell.length + 1);
+  await page.keyboard.insertText("continued");
+
+  expect((await documentSnapshot(page)).rawText).toBe(
+    tableWhitespaceMarkdown.replace(cancelledCell, `${cancelledCell} continued`)
+  );
+  await expectCellCaret(cell, `${cancelledCell} continued`.length);
+});

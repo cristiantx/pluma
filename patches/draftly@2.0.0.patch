@@ -508,3 +508,504 @@ index 3ad283e..7056297 100644
  
      div.addEventListener("mousedown", (event) => event.preventDefault());
      // Click handler to select the raw mermaid text
+diff --git a/src/plugins/table-plugin.ts b/src/plugins/table-plugin.ts
+index b18c815..78f3094 100644
+--- a/src/plugins/table-plugin.ts
++++ b/src/plugins/table-plugin.ts
+@@ -6,6 +6,8 @@ import {
+   Prec,
+   type Range,
+   RangeSet,
++  StateEffect,
++  StateField,
+   Transaction,
+ } from "@codemirror/state";
+ import { syntaxTree } from "@codemirror/language";
+@@ -77,6 +79,25 @@ const TABLE_TEMPLATE: ParsedTable = {
+ 
+ const normalizeAnnotation = Annotation.define<boolean>();
+ const repairSelectionAnnotation = Annotation.define<boolean>();
++const setPendingTrailingSpaceEnds = StateEffect.define<readonly number[]>();
++const pendingTrailingSpaceEnds = StateField.define<readonly number[]>({
++  create: () => [],
++  update(value, transaction) {
++    for (const effect of transaction.effects) {
++      if (effect.is(setPendingTrailingSpaceEnds)) return effect.value;
++    }
++    if (transaction.docChanged) return [];
++    if (
++      transaction.selection &&
++      !transaction.state.selection.ranges.every(
++        (range) => range.empty && value.includes(range.head)
++      )
++    ) {
++      return [];
++    }
++    return value;
++  },
++});
+ const pipeReplace = Decoration.replace({});
+ const delimiterReplace = Decoration.replace({});
+ 
+@@ -693,10 +714,31 @@ function findCellAtPosition(tableInfo: TableInfo, position: number): TableCellIn
+   return nearestCell;
+ }
+ 
+-/** Clamps a document position into the editable content span of a cell. */
+-function clampCellPosition(cell: TableCellInfo, position: number): number {
+-  const cellEnd = Math.max(cell.contentFrom, cell.contentTo);
+-  return Math.max(cell.contentFrom, Math.min(position, cellEnd));
++/** Returns a transient, user-typed trailing-space boundary inside a cell. */
++function pendingTrailingSpaceEnd(state: EditorState, cell: TableCellInfo): number | null {
++  const ends = state.field(pendingTrailingSpaceEnds, false) || [];
++  return ends.find((end) => end > cell.contentTo && end <= cell.to) ?? null;
++}
++
++/** Keeps pending end spaces editable until subsequent text makes them cell content. */
++function getEditableCellEnd(state: EditorState, cell: TableCellInfo): number {
++  return Math.max(cell.contentTo, pendingTrailingSpaceEnd(state, cell) ?? cell.contentTo);
++}
++
++/** Extends visible cell content through a pending trailing-space caret. */
++function getEditableVisibleBounds(
++  state: EditorState,
++  absoluteFrom: number,
++  absoluteTo: number,
++  rawText: string
++): { startOffset: number; endOffset: number } {
++  const visible = getVisibleBounds(rawText);
++  const pending = state
++    .field(pendingTrailingSpaceEnds, false)
++    ?.find((end) => end > absoluteFrom + visible.endOffset && end <= absoluteTo);
++  return pending === undefined
++    ? visible
++    : { ...visible, endOffset: pending - absoluteFrom };
+ }
+ 
+ /** Collects all `<br />` token ranges from the current table. */
+@@ -818,8 +860,12 @@ export class TablePlugin extends DecorationPlugin {
+   /** Registers block wrappers and atomic ranges for the table UI. */
+   override getExtensions(): Extension[] {
+     return [
++      pendingTrailingSpaceEnds,
+       Prec.highest(keymap.of(this.buildTableKeymap())),
+       tablePointerSelection,
++      EditorView.inputHandler.of((view, from, to, text) =>
++        this.handleTableTextInput(view, from, to, text)
++      ),
+       EditorView.blockWrappers.of((view) => this.computeBlockWrappers(view)),
+       EditorView.atomicRanges.of((view) => this.computeAtomicRanges(view)),
+       EditorView.domEventHandlers({
+@@ -1155,7 +1201,12 @@ export class TablePlugin extends DecorationPlugin {
+             const rawFrom = pipes[columnIndex]! + 1;
+             const rawTo = pipes[columnIndex + 1]!;
+             const rawText = line.text.slice(rawFrom, rawTo);
+-            const visible = getVisibleBounds(rawText);
++            const visible = getEditableVisibleBounds(
++              view.state,
++              line.from + rawFrom,
++              line.from + rawTo,
++              rawText
++            );
+ 
+             if (visible.startOffset > 0) {
+               ranges.push(pipeReplace.range(line.from + rawFrom, line.from + rawFrom + visible.startOffset));
+@@ -1210,7 +1261,7 @@ export class TablePlugin extends DecorationPlugin {
+         continue;
+       }
+ 
+-      this.decorateLine(decorations, line.from, line.text, tableInfo.alignments, isHeader);
++      this.decorateLine(view, decorations, line.from, line.text, tableInfo.alignments, isHeader);
+     }
+ 
+     decorations.push(
+@@ -1236,6 +1287,7 @@ export class TablePlugin extends DecorationPlugin {
+ 
+   /** Applies the visual cell decorations for a single table row line. */
+   private decorateLine(
++    view: EditorView,
+     decorations: Range<Decoration>[],
+     lineFrom: number,
+     lineText: string,
+@@ -1255,7 +1307,12 @@ export class TablePlugin extends DecorationPlugin {
+       const rawFrom = pipes[columnIndex]! + 1;
+       const rawTo = pipes[columnIndex + 1]!;
+       const rawText = lineText.slice(rawFrom, rawTo);
+-      const visible = getVisibleBounds(rawText);
++      const visible = getEditableVisibleBounds(
++        view.state,
++        lineFrom + rawFrom,
++        lineFrom + rawTo,
++        rawText
++      );
+       const absoluteFrom = lineFrom + rawFrom;
+       const absoluteTo = lineFrom + rawTo;
+ 
+@@ -1432,10 +1489,14 @@ export class TablePlugin extends DecorationPlugin {
+       const cell = tableInfo && findCellAtPosition(tableInfo, selection.head);
+       if (!cell) return selection;
+ 
+-      const anchor = clampCellPosition(cell, selection.head);
++      const editableEnd = getEditableCellEnd(view.state, cell);
++      const anchor = Math.max(
++        cell.contentFrom,
++        Math.min(selection.head, editableEnd)
++      );
+       // A valid source offset can still resolve to hidden padding. Typing and
+       // keyboard commands commonly create a cursor with no visual association.
+-      const assoc = anchor === cell.contentFrom ? 1 : anchor === cell.contentTo ? -1 : selection.assoc;
++      const assoc = anchor === cell.contentFrom ? 1 : anchor === editableEnd ? -1 : selection.assoc;
+       if (anchor === selection.head && assoc === selection.assoc) return selection;
+       changed = true;
+       return EditorSelection.cursor(anchor, assoc, selection.bidiLevel ?? undefined, selection.goalColumn);
+@@ -1674,7 +1735,7 @@ export class TablePlugin extends DecorationPlugin {
+     }
+ 
+     const cursor = view.state.selection.main.head;
+-    const rightEdge = Math.max(cell.contentFrom, cell.contentTo);
++    const rightEdge = getEditableCellEnd(view.state, cell);
+     if (forward && cursor < rightEdge) {
+       return false;
+     }
+@@ -1803,7 +1864,7 @@ export class TablePlugin extends DecorationPlugin {
+ 
+   /** Moves the current selection anchor into a target cell. */
+   private moveSelectionToCell(view: EditorView, cell: TableCellInfo, offset = 0): void {
+-    const end = Math.max(cell.contentFrom, cell.contentTo);
++    const end = getEditableCellEnd(view.state, cell);
+     view.dispatch({
+       selection: { anchor: Math.min(cell.contentFrom + offset, end) },
+       scrollIntoView: true,
+@@ -1819,6 +1880,33 @@ export class TablePlugin extends DecorationPlugin {
+   private getCurrentCell(view: EditorView, tableInfo: TableInfo): TableCellInfo | null {
+     return findCellAtPosition(tableInfo, view.state.selection.main.head);
+   }
++
++  /** Keeps a space typed at a cell end ahead of hidden Markdown padding. */
++  private handleTableTextInput(
++    view: EditorView,
++    from: number,
++    to: number,
++    text: string
++  ): boolean {
++    if (text !== " " || from !== to) return false;
++    const tableInfo = getTableInfoAtPosition(view.state, from);
++    const cell = tableInfo && findCellAtPosition(tableInfo, from);
++    if (
++      !cell ||
++      from !== getEditableCellEnd(view.state, cell) ||
++      from >= cell.to
++    ) {
++      return false;
++    }
++
++    const next = from + 1;
++    view.dispatch({
++      changes: { from, to, insert: text },
++      selection: { anchor: next },
++      effects: setPendingTrailingSpaceEnds.of([next]),
++    });
++    return true;
++  }
+ }
+ 
+ const theme = createTheme({
+diff --git a/dist/chunk-6V7JKRLA.js b/dist/chunk-6V7JKRLA.js
+index b6118e4..e21dd23 100644
+--- a/dist/chunk-6V7JKRLA.js
++++ b/dist/chunk-6V7JKRLA.js
+@@ -6,7 +6,7 @@ import { DraftlyPlugin, DecorationPlugin } from './chunk-N765BDMH.js';
+ import { createTheme, toggleMarkdownStyle } from './chunk-XRXGYUPJ.js';
+ import { Decoration, EditorView, BlockWrapper, WidgetType, keymap } from '@codemirror/view';
+ import { tags, highlightCode } from '@lezer/highlight';
+-import { Prec, EditorSelection, Annotation, RangeSet, Transaction } from '@codemirror/state';
++import { Prec, EditorSelection, Annotation, RangeSet, Transaction, StateEffect, StateField } from '@codemirror/state';
+ import { syntaxTree, LanguageDescription } from '@codemirror/language';
+ import { Table } from '@lezer/markdown';
+ import DOMPurify from 'dompurify';
+@@ -1342,6 +1342,20 @@ var TABLE_TEMPLATE = {
+ };
+ var normalizeAnnotation = Annotation.define();
+ var repairSelectionAnnotation = Annotation.define();
++var setPendingTrailingSpaceEnds = StateEffect.define();
++var pendingTrailingSpaceEnds = StateField.define({
++  create: () => [],
++  update(value, transaction) {
++    for (const effect of transaction.effects) {
++      if (effect.is(setPendingTrailingSpaceEnds)) return effect.value;
++    }
++    if (transaction.docChanged) return [];
++    if (transaction.selection && !transaction.state.selection.ranges.every((range) => range.empty && value.includes(range.head))) {
++      return [];
++    }
++    return value;
++  }
++});
+ var pipeReplace = Decoration.replace({});
+ var delimiterReplace = Decoration.replace({});
+ var tableBlockWrapper = BlockWrapper.create({
+@@ -1799,9 +1813,19 @@ function findCellAtPosition(tableInfo, position) {
+   }
+   return nearestCell;
+ }
+-function clampCellPosition(cell, position) {
+-  const cellEnd = Math.max(cell.contentFrom, cell.contentTo);
+-  return Math.max(cell.contentFrom, Math.min(position, cellEnd));
++function pendingTrailingSpaceEnd(state, cell) {
++  const ends = state.field(pendingTrailingSpaceEnds, false) || [];
++  return ends.find((end) => end > cell.contentTo && end <= cell.to) ?? null;
++}
++function getEditableCellEnd(state, cell) {
++  return Math.max(cell.contentTo, pendingTrailingSpaceEnd(state, cell) ?? cell.contentTo);
++}
++function getEditableVisibleBounds(state, absoluteFrom, absoluteTo, rawText) {
++  const visible = getVisibleBounds(rawText);
++  const pending = state.field(pendingTrailingSpaceEnds, false)?.find(
++    (end) => end > absoluteFrom + visible.endOffset && end <= absoluteTo
++  );
++  return pending === void 0 ? visible : { ...visible, endOffset: pending - absoluteFrom };
+ }
+ function collectBreakRanges(tableInfo) {
+   const ranges = [];
+@@ -1897,8 +1921,10 @@ var TablePlugin = class extends DecorationPlugin {
+   /** Registers block wrappers and atomic ranges for the table UI. */
+   getExtensions() {
+     return [
++      pendingTrailingSpaceEnds,
+       Prec.highest(keymap.of(this.buildTableKeymap())),
+       tablePointerSelection,
++      EditorView.inputHandler.of((view, from, to, text) => this.handleTableTextInput(view, from, to, text)),
+       EditorView.blockWrappers.of((view) => this.computeBlockWrappers(view)),
+       EditorView.atomicRanges.of((view) => this.computeAtomicRanges(view)),
+       EditorView.domEventHandlers({
+@@ -2186,7 +2212,7 @@ var TablePlugin = class extends DecorationPlugin {
+             const rawFrom = pipes[columnIndex] + 1;
+             const rawTo = pipes[columnIndex + 1];
+             const rawText = line.text.slice(rawFrom, rawTo);
+-            const visible = getVisibleBounds(rawText);
++            const visible = getEditableVisibleBounds(view.state, line.from + rawFrom, line.from + rawTo, rawText);
+             if (visible.startOffset > 0) {
+               ranges.push(pipeReplace.range(line.from + rawFrom, line.from + rawFrom + visible.startOffset));
+             }
+@@ -2233,7 +2259,7 @@ var TablePlugin = class extends DecorationPlugin {
+         decorations.push(delimiterReplace.range(line.from, line.to));
+         continue;
+       }
+-      this.decorateLine(decorations, line.from, line.text, tableInfo.alignments, isHeader);
++      this.decorateLine(view, decorations, line.from, line.text, tableInfo.alignments, isHeader);
+     }
+     decorations.push(
+       Decoration.widget({
+@@ -2256,7 +2282,7 @@ var TablePlugin = class extends DecorationPlugin {
+     );
+   }
+   /** Applies the visual cell decorations for a single table row line. */
+-  decorateLine(decorations, lineFrom, lineText, alignments, isHeader) {
++  decorateLine(view, decorations, lineFrom, lineText, alignments, isHeader) {
+     const pipes = getPipePositions(lineText);
+     if (pipes.length < 2) {
+       return;
+@@ -2270,7 +2296,7 @@ var TablePlugin = class extends DecorationPlugin {
+       const rawFrom = pipes[columnIndex] + 1;
+       const rawTo = pipes[columnIndex + 1];
+       const rawText = lineText.slice(rawFrom, rawTo);
+-      const visible = getVisibleBounds(rawText);
++      const visible = getEditableVisibleBounds(view.state, lineFrom + rawFrom, lineFrom + rawTo, rawText);
+       const absoluteFrom = lineFrom + rawFrom;
+       const absoluteTo = lineFrom + rawTo;
+       if (visible.startOffset > 0) {
+@@ -2411,8 +2437,9 @@ var TablePlugin = class extends DecorationPlugin {
+       }
+       const cell = tableInfo && findCellAtPosition(tableInfo, selection.head);
+       if (!cell) return selection;
+-      const anchor = clampCellPosition(cell, selection.head);
+-      const assoc = anchor === cell.contentFrom ? 1 : anchor === cell.contentTo ? -1 : selection.assoc;
++      const editableEnd = getEditableCellEnd(view.state, cell);
++      const anchor = Math.max(cell.contentFrom, Math.min(selection.head, editableEnd));
++      const assoc = anchor === cell.contentFrom ? 1 : anchor === editableEnd ? -1 : selection.assoc;
+       if (anchor === selection.head && assoc === selection.assoc) return selection;
+       changed = true;
+       return EditorSelection.cursor(anchor, assoc, selection.bidiLevel ?? void 0, selection.goalColumn);
+@@ -2598,7 +2625,7 @@ var TablePlugin = class extends DecorationPlugin {
+       return false;
+     }
+     const cursor = view.state.selection.main.head;
+-    const rightEdge = Math.max(cell.contentFrom, cell.contentTo);
++    const rightEdge = getEditableCellEnd(view.state, cell);
+     if (forward && cursor < rightEdge) {
+       return false;
+     }
+@@ -2706,7 +2733,7 @@ var TablePlugin = class extends DecorationPlugin {
+   }
+   /** Moves the current selection anchor into a target cell. */
+   moveSelectionToCell(view, cell, offset = 0) {
+-    const end = Math.max(cell.contentFrom, cell.contentTo);
++    const end = getEditableCellEnd(view.state, cell);
+     view.dispatch({
+       selection: { anchor: Math.min(cell.contentFrom + offset, end) },
+       scrollIntoView: true
+@@ -2720,6 +2747,19 @@ var TablePlugin = class extends DecorationPlugin {
+   getCurrentCell(view, tableInfo) {
+     return findCellAtPosition(tableInfo, view.state.selection.main.head);
+   }
++  handleTableTextInput(view, from, to, text) {
++    if (text !== " " || from !== to) return false;
++    const tableInfo = getTableInfoAtPosition(view.state, from);
++    const cell = tableInfo && findCellAtPosition(tableInfo, from);
++    if (!cell || from !== getEditableCellEnd(view.state, cell) || from >= cell.to) return false;
++    const next = from + 1;
++    view.dispatch({
++      changes: { from, to, insert: text },
++      selection: { anchor: next },
++      effects: setPendingTrailingSpaceEnds.of([next])
++    });
++    return true;
++  }
+ };
+ var theme6 = createTheme({
+   default: {
+diff --git a/dist/chunk-JLNUJ46A.cjs b/dist/chunk-JLNUJ46A.cjs
+index 9625bc7..85e0b9e 100644
+--- a/dist/chunk-JLNUJ46A.cjs
++++ b/dist/chunk-JLNUJ46A.cjs
+@@ -1348,6 +1348,20 @@ var TABLE_TEMPLATE = {
+ };
+ var normalizeAnnotation = state.Annotation.define();
+ var repairSelectionAnnotation = state.Annotation.define();
++var setPendingTrailingSpaceEnds = state.StateEffect.define();
++var pendingTrailingSpaceEnds = state.StateField.define({
++  create: () => [],
++  update(value, transaction) {
++    for (const effect of transaction.effects) {
++      if (effect.is(setPendingTrailingSpaceEnds)) return effect.value;
++    }
++    if (transaction.docChanged) return [];
++    if (transaction.selection && !transaction.state.selection.ranges.every((range) => range.empty && value.includes(range.head))) {
++      return [];
++    }
++    return value;
++  }
++});
+ var pipeReplace = view.Decoration.replace({});
+ var delimiterReplace = view.Decoration.replace({});
+ var tableBlockWrapper = view.BlockWrapper.create({
+@@ -1805,9 +1819,19 @@ function findCellAtPosition(tableInfo, position) {
+   }
+   return nearestCell;
+ }
+-function clampCellPosition(cell, position) {
+-  const cellEnd = Math.max(cell.contentFrom, cell.contentTo);
+-  return Math.max(cell.contentFrom, Math.min(position, cellEnd));
++function pendingTrailingSpaceEnd(state$1, cell) {
++  const ends = state$1.field(pendingTrailingSpaceEnds, false) || [];
++  return ends.find((end) => end > cell.contentTo && end <= cell.to) ?? null;
++}
++function getEditableCellEnd(state$1, cell) {
++  return Math.max(cell.contentTo, pendingTrailingSpaceEnd(state$1, cell) ?? cell.contentTo);
++}
++function getEditableVisibleBounds(state$1, absoluteFrom, absoluteTo, rawText) {
++  const visible = getVisibleBounds(rawText);
++  const pending = state$1.field(pendingTrailingSpaceEnds, false)?.find(
++    (end) => end > absoluteFrom + visible.endOffset && end <= absoluteTo
++  );
++  return pending === void 0 ? visible : { ...visible, endOffset: pending - absoluteFrom };
+ }
+ function collectBreakRanges(tableInfo) {
+   const ranges = [];
+@@ -1903,8 +1927,10 @@ var TablePlugin = class extends chunkOCI3S4CF_cjs.DecorationPlugin {
+   /** Registers block wrappers and atomic ranges for the table UI. */
+   getExtensions() {
+     return [
++      pendingTrailingSpaceEnds,
+       state.Prec.highest(view.keymap.of(this.buildTableKeymap())),
+       tablePointerSelection,
++      view.EditorView.inputHandler.of((view$1, from, to, text) => this.handleTableTextInput(view$1, from, to, text)),
+       view.EditorView.blockWrappers.of((view) => this.computeBlockWrappers(view)),
+       view.EditorView.atomicRanges.of((view) => this.computeAtomicRanges(view)),
+       view.EditorView.domEventHandlers({
+@@ -2192,7 +2218,7 @@ var TablePlugin = class extends chunkOCI3S4CF_cjs.DecorationPlugin {
+             const rawFrom = pipes[columnIndex] + 1;
+             const rawTo = pipes[columnIndex + 1];
+             const rawText = line.text.slice(rawFrom, rawTo);
+-            const visible = getVisibleBounds(rawText);
++            const visible = getEditableVisibleBounds(view$1.state, line.from + rawFrom, line.from + rawTo, rawText);
+             if (visible.startOffset > 0) {
+               ranges.push(pipeReplace.range(line.from + rawFrom, line.from + rawFrom + visible.startOffset));
+             }
+@@ -2239,7 +2265,7 @@ var TablePlugin = class extends chunkOCI3S4CF_cjs.DecorationPlugin {
+         decorations.push(delimiterReplace.range(line.from, line.to));
+         continue;
+       }
+-      this.decorateLine(decorations, line.from, line.text, tableInfo.alignments, isHeader);
++      this.decorateLine(view$1, decorations, line.from, line.text, tableInfo.alignments, isHeader);
+     }
+     decorations.push(
+       view.Decoration.widget({
+@@ -2262,7 +2288,7 @@ var TablePlugin = class extends chunkOCI3S4CF_cjs.DecorationPlugin {
+     );
+   }
+   /** Applies the visual cell decorations for a single table row line. */
+-  decorateLine(decorations, lineFrom, lineText, alignments, isHeader) {
++  decorateLine(view$1, decorations, lineFrom, lineText, alignments, isHeader) {
+     const pipes = getPipePositions(lineText);
+     if (pipes.length < 2) {
+       return;
+@@ -2276,7 +2302,7 @@ var TablePlugin = class extends chunkOCI3S4CF_cjs.DecorationPlugin {
+       const rawFrom = pipes[columnIndex] + 1;
+       const rawTo = pipes[columnIndex + 1];
+       const rawText = lineText.slice(rawFrom, rawTo);
+-      const visible = getVisibleBounds(rawText);
++      const visible = getEditableVisibleBounds(view$1.state, lineFrom + rawFrom, lineFrom + rawTo, rawText);
+       const absoluteFrom = lineFrom + rawFrom;
+       const absoluteTo = lineFrom + rawTo;
+       if (visible.startOffset > 0) {
+@@ -2417,8 +2443,9 @@ var TablePlugin = class extends chunkOCI3S4CF_cjs.DecorationPlugin {
+       }
+       const cell = tableInfo && findCellAtPosition(tableInfo, selection.head);
+       if (!cell) return selection;
+-      const anchor = clampCellPosition(cell, selection.head);
+-      const assoc = anchor === cell.contentFrom ? 1 : anchor === cell.contentTo ? -1 : selection.assoc;
++      const editableEnd = getEditableCellEnd(view.state, cell);
++      const anchor = Math.max(cell.contentFrom, Math.min(selection.head, editableEnd));
++      const assoc = anchor === cell.contentFrom ? 1 : anchor === editableEnd ? -1 : selection.assoc;
+       if (anchor === selection.head && assoc === selection.assoc) return selection;
+       changed = true;
+       return state.EditorSelection.cursor(anchor, assoc, selection.bidiLevel ?? void 0, selection.goalColumn);
+@@ -2604,7 +2631,7 @@ var TablePlugin = class extends chunkOCI3S4CF_cjs.DecorationPlugin {
+       return false;
+     }
+     const cursor = view.state.selection.main.head;
+-    const rightEdge = Math.max(cell.contentFrom, cell.contentTo);
++    const rightEdge = getEditableCellEnd(view.state, cell);
+     if (forward && cursor < rightEdge) {
+       return false;
+     }
+@@ -2712,7 +2739,7 @@ var TablePlugin = class extends chunkOCI3S4CF_cjs.DecorationPlugin {
+   }
+   /** Moves the current selection anchor into a target cell. */
+   moveSelectionToCell(view, cell, offset = 0) {
+-    const end = Math.max(cell.contentFrom, cell.contentTo);
++    const end = getEditableCellEnd(view.state, cell);
+     view.dispatch({
+       selection: { anchor: Math.min(cell.contentFrom + offset, end) },
+       scrollIntoView: true
+@@ -2726,6 +2753,19 @@ var TablePlugin = class extends chunkOCI3S4CF_cjs.DecorationPlugin {
+   getCurrentCell(view, tableInfo) {
+     return findCellAtPosition(tableInfo, view.state.selection.main.head);
+   }
++  handleTableTextInput(view$1, from, to, text) {
++    if (text !== " " || from !== to) return false;
++    const tableInfo = getTableInfoAtPosition(view$1.state, from);
++    const cell = tableInfo && findCellAtPosition(tableInfo, from);
++    if (!cell || from !== getEditableCellEnd(view$1.state, cell) || from >= cell.to) return false;
++    const next = from + 1;
++    view$1.dispatch({
++      changes: { from, to, insert: text },
++      selection: { anchor: next },
++      effects: setPendingTrailingSpaceEnds.of([next])
++    });
++    return true;
++  }
+ };
+ var theme6 = chunkPULMPDQL_cjs.createTheme({
+   default: {

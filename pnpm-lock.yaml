@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  draftly@2.0.0: 2e88f1cb02dcef58c72eaefc0184811dbc380b6797f06658122cd6347c45380e
+  draftly@2.0.0: c13df556487665d16b2adb4a48ec738bdd75a305faa6d6bfe479ec560be39c7d
 
 importers:
 
@@ -190,7 +190,7 @@ importers:
         version: link:../core
       draftly:
         specifier: github:cristiantx/draftly#531a36287730c1c41b0cd42a5c714b0d0e4fa32a&path:/packages/draftly
-        version: https://codeload.github.com/cristiantx/draftly/tar.gz/531a36287730c1c41b0cd42a5c714b0d0e4fa32a#path:/packages/draftly(patch_hash=2e88f1cb02dcef58c72eaefc0184811dbc380b6797f06658122cd6347c45380e)(@codemirror/commands@6.10.3)(@codemirror/lang-markdown@6.5.0)(@codemirror/language-data@6.5.2)(@codemirror/language@6.12.3)(@codemirror/state@6.6.0)(@codemirror/view@6.43.0)(katex@0.16.47)
+        version: https://codeload.github.com/cristiantx/draftly/tar.gz/531a36287730c1c41b0cd42a5c714b0d0e4fa32a#path:/packages/draftly(patch_hash=c13df556487665d16b2adb4a48ec738bdd75a305faa6d6bfe479ec560be39c7d)(@codemirror/commands@6.10.3)(@codemirror/lang-markdown@6.5.0)(@codemirror/language-data@6.5.2)(@codemirror/language@6.12.3)(@codemirror/state@6.6.0)(@codemirror/view@6.43.0)(katex@0.16.47)
       katex:
         specifier: ^0.16.28
         version: 0.16.47
@@ -7096,7 +7096,7 @@ snapshots:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
-  draftly@https://codeload.github.com/cristiantx/draftly/tar.gz/531a36287730c1c41b0cd42a5c714b0d0e4fa32a#path:/packages/draftly(patch_hash=2e88f1cb02dcef58c72eaefc0184811dbc380b6797f06658122cd6347c45380e)(@codemirror/commands@6.10.3)(@codemirror/lang-markdown@6.5.0)(@codemirror/language-data@6.5.2)(@codemirror/language@6.12.3)(@codemirror/state@6.6.0)(@codemirror/view@6.43.0)(katex@0.16.47):
+  draftly@https://codeload.github.com/cristiantx/draftly/tar.gz/531a36287730c1c41b0cd42a5c714b0d0e4fa32a#path:/packages/draftly(patch_hash=c13df556487665d16b2adb4a48ec738bdd75a305faa6d6bfe479ec560be39c7d)(@codemirror/commands@6.10.3)(@codemirror/lang-markdown@6.5.0)(@codemirror/language-data@6.5.2)(@codemirror/language@6.12.3)(@codemirror/state@6.6.0)(@codemirror/view@6.43.0)(katex@0.16.47):
     dependencies:
       '@codemirror/commands': 6.10.3
       '@codemirror/lang-markdown': 6.5.0
